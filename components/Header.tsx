@@ -152,8 +152,6 @@ const Header: React.FC<HeaderProps> = (props) => {
             </button>
             {isProfileOpen && (
               <ProfilePanel 
-                session={session} 
-                profile={profile} 
                 onClose={() => setIsProfileOpen(false)}
                 {...props}
               />
