@@ -8,6 +8,7 @@ import DiaryEntryView from './components/DiaryEntryView';
 import DiaryEditor from './components/DiaryEditor';
 import CalendarView from './components/CalendarView';
 import { useCrypto } from './contexts/CryptoContext';
+import InitializeEncryption from './components/InitializeEncryption';
 
 interface DiaryAppProps {
   session: Session;
@@ -20,7 +21,48 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const { key, encrypt, decrypt } = useCrypto();
+  const { key, setKey, encrypt, decrypt } = useCrypto();
+  const [initializationStatus, setInitializationStatus] = useState<'checking' | 'needed' | 'complete'>('checking');
+
+  useEffect(() => {
+    const checkInitialization = async () => {
+      if (key) {
+        setInitializationStatus('complete');
+        return;
+      }
+
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('salt')
+          .eq('id', session.user.id)
+          .single();
+
+        if (error) throw error;
+
+        if (profile && profile.salt === 'INITIAL_SALT') {
+          // New user who has confirmed email but not set up encryption key yet.
+          setInitializationStatus('needed');
+        } else {
+          // Existing user who has refreshed the page. Session exists but in-memory key is lost.
+          // The only way to securely re-derive the key is by prompting for the password.
+          // Signing them out forces them through the login flow which does this.
+          await supabase.auth.signOut();
+        }
+      } catch (error) {
+        console.error("Error checking profile for initialization:", error);
+        alert("There was a problem accessing your profile. Please log out and log in again.");
+        await supabase.auth.signOut();
+      }
+    };
+
+    checkInitialization();
+  }, [key, session.user.id]);
+
+  const handleInitializationSuccess = (newKey: CryptoKey) => {
+    setKey(newKey);
+    setInitializationStatus('complete');
+  };
 
   const fetchEntries = useCallback(async () => {
     if (!key) return;
@@ -55,8 +97,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session }) => {
   }, [key, decrypt]);
 
   useEffect(() => {
-    fetchEntries();
-  }, [fetchEntries]);
+    if (initializationStatus === 'complete') {
+      fetchEntries();
+    }
+  }, [fetchEntries, initializationStatus]);
 
   const filteredEntries = useMemo(() => {
     return entries.filter(entry => {
@@ -174,14 +218,19 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session }) => {
   };
 
   const renderContent = () => {
-    if (!key) {
-        return (
-            <div className="text-center py-20">
-                <h2 className="text-2xl font-semibold text-slate-600">Initializing Secure Session...</h2>
-                <p className="mt-2 text-slate-500">Please wait while we prepare your encrypted diary. If this takes too long, please try refreshing the page.</p>
-            </div>
-        );
+    if (initializationStatus === 'checking') {
+      return (
+        <div className="text-center py-20">
+            <h2 className="text-2xl font-semibold text-slate-600">Initializing Secure Session...</h2>
+            <p className="mt-2 text-slate-500">Please wait while we prepare your encrypted diary. If this takes too long, please try refreshing the page.</p>
+        </div>
+      );
     }
+    
+    if (initializationStatus === 'needed') {
+        return <InitializeEncryption onSuccess={handleInitializationSuccess} session={session} />;
+    }
+
     if (loading) return <p className="text-center text-slate-500 mt-8">Loading your encrypted diary...</p>;
     
     switch (viewState.view) {
@@ -202,6 +251,14 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session }) => {
         return <DiaryList entries={filteredEntries} totalEntries={entries.length} onThisDayEntries={onThisDayEntries} onSelectEntry={(id) => setViewState({ view: 'entry', id })} />;
     }
   };
+  
+  if (initializationStatus !== 'complete') {
+    return (
+      <main className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
+        {renderContent()}
+      </main>
+    );
+  }
 
   return (
     <>
