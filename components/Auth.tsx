@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { supabase, supabaseUrl, supabaseKey } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
-import { generateSalt, deriveKey, encrypt, decrypt, deriveAndVerifyKey, KEY_CHECK_STRING } from '../lib/crypto';
-import { Profile } from '../types';
+import { generateSalt, deriveKey, encrypt, deriveAndVerifyKey, KEY_CHECK_STRING } from '../lib/crypto';
 
 
 const Auth: React.FC = () => {
@@ -104,10 +103,6 @@ const Auth: React.FC = () => {
     }
   };
   
-  const handleGoogleLogin = async () => {
-      setError("Google Login is not supported with end-to-end encryption. Please use email and password.");
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">

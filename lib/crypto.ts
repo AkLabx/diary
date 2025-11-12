@@ -17,7 +17,7 @@ const textDecoder = new TextDecoder();
  */
 export const generateSalt = (): string => {
   const salt = window.crypto.getRandomValues(new Uint8Array(16));
-  return encodeBase64(salt);
+  return encodeBase64(salt.buffer);
 };
 
 /**
@@ -70,7 +70,7 @@ export const encrypt = async (key: CryptoKey, plaintext: string): Promise<{ iv: 
   );
 
   return {
-    iv: encodeBase64(iv),
+    iv: encodeBase64(iv.buffer),
     data: encodeBase64(encryptedData),
   };
 };

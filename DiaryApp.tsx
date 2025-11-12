@@ -109,12 +109,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session }) => {
 
       if (id) {
         // Update existing entry
-        const { data, error } = await supabase
+        const { error } = await supabase
           .from('diaries')
           .update({ encrypted_entry, iv })
-          .eq('id', id)
-          .select()
-          .single();
+          .eq('id', id);
         if (error) throw error;
         // The date/ownerId doesn't change, so we can just update the content part
         setEntries(prev => prev.map(e => e.id === id ? { ...e, title: entryData.title, content: entryData.content } : e));
