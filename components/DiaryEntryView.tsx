@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { DiaryEntry } from '../types';
 
@@ -15,7 +16,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <h1 className="text-3xl font-bold text-slate-900">{entry.title}</h1>
           <p className="text-sm text-slate-500">
-            {new Date(entry.date).toLocaleString('en-US', {
+            {new Date(entry.created_at).toLocaleString('en-US', {
               weekday: 'long',
               year: 'numeric',
               month: 'long',
@@ -57,4 +58,3 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
 };
 
 export default DiaryEntryView;
-   

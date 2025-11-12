@@ -12,7 +12,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate }) =>
   const entryDates = useMemo(() => {
     const dates = new Set<string>();
     entries.forEach(entry => {
-      dates.add(new Date(entry.date).toISOString().split('T')[0]);
+      dates.add(new Date(entry.created_at).toISOString().split('T')[0]);
     });
     return dates;
   }, [entries]);

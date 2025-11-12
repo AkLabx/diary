@@ -1,6 +1,5 @@
 export interface DiaryEntry {
   id: string; // Will be a UUID from Supabase
-  date: string; // ISO string
   title: string;
   content: string;
   owner_id: string;

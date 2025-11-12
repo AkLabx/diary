@@ -49,7 +49,7 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, totalEntr
               <div className="flex justify-between items-start">
                 <h2 className="text-xl font-bold text-slate-800 mb-2">{entry.title}</h2>
                 <span className="text-sm text-slate-500 whitespace-nowrap">
-                  {new Date(entry.date).toLocaleDateString('en-US', {
+                  {new Date(entry.created_at).toLocaleDateString('en-US', {
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric',

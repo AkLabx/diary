@@ -20,13 +20,12 @@ import { createClient } from '@supabase/supabase-js';
 */
 //
 // 2. Create the 'diaries' table for encrypted entries.
-//    NOTE: We are keeping the 'date' column unencrypted for filtering and sorting.
+//    NOTE: We are using the 'created_at' column for filtering and sorting.
 //    The actual title and content will be inside 'encrypted_entry'.
 /*
   CREATE TABLE public.diaries (
     id uuid NOT NULL DEFAULT gen_random_uuid(),
-    owner_id uuid NOT NULL DEFAULT auth.uid(),
-    date timestamp with time zone NOT NULL,
+    owner_id uuid NOT NULL,
     encrypted_entry text NOT NULL,
     iv text NOT NULL,
     tags text[] NULL,

@@ -22,7 +22,8 @@ const OnThisDay: React.FC<OnThisDayProps> = ({ entries, onSelectEntry }) => {
       </h3>
       <div className="space-y-3">
         {entries.map(entry => {
-          const year = new Date(entry.date).getFullYear();
+          // Fix: Property 'date' does not exist on type 'DiaryEntry'. Changed to 'created_at'.
+          const year = new Date(entry.created_at).getFullYear();
           const yearsAgo = new Date().getFullYear() - year;
           return (
             <div

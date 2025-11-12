@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { supabase, supabaseUrl, supabaseKey } from '../lib/supabaseClient';
-import { useCrypto } from '../contexts/CryptoContext';
-import { generateSalt, deriveKey, encrypt, deriveAndVerifyKey, KEY_CHECK_STRING } from '../lib/crypto';
-
 
 const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -10,7 +7,6 @@ const Auth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { setKey } = useCrypto();
 
   const isConfigured = supabaseUrl !== 'YOUR_SUPABASE_URL' && supabaseKey !== 'YOUR_SUPABASE_ANON_KEY';
 
@@ -48,42 +44,10 @@ const Auth: React.FC = () => {
   }
 
   const handleSignIn = async () => {
-      const { data: { user }, error } = await supabase.auth.signInWithPassword({ email, password });
+      // All key derivation logic is now handled inside DiaryApp.
+      // This component's only job is to authenticate the user.
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      if (!user) throw new Error("Sign in failed, no user returned.");
-
-      // Check if this is the first time the user is logging in by looking for placeholder salt.
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      if (profileError || !profile) throw profileError || new Error("Profile not found");
-
-      if (profile.salt === 'INITIAL_SALT') {
-        // This is the first login. Generate real encryption materials and update the profile.
-        const salt = generateSalt();
-        const key = await deriveKey(password, salt);
-        const { iv: key_check_iv, data: key_check_value } = await encrypt(key, KEY_CHECK_STRING);
-
-        const { error: updateError } = await supabase
-          .from('profiles')
-          .update({ salt, key_check_value, key_check_iv })
-          .eq('id', user.id);
-        
-        if (updateError) throw updateError;
-        setKey(key); // Set the key for the current session
-      } else {
-        // This is a normal login. Derive and verify the key as usual.
-        const key = await deriveAndVerifyKey(password, user.id);
-        if (key) {
-          setKey(key);
-        } else {
-          await supabase.auth.signOut();
-          throw new Error("Incorrect password or corrupt profile data. Could not decrypt diary key.");
-        }
-      }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
