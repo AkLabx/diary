@@ -29,6 +29,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const { key, setKey, encrypt, decrypt } = useCrypto();
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('checking');
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [exportStartDate, setExportStartDate] = useState('');
+  const [exportEndDate, setExportEndDate] = useState('');
 
 
   useEffect(() => {
@@ -273,6 +276,70 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const handleSignOut = async () => {
       await supabase.auth.signOut();
   };
+  
+  const handleOpenExportModal = () => {
+    setExportStartDate('');
+    setExportEndDate('');
+    setIsExportModalOpen(true);
+  };
+  
+  const handleConfirmExport = () => {
+     const entriesToExport = entries.filter(entry => {
+      const entryDate = new Date(entry.created_at);
+      entryDate.setHours(0, 0, 0, 0);
+
+      let inRange = true;
+      if (exportStartDate) {
+        // By appending T00:00:00, we ensure the date is parsed in the user's local timezone,
+        // avoiding inconsistencies with UTC-based parsing of date-only strings.
+        const start = new Date(exportStartDate + 'T00:00:00');
+        if (entryDate < start) inRange = false;
+      }
+      if (exportEndDate) {
+        const end = new Date(exportEndDate + 'T00:00:00');
+        if (entryDate > end) inRange = false;
+      }
+      return inRange;
+    });
+    
+    if (entriesToExport.length === 0) {
+      alert("No entries found in the selected date range.");
+      return;
+    }
+
+    if (window.confirm('Warning: This exported file will not be encrypted. Please keep it safe on your computer.')) {
+        const fileContent = entriesToExport
+            .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()) // sort oldest to newest
+            .map(entry => {
+                const date = new Date(entry.created_at).toLocaleString('en-US', {
+                  year: 'numeric', month: 'long', day: 'numeric',
+                  hour: 'numeric', minute: '2-digit', hour12: true
+                });
+                const mood = entry.mood ? `[Mood: ${entry.mood}]` : '';
+                const tags = entry.tags?.length ? `[Tags: ${entry.tags.join(', ')}]` : '';
+                const metadata = [mood, tags].filter(Boolean).join(' | ');
+
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = entry.content;
+                const textContent = tempDiv.textContent || tempDiv.innerText || '';
+
+                return `Date: ${date}\nTitle: ${entry.title}\n${metadata ? `${metadata}\n` : ''}\n---\n${textContent}\n`;
+            })
+            .join('\n============================================================\n\n');
+
+        const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `diary_export_${new Date().toISOString().split('T')[0]}.txt`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    }
+    setIsExportModalOpen(false);
+  };
+  
   const handleGoHome = () => {
     setViewState({ view: 'list' });
     setStartDate(''); setEndDate('');
@@ -348,6 +415,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         onSignOut={handleSignOut}
         onUpdateProfile={handleUpdateProfile}
         onAvatarUpload={handleAvatarUpload}
+        onOpenExportModal={handleOpenExportModal}
         theme={theme}
         onToggleTheme={onToggleTheme}
       />
@@ -374,6 +442,47 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
               else if (viewState.view === 'edit') setViewState({ view: 'entry', id: viewState.id });
             }}
           />
+        </div>
+      )}
+      
+      {isExportModalOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 flex items-center justify-center p-4 animate-fade-in"
+          onClick={() => setIsExportModalOpen(false)}
+        >
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-xl p-6 w-full max-w-sm border border-slate-200 dark:border-slate-700"
+            onClick={(e) => e.stopPropagation()} // Prevents closing when clicking inside the modal
+          >
+            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Export Entries</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 mb-4">Select a date range. Leave blank to export all entries.</p>
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="start-date" className="text-sm font-medium text-slate-600 dark:text-slate-300">Start Date</label>
+                <input 
+                  id="start-date" 
+                  type="date" 
+                  value={exportStartDate} 
+                  onChange={e => setExportStartDate(e.target.value)} 
+                  className="w-full mt-1 border border-slate-300 rounded-md p-1.5 text-sm dark:bg-slate-700 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 dark:[color-scheme:dark]" 
+                />
+              </div>
+              <div>
+                <label htmlFor="end-date" className="text-sm font-medium text-slate-600 dark:text-slate-300">End Date</label>
+                <input 
+                  id="end-date" 
+                  type="date" 
+                  value={exportEndDate} 
+                  onChange={e => setExportEndDate(e.target.value)} 
+                  className="w-full mt-1 border border-slate-300 rounded-md p-1.5 text-sm dark:bg-slate-700 dark:border-slate-600 focus:ring-2 focus:ring-indigo-500 dark:[color-scheme:dark]" 
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setIsExportModalOpen(false)} className="px-4 py-2 font-semibold text-slate-600 dark:text-slate-300 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-500 transition-colors">Cancel</button>
+              <button onClick={handleConfirmExport} className="px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">Confirm Export</button>
+            </div>
+          </div>
         </div>
       )}
     </>

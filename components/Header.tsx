@@ -15,6 +15,7 @@ interface HeaderProps {
   onSignOut: () => void;
   onUpdateProfile: (updates: { full_name?: string; avatar_url?: string; }) => Promise<void>;
   onAvatarUpload: (file: File) => Promise<void>;
+  onOpenExportModal: () => void;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -28,6 +29,7 @@ const Header: React.FC<HeaderProps> = (props) => {
     onGoToSearch,
     currentView,
     onToggleView,
+    onOpenExportModal,
   } = props;
   
   const [isProfileOpen, setIsProfileOpen] = useState(false);
@@ -130,6 +132,7 @@ const Header: React.FC<HeaderProps> = (props) => {
                 onSignOut={props.onSignOut}
                 onUpdateProfile={props.onUpdateProfile}
                 onAvatarUpload={props.onAvatarUpload}
+                onOpenExportModal={onOpenExportModal}
                 theme={props.theme}
                 onToggleTheme={props.onToggleTheme}
               />
