@@ -8,13 +8,14 @@ interface DiaryEditorProps {
   onSave: (entryData: Omit<DiaryEntry, 'id' | 'owner_id'>) => void;
   onWordCountChange: (count: number) => void;
   onCharacterCountChange: (count: number) => void;
+  editorFont: 'serif' | 'sans' | 'mono';
 }
 
 export interface EditorHandle {
   save: () => void;
 }
 
-const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave, onWordCountChange, onCharacterCountChange }, ref) => {
+const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave, onWordCountChange, onCharacterCountChange, editorFont }, ref) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [entryDate, setEntryDate] = useState(new Date());
@@ -70,7 +71,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   }), []);
 
   return (
-    <div className="h-full flex flex-col paper-canvas rounded-lg overflow-hidden">
+    <div className={`h-full flex flex-col paper-canvas rounded-lg overflow-hidden font-${editorFont}`}>
         <div className="p-4 sm:p-6 md:px-8 border-b border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
             <input
                 type="text"

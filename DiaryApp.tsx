@@ -46,6 +46,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [wordCount, setWordCount] = useState(0);
   const [characterCount, setCharacterCount] = useState(0);
   const editorRef = useRef<EditorHandle>(null);
+  const [editorFont, setEditorFont] = useState<'serif' | 'sans' | 'mono'>('serif');
 
   const { addToast } = useToast();
 
@@ -345,6 +346,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                 onSave={handleSaveEntry}
                 onWordCountChange={setWordCount}
                 onCharacterCountChange={setCharacterCount}
+                editorFont={editorFont}
               />
             ) : (
                renderMainView()
@@ -364,6 +366,8 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                       setEditingEntry(prev => ({ ...(prev as DiaryEntry), ...updates }));
                   }
               }}
+              editorFont={editorFont}
+              onFontChange={setEditorFont}
             />
           )}
         </div>

@@ -66,7 +66,6 @@ body {
 
 .prose-editor .ql-container {
   border: none !important;
-  font-family: 'Lora', serif;
   font-size: 1.125rem; /* 18px for a better reading experience */
   flex-grow: 1;
 }
@@ -77,6 +76,23 @@ body {
   line-height: 1.7;
   caret-color: #6366f1; /* indigo-500 */
   animation: caret-blink 1.25s step-end infinite;
+}
+
+/* 
+  FIX: Directly apply font styles to the Quill editor content area.
+  This uses more specific selectors to reliably override Quill's default
+  font styles, ensuring the content font matches the selected style.
+*/
+.font-serif .prose-editor .ql-editor {
+    font-family: 'Lora', serif;
+}
+
+.font-sans .prose-editor .ql-editor {
+    font-family: 'Inter', sans-serif;
+}
+
+.font-mono .prose-editor .ql-editor {
+    font-family: 'Inconsolata', monospace;
 }
 
 .dark .prose-editor .ql-editor {

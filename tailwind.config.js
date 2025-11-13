@@ -9,6 +9,8 @@ export default {
     extend: {
       fontFamily: {
         'serif': ['Lora', 'serif'],
+        'sans': ['Inter', 'sans-serif'],
+        'mono': ['Inconsolata', 'monospace'],
       },
       keyframes: {
         'toast-in': {
