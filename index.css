@@ -71,6 +71,7 @@ body {
 }
 
 .prose-editor .ql-editor {
+  height: 100%; /* <-- FIX: Ensure editor content area fills its container */
   padding: 2rem 3rem;
   color: #334155; /* slate-700 */
   line-height: 1.7;

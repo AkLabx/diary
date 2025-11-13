@@ -15,6 +15,12 @@ export interface EditorHandle {
   save: () => void;
 }
 
+const fontClassMap = {
+  serif: 'font-serif',
+  sans: 'font-sans',
+  mono: 'font-mono',
+};
+
 const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave, onWordCountChange, onCharacterCountChange, editorFont }, ref) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -69,9 +75,11 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const modules = useMemo(() => ({
     toolbar: false, // Disable the default toolbar
   }), []);
+  
+  const fontClass = fontClassMap[editorFont];
 
   return (
-    <div className={`h-full flex flex-col paper-canvas rounded-lg overflow-hidden font-${editorFont}`}>
+    <div className={`h-full flex flex-col paper-canvas rounded-lg overflow-hidden ${fontClass}`}>
         <div className="p-4 sm:p-6 md:px-8 border-b border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
             <input
                 type="text"
