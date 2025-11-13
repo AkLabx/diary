@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useCrypto } from '../contexts/CryptoContext';
-import { Session } from '@supabase/supabase-js';
+// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
+import type { Session } from '@supabase/supabase-js';
 
 interface PasswordPromptProps {
   onSuccess: (key: CryptoKey) => void;

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { supabase, supabaseUrl, supabaseKey } from '../lib/supabaseClient';
+import { useToast } from '../contexts/ToastContext';
 
 const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -7,6 +8,7 @@ const Auth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { addToast } = useToast();
 
   const isConfigured = supabaseUrl !== 'YOUR_SUPABASE_URL' && supabaseKey !== 'YOUR_SUPABASE_ANON_KEY';
 
@@ -38,10 +40,11 @@ const Auth: React.FC = () => {
   const handleSignUp = async () => {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
-      alert('Check your email for the confirmation link!');
+      addToast('Check your email for the confirmation link!', 'success');
   }
 
   const handleSignIn = async () => {
+      // v2 syntax for email/password sign in
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
   }
@@ -50,6 +53,7 @@ const Auth: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      // v2 syntax for OAuth sign in
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
       });

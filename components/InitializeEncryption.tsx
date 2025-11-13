@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { generateSalt, deriveKey, encrypt, KEY_CHECK_STRING } from '../lib/crypto';
-import { Session } from '@supabase/supabase-js';
+// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
+import type { Session } from '@supabase/supabase-js';
 
 
 interface InitializeEncryptionProps {
@@ -34,7 +35,8 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
 
         // Extract full_name and avatar_url from user metadata if available (e.g., from Google sign-in)
         const fullName = user.user_metadata?.full_name;
-        const avatarUrl = user.user_metadata?.avatar_url;
+        // Google's avatar URL is often in 'picture', so we check both.
+        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture;
 
         // Instead of updating, we now insert the new profile directly.
         // The RLS policy ensures a user can only insert a profile for themselves.

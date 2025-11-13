@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Session } from '@supabase/supabase-js';
+// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
 import DiaryApp from './DiaryApp';
 import { CryptoProvider } from './contexts/CryptoContext';
+import { ToastProvider } from './contexts/ToastContext';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -11,19 +13,20 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    // This is the v2 way to get the session
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
-    };
+    });
 
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // This is the v2 listener
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    return () => subscription.unsubscribe();
+    return () => subscription?.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -50,11 +53,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <CryptoProvider>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans">
-        {!session ? <Auth /> : <DiaryApp key={session.user.id} session={session} theme={theme} onToggleTheme={toggleTheme} />}
-      </div>
-    </CryptoProvider>
+    <ToastProvider>
+      <CryptoProvider>
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans">
+          {!session ? <Auth /> : <DiaryApp key={session.user.id} session={session} theme={theme} onToggleTheme={toggleTheme} />}
+        </div>
+      </CryptoProvider>
+    </ToastProvider>
   );
 };
 

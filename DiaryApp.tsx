@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Session } from '@supabase/supabase-js';
+// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
+import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import { DiaryEntry, ViewState, Profile } from './types';
 import Header from './components/Header';
@@ -11,6 +12,7 @@ import SearchView from './components/SearchView';
 import { useCrypto } from './contexts/CryptoContext';
 import InitializeEncryption from './components/InitializeEncryption';
 import PasswordPrompt from './components/PasswordPrompt';
+import { useToast } from './contexts/ToastContext';
 
 interface DiaryAppProps {
   session: Session;
@@ -32,6 +34,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [exportStartDate, setExportStartDate] = useState('');
   const [exportEndDate, setExportEndDate] = useState('');
+  const { addToast } = useToast();
 
 
   useEffect(() => {
@@ -59,7 +62,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         }
       } catch (error) {
         console.error("Error checking profile for initialization:", error);
-        alert("There was a problem accessing your profile. Please log out and log in again.");
+        addToast("There was a problem accessing your profile. Please log out and log in again.", "error");
         await supabase.auth.signOut();
       }
     };
@@ -122,11 +125,11 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       setEntries(successfullyDecryptedEntries);
     } catch (error) {
       console.error("Error fetching entries from database:", error);
-      alert("Could not fetch diary entries. Please check your network connection.");
+      addToast("Could not fetch diary entries. Please check your network connection.", "error");
     } finally {
       setLoading(false);
     }
-  }, [key, decrypt]);
+  }, [key, decrypt, addToast]);
 
   useEffect(() => {
     if (keyStatus === 'ready') {
@@ -174,7 +177,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 
   const handleSaveEntry = useCallback(async (entryData: Omit<DiaryEntry, 'id' | 'owner_id' | 'created_at'> & { created_at: string }, id?: string) => {
     if (!key) {
-        alert("Security session expired. Please log in again.");
+        addToast("Security session expired. Please log in again.", "error");
         return;
     }
     try {
@@ -219,13 +222,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         };
         setEntries(prev => [newEntryForState, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       }
-      alert('Entry saved successfully!');
+      addToast('Entry saved successfully!', 'success');
       setViewState({ view: 'list' });
     } catch (error) {
       console.error("Error saving entry:", error);
-      alert("Failed to save entry. Please try again.");
+      addToast("Failed to save entry. Please try again.", "error");
     }
-  }, [session.user.id, key, encrypt]);
+  }, [session.user.id, key, encrypt, addToast]);
 
   const handleDeleteEntry = useCallback(async (id: string) => {
     if (window.confirm('Are you sure you want to delete this entry?')) {
@@ -234,13 +237,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         if (error) throw error;
         setEntries(prev => prev.filter(entry => entry.id !== id));
         setViewState({ view: 'list' });
-        alert('Entry deleted successfully.');
+        addToast('Entry deleted successfully.', 'success');
       } catch (error) {
         console.error("Error deleting entry:", error);
-        alert("Failed to delete entry. Please try again.");
+        addToast("Failed to delete entry. Please try again.", "error");
       }
     }
-  }, []);
+  }, [addToast]);
   
     const handleUpdateProfile = useCallback(async (updates: { full_name?: string, avatar_url?: string }) => {
     try {
@@ -253,12 +256,12 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 
       if (error) throw error;
       setProfile(data as Profile);
-      alert('Profile updated!');
+      addToast('Profile updated!', 'success');
     } catch (error) {
       console.error("Error updating profile:", error);
-      alert("Failed to update profile.");
+      addToast("Failed to update profile.", "error");
     }
-  }, [session.user.id]);
+  }, [session.user.id, addToast]);
 
   const handleAvatarUpload = useCallback(async (file: File) => {
     try {
@@ -272,9 +275,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       await handleUpdateProfile({ avatar_url: data.publicUrl });
     } catch (error) {
       console.error("Error uploading avatar:", error);
-      alert("Failed to upload avatar.");
+      addToast("Failed to upload avatar.", "error");
     }
-  }, [session.user.id, handleUpdateProfile]);
+  }, [session.user.id, handleUpdateProfile, addToast]);
 
   const handleSignOut = async () => {
       await supabase.auth.signOut();
@@ -306,7 +309,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     });
     
     if (entriesToExport.length === 0) {
-      alert("No entries found in the selected date range.");
+      addToast("No entries found in the selected date range.", "info");
       return;
     }
     
@@ -341,7 +344,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        alert('Entries exported successfully!');
+        addToast('Entries exported successfully!', 'success');
     }
   };
   
@@ -404,6 +407,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     }
   };
 
+  const isEditorActive = viewState.view === 'new' || viewState.view === 'edit';
   const entryToEdit = viewState.view === 'edit' ? entries.find(e => e.id === viewState.id) : undefined;
   
   return (
@@ -428,16 +432,15 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         {renderMainView()}
       </main>
 
-      {(viewState.view === 'new' || (viewState.view === 'edit' && entryToEdit)) && (
-        <div 
-          className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-30 flex items-center justify-center p-4 animate-fade-in"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              if (viewState.view === 'new') setViewState({ view: 'list' });
-              else if (viewState.view === 'edit') setViewState({ view: 'entry', id: viewState.id });
-            }
-          }}
-        >
+      {/* Editor Panel */}
+      <div 
+        className={`
+          fixed inset-0 z-30 bg-slate-50 dark:bg-slate-900
+          transition-transform duration-300 ease-in-out
+          ${isEditorActive ? 'translate-y-0' : 'translate-y-full'}
+        `}
+      >
+        {isEditorActive && (viewState.view === 'new' || entryToEdit) && (
           <DiaryEditor
             key={viewState.view === 'edit' ? viewState.id : 'new'}
             entry={entryToEdit}
@@ -447,8 +450,8 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
               else if (viewState.view === 'edit') setViewState({ view: 'entry', id: viewState.id });
             }}
           />
-        </div>
-      )}
+        )}
+      </div>
       
       {isExportModalOpen && (
         <div 

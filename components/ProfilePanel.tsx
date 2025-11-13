@@ -1,6 +1,8 @@
 import React, { useState, useEffect, ChangeEvent } from 'react';
-import { Session } from '@supabase/supabase-js';
+// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
+import type { Session } from '@supabase/supabase-js';
 import { Profile, DiaryEntry } from '../types';
+import { useToast } from '../contexts/ToastContext';
 
 interface ProfilePanelProps {
   session: Session;
@@ -30,6 +32,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({
   const [name, setName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const { addToast } = useToast();
 
   useEffect(() => {
     setName(profile?.full_name || '');
@@ -53,7 +56,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({
   
   const handleOpenExportModalClick = () => {
     if(entries.length === 0) {
-      alert("You have no entries to export.");
+      addToast("You have no entries to export.", "info");
       return;
     }
     onOpenExportModal();

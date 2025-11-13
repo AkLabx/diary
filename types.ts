@@ -24,3 +24,9 @@ export type ViewState =
   | { view: 'new' }
   | { view: 'calendar' }
   | { view: 'search' };
+  
+export interface ToastMessage {
+  id: string;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
