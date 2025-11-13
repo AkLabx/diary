@@ -21,7 +21,7 @@ export async function fetchWeather(lat: number, lon: number): Promise<Weather | 
     return null;
   }
 
-  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=imperial`;
+  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
 
   try {
     const response = await fetch(url);
@@ -34,6 +34,7 @@ export async function fetchWeather(lat: number, lon: number): Promise<Weather | 
       temp: data.main.temp,
       description: data.weather[0].description,
       icon: data.weather[0].icon,
+      location: data.name,
     };
   } catch (error) {
     console.error("Could not fetch weather data:", error);

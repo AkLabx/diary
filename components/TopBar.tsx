@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Weather, Profile } from '../types';
 import { format } from 'date-fns';
 
@@ -33,15 +33,26 @@ const SaveStatusIndicator: React.FC<{ status: TopBarProps['saveStatus'] }> = ({ 
 
 
 const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDate, weather, theme, onToggleTheme, saveStatus, profile, onShowProfile, isToolsPanelVisible, onToggleToolsPanel, isLeftSidebarVisible }) => {
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  useEffect(() => {
+    const timerId = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 60000); // Update every minute
+
+    return () => clearInterval(timerId);
+  }, []);
+
   return (
     <header className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-b border-[#EAE1D6] dark:border-slate-800 h-16 flex-shrink-0 relative z-20">
       <div className="h-full flex items-center justify-between px-6">
-        <div className={`flex items-center gap-6 text-sm text-slate-600 dark:text-slate-300 transition-all duration-300 ${!isLeftSidebarVisible ? 'pl-16' : ''}`}>
+        <div className={`flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 transition-all duration-300 ${!isLeftSidebarVisible ? 'pl-16' : ''}`}>
+          <span className="font-semibold">{format(currentTime, 'p')}</span>
           <span className="font-semibold">{format(currentDate, 'MMMM d, yyyy')}</span>
           {weather && (
             <div className="flex items-center gap-2">
-              <img src={`https://openweathermap.org/img/wn/${weather.icon}.png`} alt={weather.description} className="h-6 w-6" />
-              <span>{Math.round(weather.temp)}°F</span>
+              <span className="w-2.5 h-2.5 bg-orange-500 rounded-full"></span>
+              <span>{weather.location}, {Math.round(weather.temp)}°C</span>
             </div>
           )}
         </div>
