@@ -84,7 +84,7 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({
               </svg>
             </label>
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             {isEditingName ? (
               <form onSubmit={handleNameSave}>
                 <input 
@@ -97,9 +97,9 @@ const ProfilePanel: React.FC<ProfilePanelProps> = ({
                 />
               </form>
             ) : (
-              <div className="flex items-center gap-2">
-                <p className="font-semibold text-slate-800 dark:text-slate-200 truncate">{profile?.full_name || 'Your Name'}</p>
-                <button onClick={() => setIsEditingName(true)} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700">
+              <div className="flex items-start gap-2">
+                <p className="flex-1 font-semibold text-slate-800 dark:text-slate-200 break-words">{profile?.full_name || 'Your Name'}</p>
+                <button onClick={() => setIsEditingName(true)} className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 flex-shrink-0">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M13.586 3.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0l-1.5-1.5a.5.5 0 01.707-.707l1.5 1.5a1 1 0 001.414 0l3-3z" />
                   </svg>

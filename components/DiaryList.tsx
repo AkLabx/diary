@@ -17,7 +17,7 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, totalEntr
     return doc.body.textContent || "";
   };
 
-  const welcomeName = profile?.full_name?.split(' ')[0];
+  const welcomeName = profile?.full_name;
   const welcomeMessage = welcomeName ? `Welcome to Diary, ${welcomeName}!` : 'Welcome to Diary!';
 
   const showNoResults = entries.length === 0 && totalEntries > 0;
