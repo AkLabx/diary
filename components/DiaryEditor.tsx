@@ -129,7 +129,7 @@ const DiaryEditor: React.FC<DiaryEditorProps> = ({ entry, onSave, onCancel }) =>
       if (text.length > MAX_CHARS + 1) {
          const limitedContent = editor.getContents(0, MAX_CHARS);
          editor.setContents(limitedContent, 'silent');
-         setContent(editor.getHTML());
+         setContent(editor.root.innerHTML);
       } else {
         setContent(value);
       }
