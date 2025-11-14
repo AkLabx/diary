@@ -15,6 +15,8 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -107,7 +109,33 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                   )}
                 </button>
               </div>
-              <button type="submit" disabled={loading} className="w-full px-4 py-2 font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600 disabled:bg-indigo-300">
+              <div className="space-y-4">
+                  <label className="flex items-start gap-3 cursor-pointer text-sm text-slate-600 dark:text-slate-400">
+                      <input
+                          type="checkbox"
+                          checked={agreedToPrivacy}
+                          onChange={(e) => setAgreedToPrivacy(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:checked:bg-indigo-500"
+                          required
+                      />
+                      <span>I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Privacy Policy</a>.</span>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer text-sm text-slate-600 dark:text-slate-400">
+                      <input
+                          type="checkbox"
+                          checked={agreedToTerms}
+                          onChange={(e) => setAgreedToTerms(e.target.checked)}
+                          className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:checked:bg-indigo-500"
+                          required
+                      />
+                      <span>I have read and agree to the <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Terms of Use</a>.</span>
+                  </label>
+              </div>
+              <button 
+                type="submit" 
+                disabled={loading || !agreedToPrivacy || !agreedToTerms} 
+                className="w-full px-4 py-2 font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600 disabled:bg-indigo-300 disabled:cursor-not-allowed transition-colors"
+              >
                   {loading ? 'Securing...' : 'Initialize Diary'}
               </button>
             </form>

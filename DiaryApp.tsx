@@ -19,6 +19,7 @@ import InitializeEncryption from './components/InitializeEncryption';
 import PasswordPrompt from './components/PasswordPrompt';
 import ProfileView from './components/ProfileView';
 import HamburgerMenu from './components/HamburgerMenu';
+import ConfirmationModal from './components/ConfirmationModal';
 
 interface DiaryAppProps {
   session: Session;
@@ -47,6 +48,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [characterCount, setCharacterCount] = useState(0);
   const editorRef = useRef<EditorHandle>(null);
   const [editorFont, setEditorFont] = useState<'serif' | 'sans' | 'mono'>('serif');
+  const [entryToDelete, setEntryToDelete] = useState<DiaryEntry | null>(null);
 
   const { addToast } = useToast();
 
@@ -174,6 +176,32 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       setSaveStatus('error');
     }
   }, [session.user.id, key, encrypt, addToast, editingEntry]);
+
+  const requestDeleteEntry = (entry: DiaryEntry) => {
+    setEntryToDelete(entry);
+  };
+
+  const handleDeleteEntry = async () => {
+    if (!entryToDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('diaries')
+        .delete()
+        .eq('id', entryToDelete.id);
+
+      if (error) throw error;
+
+      setEntries(prev => prev.filter(e => e.id !== entryToDelete.id));
+      addToast('Entry deleted successfully.', 'success');
+      setSelectedEntry(null);
+      setEntryToDelete(null);
+    } catch (error) {
+      console.error("Error deleting entry:", error);
+      addToast("Failed to delete entry.", "error");
+      setEntryToDelete(null);
+    }
+  };
   
   const handleDateSelect = (date: Date) => {
     const localDateString = toLocalDateString(date);
@@ -296,7 +324,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
           return <DiaryEntryView 
                     entry={selectedEntry} 
                     onEdit={() => handleEditEntry(selectedEntry)}
-                    onDelete={() => { /* Implement delete */}}
+                    onDelete={() => requestDeleteEntry(selectedEntry)}
                   />
         }
         return <DiaryList entries={entries} onThisDayEntries={onThisDayEntries} onSelectEntry={(id) => setSelectedEntry(entries.find(e => e.id === id) || null)} profile={profile} />;
@@ -379,6 +407,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
           saveStatus={saveStatus} 
         />
       )}
+      <ConfirmationModal
+        isOpen={!!entryToDelete}
+        onClose={() => setEntryToDelete(null)}
+        onConfirm={handleDeleteEntry}
+        title="Delete Entry?"
+        message="Are you sure you want to permanently delete this entry? This action cannot be undone."
+      />
     </div>
   );
 };

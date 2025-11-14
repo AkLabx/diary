@@ -13,6 +13,10 @@ export default {
         'mono': ['Inconsolata', 'monospace'],
       },
       keyframes: {
+        'fade-in': {
+          'from': { opacity: '0' },
+          'to': { opacity: '1' },
+        },
         'toast-in': {
           'from': { transform: 'translateX(100%)', opacity: '0' },
           'to': { transform: 'translateX(0)', opacity: '1' },
@@ -23,6 +27,7 @@ export default {
         },
       },
       animation: {
+        'fade-in': 'fade-in 0.2s ease-out forwards',
         'toast-in': 'toast-in 0.3s ease-out forwards',
         'toast-out': 'toast-out 0.3s ease-in forwards',
       },
