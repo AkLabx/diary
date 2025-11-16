@@ -126,11 +126,10 @@ import { createClient } from '@supabase/supabase-js';
 // =================================================================================
 
 
-// IMPORTANT: Supabase credentials are now sourced from environment variables.
-// Create a .env.local file in the root of your project and add your credentials there.
-// See .env.example for the required format.
-// Fix: Cast `import.meta` to `any` to bypass TypeScript error for the `env` property.
-const supabaseUrl = (import.meta as any).env.VITE_SUPABASE_URL as string;
-const supabaseKey = (import.meta as any).env.VITE_SUPABASE_KEY as string;
+// IMPORTANT: Replace with your own Supabase project's URL and Anon Key
+// You can find these in your Supabase project's dashboard under Project Settings > API.
+// Fix: Explicitly type as string to allow comparison with placeholder values in Auth.tsx.
+export const supabaseUrl: string = 'https://ccgiozknvlknbrkzfcdx.supabase.co';
+export const supabaseKey: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZ2lvemtudmxrbmJya3pmY2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTY3NTMsImV4cCI6MjA3ODQzMjc1M30.lmmuGnynbY_n_4UlsrGw5ofRd6p9QLKCcrfHf7itEg8';
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

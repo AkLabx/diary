@@ -17,13 +17,7 @@ View your app in AI Studio: https://ai.studio/apps/drive/1Yn1tJRanxKZPeF1WvrS5gw
     npm install
     ```
 2.  **Set up Supabase:**
-    This project uses Supabase for the backend. 
-    - First, create a project on [supabase.com](https://supabase.com).
-    - Run the SQL setup instructions found in the comments of `lib/supabaseClient.ts` to configure your database tables and security policies.
-    - Create a file named `.env.local` in the root of the project.
-    - Copy the contents of `.env.example` into your new `.env.local` file.
-    - Replace the placeholder values with your actual Supabase Project URL and Anon Key from your Supabase project's API settings.
-
+    This project uses Supabase for the backend. You will need to create a project on [supabase.com](https://supabase.com) and follow the SQL setup instructions in `lib/supabaseClient.ts` to configure your database tables and security policies. Once your project is created, update the `supabaseUrl` and `supabaseKey` in the same file.
 3.  **Run the development server:**
     ```bash
     npm run dev
@@ -33,14 +27,3 @@ View your app in AI Studio: https://ai.studio/apps/drive/1Yn1tJRanxKZPeF1WvrS5gw
 ## Deployment
 
 This project is configured for automatic deployment to GitHub Pages using GitHub Actions. Any push to the `main` branch will trigger the deployment workflow.
-
-### Required Setup for Deployment
-
-For the deployment to succeed, you must add your Supabase credentials as secrets to your GitHub repository.
-
-1. In your GitHub repository, go to **Settings > Secrets and variables > Actions**.
-2. Click **New repository secret** for each of the following secrets:
-    - **`VITE_SUPABASE_URL`**: Your Supabase project URL.
-    - **`VITE_SUPABASE_KEY`**: Your Supabase project's public anon key.
-
-The workflow will use these secrets to build the application with the correct credentials.

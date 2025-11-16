@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabaseClient';
+import { supabase, supabaseUrl, supabaseKey } from '../lib/supabaseClient';
 import { useToast } from '../contexts/ToastContext';
 
 const Auth: React.FC = () => {
@@ -10,8 +10,7 @@ const Auth: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const { addToast } = useToast();
 
-  // Fix: Cast `import.meta` to `any` to bypass TypeScript error for the `env` property.
-  const isConfigured = (import.meta as any).env.VITE_SUPABASE_URL && (import.meta as any).env.VITE_SUPABASE_KEY;
+  const isConfigured = supabaseUrl !== 'YOUR_SUPABASE_URL' && supabaseKey !== 'YOUR_SUPABASE_ANON_KEY';
 
   if (!isConfigured) {
     return (
@@ -24,10 +23,9 @@ const Auth: React.FC = () => {
           <div className="text-sm text-left text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-700/50 p-4 rounded-md border border-slate-200 dark:border-slate-700">
             <p className="font-semibold mb-2">Please follow these steps:</p>
             <ol className="list-decimal list-inside space-y-2">
-              <li>In the root of your project, create a new file named <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">.env.local</code>.</li>
-              <li>Copy the contents of <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">.env.example</code> into your new file.</li>
-              <li>Replace the placeholder values for <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">VITE_SUPABASE_URL</code> and <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">VITE_SUPABASE_KEY</code> with your Supabase project's credentials.</li>
-              <li>Make sure you have run the SQL scripts in <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">lib/supabaseClient.ts</code> to set up your database.</li>
+              <li>Go to the file <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">lib/supabaseClient.ts</code> in your project.</li>
+              <li>Replace the placeholder values for <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">supabaseUrl</code> and <code className="font-mono bg-slate-200 dark:bg-slate-600 px-1.5 py-1 rounded">supabaseKey</code> with the credentials from your Supabase project's API settings.</li>
+              <li>Make sure you have run the SQL scripts in that file to create the `profiles` and `diaries` tables.</li>
               <li>Save the file. The app will automatically reload.</li>
             </ol>
           </div>
