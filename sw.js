@@ -1,26 +1,29 @@
-const CACHE_NAME = 'diary-cache-v1';
-// These are the files that make up the "app shell"
+const CACHE_NAME = 'diary-cache-v2'; // Updated version
+const APP_SHELL_URL = '/index.html';
+
+// Files that constitute the app shell.
 const urlsToCache = [
   '/',
-  // NOTE: You will need to create these icon files and place them in your `public` folder.
+  APP_SHELL_URL,
   '/icon-192x192.png',
   '/icon-512x512.png',
-  '/manifest.json'
+  '/manifest.json',
+  '/privacy.html',
+  '/terms.html'
 ];
 
-// Install the service worker and cache the app shell
+// Install: Cache the app shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Cache opened');
-        // Add all the app shell files to the cache
+        console.log('Opened cache');
         return cache.addAll(urlsToCache);
       })
   );
 });
 
-// Activate the service worker and clean up old caches
+// Activate: Clean up old caches to ensure the new SW takes control
 self.addEventListener('activate', (event) => {
   const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
@@ -37,41 +40,51 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Intercept fetch requests and serve from cache if available (cache-first strategy)
+// Fetch: Serve from cache or network with offline-first strategies
 self.addEventListener('fetch', (event) => {
-  // We only want to cache GET requests.
+  // We only handle GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
+  // Strategy for navigation requests (the HTML page): Network-first, falling back to cache.
+  // This ensures the user gets the latest app version if online, but it still works offline.
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .catch(() => {
+          // If the network fails, serve the cached app shell.
+          return caches.match(APP_SHELL_URL);
+        })
+    );
+    return;
+  }
+
+  // Strategy for all other requests (assets like JS, CSS, images): Cache-first.
+  // This is fast and efficient for assets that don't change often.
   event.respondWith(
     caches.match(event.request)
       .then((response) => {
-        // If the resource is in the cache, return it
+        // If we have a cached response, return it.
         if (response) {
           return response;
         }
 
-        // If the resource is not in the cache, fetch it from the network
+        // If not in cache, fetch from the network.
         return fetch(event.request).then((networkResponse) => {
-          // Check if we received a valid response
-          if (!networkResponse || networkResponse.status !== 200) {
+          // Check for a valid response before caching
+          if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
             return networkResponse;
           }
 
-          // Clone the response because it's a stream and can only be consumed once.
+          // Cache the new resource for future offline use.
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME)
             .then((cache) => {
-              // Cache the new resource for future use
               cache.put(event.request, responseToCache);
             });
-          
+
           return networkResponse;
-        }).catch(error => {
-          // This is a simple offline fallback. In a real app, you might
-          // want to return a custom offline page.
-          console.error('Fetch failed; returning offline fallback.', error);
         });
       })
   );

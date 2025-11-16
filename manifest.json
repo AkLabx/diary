@@ -2,7 +2,7 @@
   "name": "Diary",
   "short_name": "Diary",
   "description": "A simple and elegant web application to write and save your life events. All your data is end-to-end encrypted and stored securely.",
-  "start_url": ".",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#FBF8F3",
   "theme_color": "#FBF8F3",
@@ -16,7 +16,8 @@
     {
       "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
