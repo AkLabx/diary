@@ -2,7 +2,6 @@ const CACHE_NAME = 'diary-cache-v1';
 // These are the files that make up the "app shell"
 const urlsToCache = [
   '/',
-  '/index.css',
   // NOTE: You will need to create these icon files and place them in your `public` folder.
   '/icon-192x192.png',
   '/icon-512x512.png',
