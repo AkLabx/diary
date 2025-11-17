@@ -100,23 +100,39 @@ import { createClient } from '@supabase/supabase-js';
 /*
   -- Step 1: In your Supabase dashboard, go to Storage and create a new PUBLIC bucket named 'avatars'.
   --
-  -- Step 2: Add a security policy to allow users to UPLOAD files to their own folder.
-  -- This is a critical security step. Even for a public bucket, you must control who can upload files.
-  -- This policy ensures that an authenticated user can only upload files into a folder path that
-  -- matches their own unique User ID (auth.uid()).
+  -- Step 2: Go to the policies for the 'avatars' bucket. DELETE any existing policies that may have
+  -- been created by default (e.g., "Give users authenticated access to folder...").
   --
-  -- Run this in your Supabase SQL Editor:
+  -- Step 3: Add ONE new policy using the SQL script below. This policy allows any authenticated user
+  -- to UPLOAD files, but only into a folder that matches their own user ID. This is critical for security.
+  --
+  -- Run this in your Supabase SQL Editor (or create the policy through the UI):
   CREATE POLICY "Authenticated users can upload to their own folder"
   ON storage.objects FOR INSERT
   TO authenticated
   WITH CHECK ( bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text );
 
-  -- Why don't we need SELECT, UPDATE, or DELETE policies for this app?
-  --   - SELECT (View): Because the bucket is PUBLIC, anyone with the direct file URL can view the image.
-  --     The app gets this public URL and stores it in the 'profiles' table. No policy is needed.
-  --   - UPDATE / DELETE: The application code doesn't update or delete existing files. When you
-  --     upload a new avatar, it creates a NEW file with a unique name. The old file is simply
-  --     "orphaned" in storage. This is a simple approach that avoids needing more complex policies.
+  -- Why only one policy?
+  --   - SELECT (View): The bucket is PUBLIC, so anyone with the URL can view images. No policy needed.
+  --   - UPDATE / DELETE: The app doesn't update or delete storage files directly. It just uploads new ones.
+  --     This simpler approach avoids needing more complex policies.
+*/
+//
+// 6. (Required for Diary Images) Set up Supabase Storage for diary images.
+/*
+  -- Step 1: In your Supabase dashboard, go to Storage and create a new PUBLIC bucket named 'diary-images'.
+  --
+  -- Step 2: Go to the policies for the 'diary-images' bucket. DELETE any existing policies, especially
+  --         the default templates like "Give users authenticated access...".
+  --
+  -- Step 3: Add the following single policy to control uploads. This ensures users can only
+  --         upload images to their own dedicated folder within the bucket.
+  --
+  -- Run this in your Supabase SQL Editor:
+  CREATE POLICY "Authenticated users can upload diary images to their own folder"
+  ON storage.objects FOR INSERT
+  TO authenticated
+  WITH CHECK ( bucket_id = 'diary-images' AND (storage.foldername(name))[1] = auth.uid()::text );
 */
 //
 // NOTE: The previous trigger-based profile creation has been removed.

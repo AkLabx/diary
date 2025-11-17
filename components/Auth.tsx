@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase, supabaseUrl, supabaseKey } from '../lib/supabaseClient';
 import { useToast } from '../contexts/ToastContext';
+import Monkey from './Monkey';
 
 const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -9,6 +10,17 @@ const Auth: React.FC = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { addToast } = useToast();
+
+  const [focusState, setFocusState] = useState<'idle' | 'email' | 'password'>('idle');
+  const [typingCounter, setTypingCounter] = useState(0);
+
+  const handleFocusEmail = () => setFocusState('email');
+  const handleFocusPassword = () => setFocusState('password');
+  const handleBlurInputs = () => setFocusState('idle');
+
+  const handleKeyDown = () => {
+    setTypingCounter(c => c + 1);
+  };
 
   const isConfigured = supabaseUrl !== 'YOUR_SUPABASE_URL' && supabaseKey !== 'YOUR_SUPABASE_ANON_KEY';
 
@@ -75,16 +87,24 @@ const Auth: React.FC = () => {
       } else {
         await handleSignIn();
       }
-    } catch (error: any) {
+    } catch (error: any)
+      {
       setError(error.error_description || error.message);
     } finally {
       setLoading(false);
     }
   };
   
+  const emailProgress = Math.min(email.length / 30, 1);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
       <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
+        <Monkey 
+          focusState={focusState}
+          emailProgress={emailProgress}
+          typingCounter={typingCounter} 
+        />
         <div className="text-center">
             <h1 className="text-3xl font-bold text-slate-800 dark:text-slate-200">Diary</h1>
             <p className="text-slate-500 dark:text-slate-400 mt-2">{isSignUp ? 'Create a secure, encrypted account.' : 'Sign in to access your journal.'}</p>
@@ -98,7 +118,13 @@ const Auth: React.FC = () => {
             placeholder="Your email"
             value={email}
             required
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+                setEmail(e.target.value);
+                handleKeyDown();
+            }}
+            onFocus={handleFocusEmail}
+            onBlur={handleBlurInputs}
+            onKeyDown={handleKeyDown}
             className="w-full px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
           />
           <input
@@ -107,7 +133,13 @@ const Auth: React.FC = () => {
             value={password}
             required
             minLength={6}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+                setPassword(e.target.value)
+                handleKeyDown();
+            }}
+            onFocus={handleFocusPassword}
+            onBlur={handleBlurInputs}
+            onKeyDown={handleKeyDown}
             className="w-full px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
           />
           <button type="submit" disabled={loading} className="w-full px-4 py-2 font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600 disabled:bg-indigo-300 transition-colors">

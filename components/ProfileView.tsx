@@ -26,6 +26,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const [name, setName] = useState('');
   const [isEditingName, setIsEditingName] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSavingName, setIsSavingName] = useState(false);
 
   useEffect(() => {
     setName(profile?.full_name || '');
@@ -34,7 +35,9 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const handleNameSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() !== profile?.full_name) {
+      setIsSavingName(true);
       await onUpdateProfile({ full_name: name.trim() });
+      setIsSavingName(false);
     }
     setIsEditingName(false);
   };
@@ -66,10 +69,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </div>
                      <input type="file" id="avatar-upload" className="hidden" onChange={handleAvatarChange} accept="image/*" disabled={isUploading} />
                     <label htmlFor="avatar-upload" className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-600 rounded-full p-1.5 cursor-pointer shadow-md hover:bg-slate-100 dark:hover:bg-slate-500 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 dark:text-slate-200" viewBox="0 0 20 20" fill="currentColor">
-                             <path d="M13.586 3.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0l-1.5-1.5a.5.5 0 01.707-.707l1.5 1.5a1 1 0 001.414 0l3-3z" />
-                             <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2V5z" />
-                        </svg>
+                        {isUploading ? (
+                             <svg className="animate-spin h-5 w-5 text-slate-600 dark:text-slate-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        ) : (
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-600 dark:text-slate-200" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                                <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+                            </svg>
+                        )}
                     </label>
                 </div>
                 <div className="flex-1 text-center sm:text-left">
@@ -79,10 +89,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full px-3 py-2 text-xl font-bold border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600"
+                            className="w-full px-3 py-2 text-xl font-bold border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 disabled:opacity-75"
                             autoFocus
+                            disabled={isSavingName}
                             />
-                            <button type="submit" className="px-3 py-2 text-sm font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600">Save</button>
+                            <button type="submit" className="px-3 py-2 text-sm font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600 disabled:bg-indigo-400" disabled={isSavingName}>
+                                {isSavingName ? 'Saving...' : 'Save'}
+                            </button>
                         </form>
                     ) : (
                         <div className="flex items-center gap-3 justify-center sm:justify-start">

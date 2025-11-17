@@ -1,23 +1,47 @@
-import React from 'react';
+import React, { useRef } from 'react';
 import { DiaryEntry } from '../types';
+
+type SelectedImageFormat = { align?: string; width?: string; float?: string };
 
 interface ToolsPanelProps {
   entry: DiaryEntry | 'new';
   onUpdateEntry: (updates: Partial<Pick<DiaryEntry, 'mood' | 'tags'>>) => void;
   editorFont: 'serif' | 'sans' | 'mono';
   onFontChange: (font: 'serif' | 'sans' | 'mono') => void;
+  onImageUpload: (file: File) => void;
+  isUploadingImage: boolean;
+  selectedImageFormat: SelectedImageFormat | null;
+  onImageFormatChange: (formats: { [key: string]: any }) => void;
 }
 
 const moods = ['😊', '😢', '😠', '😎', '🤔', '😍', '😴', '🥳'];
 
-const ToolsPanel: React.FC<ToolsPanelProps> = ({ entry, onUpdateEntry, editorFont, onFontChange }) => {
+const ToolsPanel: React.FC<ToolsPanelProps> = ({ 
+    entry, 
+    onUpdateEntry, 
+    editorFont, 
+    onFontChange, 
+    onImageUpload, 
+    isUploadingImage,
+    selectedImageFormat,
+    onImageFormatChange
+}) => {
     const currentMood = typeof entry === 'object' ? entry.mood : undefined;
     const currentTags = typeof entry === 'object' ? (entry.tags || []) : [];
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Placeholder for image upload handler
-    const handleImageInsert = () => {
-        alert("Image insertion feature coming soon!");
-    }
+    const handleImageInsertClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            onImageUpload(file);
+        }
+        // Reset file input value to allow uploading the same file again
+        if(fileInputRef.current) fileInputRef.current.value = '';
+    };
 
     const handleTagUpdate = (newTags: string[]) => {
         onUpdateEntry({ tags: newTags });
@@ -28,12 +52,26 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({ entry, onUpdateEntry, editorFon
     }
 
     return (
-        <aside className="w-64 bg-white/80 dark:bg-slate-900/50 border-l border-[#EAE1D6] dark:border-slate-800 p-4 space-y-6 flex-shrink-0 transition-transform duration-300 ease-in-out transform translate-x-0">
+        <aside className="w-64 bg-white/80 dark:bg-slate-900/50 border-l border-[#EAE1D6] dark:border-slate-800 p-4 space-y-6 flex-shrink-0 transition-transform duration-300 ease-in-out transform translate-x-0 overflow-y-auto">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tools</h2>
             <div className="space-y-4">
-                <button onClick={handleImageInsert} className="w-full flex items-center gap-3 p-2 rounded-md text-left text-sm text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
-                    <span>Insert Image</span>
+                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                <button 
+                    onClick={handleImageInsertClick} 
+                    disabled={isUploadingImage}
+                    className="w-full flex items-center justify-center gap-3 p-2 rounded-md text-sm text-slate-700 dark:text-slate-300 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+                >
+                    {isUploadingImage ? (
+                        <>
+                            <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                            <span>Uploading...</span>
+                        </>
+                    ) : (
+                        <>
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 3a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V5a2 2 0 00-2-2H4zm12 12H4l4-8 3 6 2-4 3 6z" clipRule="evenodd" /></svg>
+                            <span>Insert Image</span>
+                        </>
+                    )}
                 </button>
                  <div>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Font Style</h3>
@@ -59,24 +97,55 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({ entry, onUpdateEntry, editorFon
                     </div>
                 </div>
             </div>
-
-            <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mood</h3>
-                <div className="grid grid-cols-4 gap-2">
-                     {moods.map(m => (
-                        <button key={m} type="button" onClick={() => handleMoodUpdate(m)} className={`text-2xl p-2 rounded-md transition-all ${currentMood === m ? 'bg-indigo-100 dark:bg-indigo-500/50 scale-110' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{m}</button>
-                    ))}
+            
+            {selectedImageFormat && (
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-4">
+                     <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Image Tools</h2>
+                     <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Size</h3>
+                        <div className="grid grid-cols-4 gap-1">
+                            {['25%', '50%', '75%', '100%'].map(size => (
+                                <button key={size} onClick={() => onImageFormatChange({ width: size })} className={`p-2 text-xs rounded-md ${selectedImageFormat.width === size ? 'bg-indigo-500 text-white' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'}`}>
+                                    {size}
+                                </button>
+                            ))}
+                        </div>
+                     </div>
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Alignment</h3>
+                        <div className="grid grid-cols-3 gap-1">
+                            <button onClick={() => onImageFormatChange({ align: false, float: 'left', margin: '0.5em 1em 0.5em 0' })} className={`p-2 rounded-md flex justify-center ${selectedImageFormat.float === 'left' ? 'bg-indigo-500 text-white' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M2 5a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zM2 9a1 1 0 011-1h5a1 1 0 110 2H3a1 1 0 01-1-1zm7 4a1 1 0 011-1h5a1 1 0 110 2h-5a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                            </button>
+                            <button onClick={() => onImageFormatChange({ align: 'center', float: false, margin: false })} className={`p-2 rounded-md flex justify-center ${selectedImageFormat.align === 'center' ? 'bg-indigo-500 text-white' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M2 5a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zM2 9a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zm1 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                            </button>
+                             <button onClick={() => onImageFormatChange({ align: false, float: 'right', margin: '0.5em 0 0.5em 1em' })} className={`p-2 rounded-md flex justify-center ${selectedImageFormat.float === 'right' ? 'bg-indigo-500 text-white' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'}`}>
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M2 5a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zm0 4a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zm7 4a1 1 0 011-1h5a1 1 0 110 2h-5a1 1 0 01-1-1z" clipRule="evenodd" /></svg>
+                            </button>
+                        </div>
+                     </div>
                 </div>
-            </div>
-             <div>
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Tags</h3>
-                {/* A simplified tag editor. A more advanced one could be a component itself. */}
-                <textarea 
-                    value={currentTags.join(', ')}
-                    onChange={(e) => handleTagUpdate(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
-                    placeholder="travel, work..."
-                    className="w-full h-20 p-2 text-sm rounded-md bg-slate-100 dark:bg-slate-800 border-transparent focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+            )}
+
+            <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-4">
+                <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Mood</h3>
+                    <div className="grid grid-cols-4 gap-2">
+                        {moods.map(m => (
+                            <button key={m} type="button" onClick={() => handleMoodUpdate(m)} className={`text-2xl p-2 rounded-md transition-all ${currentMood === m ? 'bg-indigo-100 dark:bg-indigo-500/50 scale-110' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{m}</button>
+                        ))}
+                    </div>
+                </div>
+                <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Tags</h3>
+                    <textarea 
+                        value={currentTags.join(', ')}
+                        onChange={(e) => handleTagUpdate(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                        placeholder="travel, work..."
+                        className="w-full h-20 p-2 text-sm rounded-md bg-slate-100 dark:bg-slate-800 border-transparent focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                </div>
             </div>
         </aside>
     );

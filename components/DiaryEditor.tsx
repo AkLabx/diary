@@ -3,6 +3,36 @@ import { DiaryEntry } from '../types';
 import ReactQuill from 'react-quill';
 import { useToast } from '../contexts/ToastContext';
 
+// --- Quill Customization ---
+// We need to get the Quill constructor from the ReactQuill component.
+// This allows us to register custom formats before the editor is initialized.
+const Quill = (ReactQuill as any).Quill; 
+if (Quill) {
+    const Image = Quill.import('formats/image');
+    // Override the default formats method to include our custom styles
+    const oldFormats = Image.formats;
+    Image.formats = function(domNode: HTMLElement) {
+        const formats = oldFormats.call(this, domNode);
+        if (domNode.style.width) formats.width = domNode.style.width;
+        if (domNode.style.float) formats.float = domNode.style.float;
+        if (domNode.style.margin) formats.margin = domNode.style.margin;
+        return formats;
+    }
+
+    // Register style attributors so Quill knows how to handle them
+    const Parchment = Quill.import('parchment');
+    const widthStyle = new Parchment.Attributor.Style('width', 'width');
+    const floatStyle = new Parchment.Attributor.Style('float', 'float');
+    const marginStyle = new Parchment.Attributor.Style('margin', 'margin');
+    Quill.register(widthStyle, true);
+    Quill.register(floatStyle, true);
+    Quill.register(marginStyle, true);
+    // Register align style for block elements (like paragraphs containing images)
+    const AlignStyle = Quill.import('attributors/style/align');
+    Quill.register(AlignStyle, true);
+}
+// --- End Quill Customization ---
+
 interface DiaryEditorProps {
   entry?: DiaryEntry;
   onSave: (entryData: Omit<DiaryEntry, 'id' | 'owner_id'>) => void;
@@ -13,6 +43,7 @@ interface DiaryEditorProps {
 
 export interface EditorHandle {
   save: () => void;
+  getEditor: () => ReactQuill['editor'] | undefined;
 }
 
 const fontClassMap = {
@@ -69,11 +100,11 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
   useImperativeHandle(ref, () => ({
     save: handleInternalSave,
+    getEditor: () => quillRef.current?.getEditor(),
   }), [handleInternalSave]);
 
-  // This is a placeholder for the custom toolbar. Real implementation would go here.
   const modules = useMemo(() => ({
-    toolbar: false, // Disable the default toolbar
+    toolbar: false,
   }), []);
   
   const fontClass = fontClassMap[editorFont];
@@ -100,7 +131,6 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
                 modules={modules}
             />
         </div>
-        {/* The status bar will be handled by the main app layout now */}
     </div>
   );
 });

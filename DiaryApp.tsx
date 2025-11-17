@@ -20,6 +20,7 @@ import PasswordPrompt from './components/PasswordPrompt';
 import ProfileView from './components/ProfileView';
 import HamburgerMenu from './components/HamburgerMenu';
 import ConfirmationModal from './components/ConfirmationModal';
+import { RangeStatic } from 'react-quill';
 
 interface DiaryAppProps {
   session: Session;
@@ -28,6 +29,7 @@ interface DiaryAppProps {
 }
 
 type KeyStatus = 'checking' | 'needed' | 'reauth' | 'ready';
+type SelectedImageFormat = { align?: string; width?: string; float?: string };
 
 const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) => {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -49,6 +51,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const editorRef = useRef<EditorHandle>(null);
   const [editorFont, setEditorFont] = useState<'serif' | 'sans' | 'mono'>('serif');
   const [entryToDelete, setEntryToDelete] = useState<DiaryEntry | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [selectedImageFormat, setSelectedImageFormat] = useState<SelectedImageFormat | null>(null);
 
   const { addToast } = useToast();
 
@@ -129,6 +135,40 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       fetchProfile();
     }
   }, [fetchEntries, fetchProfile, keyStatus]);
+  
+  // Effect to listen for editor selection changes to show contextual image tools
+  useEffect(() => {
+    if (!editorRef.current || !editingEntry) return;
+
+    const quill = editorRef.current.getEditor();
+    if (!quill) return;
+    
+    const handler = (range: RangeStatic | null) => {
+        if (range && range.length === 0) {
+            const [blot] = quill.getLeaf(range.index);
+            if (blot && blot.statics.blotName === 'image') {
+                const formats = quill.getFormat(range.index, 1);
+                const parentFormats = quill.getFormat(range.index - 1, 1);
+                setSelectedImageFormat({
+                    width: formats.width,
+                    align: parentFormats.align,
+                    float: formats.float,
+                });
+            } else {
+                setSelectedImageFormat(null);
+            }
+        } else if (!range) {
+             setSelectedImageFormat(null);
+        }
+    };
+
+    quill.on('selection-change', handler);
+
+    return () => {
+        quill.off('selection-change', handler);
+    };
+  }, [editingEntry]);
+
 
   const onThisDayEntries = useMemo(() => {
     const today = new Date();
@@ -182,8 +222,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   };
 
   const handleDeleteEntry = async () => {
-    if (!entryToDelete) return;
+    if (!entryToDelete || isDeleting) return;
 
+    setIsDeleting(true);
     try {
       const { error } = await supabase
         .from('diaries')
@@ -200,13 +241,14 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       console.error("Error deleting entry:", error);
       addToast("Failed to delete entry.", "error");
       setEntryToDelete(null);
+    } finally {
+      setIsDeleting(false);
     }
   };
   
   const handleDateSelect = (date: Date) => {
-    const localDateString = toLocalDateString(date);
-    const selected = entries.find(e => toLocalDateString(new Date(e.created_at)) === localDateString);
-    setSelectedEntry(selected || null);
+    setSelectedDate(date);
+    setSelectedEntry(null);
     setActiveView('timeline');
   };
 
@@ -262,6 +304,47 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     URL.revokeObjectURL(url);
     addToast("Data exported successfully!", "success");
   };
+  
+  const handleImageUpload = async (file: File) => {
+    const quill = editorRef.current?.getEditor();
+    if (!quill) return;
+    
+    setIsUploadingImage(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage.from('diary-images').upload(fileName, file);
+      if (uploadError) throw uploadError;
+      
+      const { data } = supabase.storage.from('diary-images').getPublicUrl(fileName);
+      
+      const range = quill.getSelection(true);
+      quill.insertEmbed(range.index, 'image', data.publicUrl, 'user');
+      quill.setSelection(range.index + 1, 0, 'user');
+      
+    } catch (error) {
+      addToast("Failed to upload image.", "error");
+      console.error("Error uploading image:", error);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+  
+  const handleImageFormatChange = (formats: { [key: string]: any }) => {
+    const quill = editorRef.current?.getEditor();
+    if (!quill) return;
+
+    Object.keys(formats).forEach(formatName => {
+        quill.format(formatName, formats[formatName], 'user');
+    });
+
+    setTimeout(() => {
+        const range = quill.getSelection();
+        if(range) (quill as any).emitter.emit('selection-change', range, range, 'user');
+    }, 0);
+  };
+
 
   const toLocalDateString = (date: Date): string => {
     return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
@@ -301,8 +384,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   }
 
   const renderMainView = () => {
-    if (loading) return <p className="text-center text-slate-500 dark:text-slate-400 mt-8">Loading your encrypted diary...</p>;
-
     switch (activeView) {
       case 'calendar': return <CalendarView entries={entries} onSelectDate={handleDateSelect} />;
       case 'search': return <SearchView entries={entries} onSelectEntry={(id) => handleEditEntry(entries.find(e => e.id === id)!)} />;
@@ -327,13 +408,25 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                     onDelete={() => requestDeleteEntry(selectedEntry)}
                   />
         }
-        return <DiaryList entries={entries} onThisDayEntries={onThisDayEntries} onSelectEntry={(id) => setSelectedEntry(entries.find(e => e.id === id) || null)} profile={profile} />;
+        const entriesToShow = selectedDate
+          ? entries.filter(e => toLocalDateString(new Date(e.created_at)) === toLocalDateString(selectedDate))
+          : entries;
+
+        return <DiaryList 
+                  entries={entriesToShow} 
+                  onThisDayEntries={onThisDayEntries} 
+                  onSelectEntry={(id) => setSelectedEntry(entries.find(e => e.id === id) || null)} 
+                  profile={profile}
+                  filteredDate={selectedDate}
+                  onClearFilter={() => setSelectedDate(null)}
+               />;
     }
   };
 
   const changeView = (view: ViewState) => {
     setSelectedEntry(null);
     setEditingEntry(null);
+    setSelectedDate(null);
     setActiveView(view);
     setLeftSidebarVisible(true);
   };
@@ -376,6 +469,16 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                 onCharacterCountChange={setCharacterCount}
                 editorFont={editorFont}
               />
+            ) : loading ? (
+               <div className="flex items-center justify-center h-full">
+                  <div className="flex flex-col items-center justify-center gap-4 text-slate-500 dark:text-slate-400">
+                      <svg className="animate-spin h-12 w-12" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <p className="text-sm">Loading your encrypted diary...</p>
+                  </div>
+              </div>
             ) : (
                renderMainView()
             )}
@@ -396,6 +499,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
               }}
               editorFont={editorFont}
               onFontChange={setEditorFont}
+              onImageUpload={handleImageUpload}
+              isUploadingImage={isUploadingImage}
+              selectedImageFormat={selectedImageFormat}
+              onImageFormatChange={handleImageFormatChange}
             />
           )}
         </div>
@@ -409,6 +516,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       )}
       <ConfirmationModal
         isOpen={!!entryToDelete}
+        isProcessing={isDeleting}
         onClose={() => setEntryToDelete(null)}
         onConfirm={handleDeleteEntry}
         title="Delete Entry?"

@@ -13,6 +13,12 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   const fullDate = formatFullTimestamp(entry.created_at);
   const relativeTime = formatRelativeTime(entry.created_at);
 
+  const sanitizedContent = DOMPurify.sanitize(entry.content, {
+    ALLOWED_TAGS: [...DOMPurify.defaults.ALLOWED_TAGS, 'img'],
+    ALLOWED_ATTR: [...DOMPurify.defaults.ALLOWED_ATTR, 'style', 'class'],
+    ALLOWED_CSS_PROPERTIES: ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align']
+  });
+
   return (
     <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in">
       <div className="border-b border-slate-200 dark:border-slate-700 pb-4 mb-4">
@@ -38,7 +44,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
       
       <div 
         className="prose prose-slate dark:prose-invert max-w-none my-6"
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(entry.content) }}
+        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
 
       <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-6 flex justify-end gap-3">

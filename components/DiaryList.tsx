@@ -8,15 +8,36 @@ interface DiaryListProps {
   onSelectEntry: (id: string) => void;
   onThisDayEntries: DiaryEntry[];
   profile: Profile | null;
+  filteredDate: Date | null;
+  onClearFilter: () => void;
 }
 
-const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onThisDayEntries, profile }) => {
+const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onThisDayEntries, profile, filteredDate, onClearFilter }) => {
   const stripHtml = (html: string) => {
     const doc = new DOMParser().parseFromString(html, 'text/html');
     return doc.body.textContent || "";
   };
 
   if (entries.length === 0) {
+    if (filteredDate) {
+       return (
+        <div className="text-center py-20 flex flex-col items-center">
+          <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-20 w-20 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 4h-4m-4-4h-4" />
+          </svg>
+          <h2 className="mt-6 text-2xl font-bold text-slate-700 dark:text-slate-200">
+            No entries found for {filteredDate.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' })}.
+          </h2>
+          <button 
+            onClick={onClearFilter} 
+            className="mt-4 text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
+          >
+            Show All Entries
+          </button>
+        </div>
+      );
+    }
     return (
       <div className="text-center py-20 flex flex-col items-center">
         <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-20 w-20 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
@@ -34,9 +55,26 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onThisDay
 
   return (
     <div className="space-y-6">
-      <OnThisDay entries={onThisDayEntries} onSelectEntry={onSelectEntry} />
+      {filteredDate ? (
+        <div className="bg-indigo-50 dark:bg-slate-800/50 p-4 rounded-lg border border-indigo-200 dark:border-slate-700 flex justify-between items-center">
+          <h3 className="text-lg font-bold text-indigo-800 dark:text-indigo-300">
+            Showing entries for {filteredDate.toLocaleDateString('default', { year: 'numeric', month: 'long', day: 'numeric' })}
+          </h3>
+          <button 
+            onClick={onClearFilter} 
+            className="flex items-center gap-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            Show All
+          </button>
+        </div>
+      ) : (
+        <OnThisDay entries={onThisDayEntries} onSelectEntry={onSelectEntry} />
+      )}
       
-      <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Welcome back, {profile?.full_name || 'friend'}!</h2>
+      {!filteredDate && <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Welcome back, {profile?.full_name || 'friend'}!</h2>}
       <div className="space-y-4">
         {entries.map(entry => (
           <div
