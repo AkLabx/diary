@@ -118,7 +118,7 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                           className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:checked:bg-indigo-500"
                           required
                       />
-                      <span>I have read and agree to the <a href="./privacy.html" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Privacy Policy</a>.</span>
+                      <span>I have read and agree to the <a href="/privacy.html" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Privacy Policy</a>.</span>
                   </label>
                   <label className="flex items-start gap-3 cursor-pointer text-sm text-slate-600 dark:text-slate-400">
                       <input
@@ -128,7 +128,7 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                           className="mt-1 h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500 border-slate-300 dark:border-slate-600 dark:bg-slate-900 dark:checked:bg-indigo-500"
                           required
                       />
-                      <span>I have read and agree to the <a href="./terms.html" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Terms of Use</a>.</span>
+                      <span>I have read and agree to the <a href="/terms.html" target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Terms of Use</a>.</span>
                   </label>
               </div>
               <button 
