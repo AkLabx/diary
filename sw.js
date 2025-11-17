@@ -1,10 +1,9 @@
-const CACHE_NAME = 'diary-cache-v2'; // Updated version
-const APP_SHELL_URL = '/index.html';
+const CACHE_NAME = 'diary-cache-v4'; // Updated version to trigger SW update
 
-// Files that constitute the app shell.
 const urlsToCache = [
   '/',
-  APP_SHELL_URL,
+  '/index.html',
+  '/index.css',
   '/icon-192x192.png',
   '/icon-512x512.png',
   '/manifest.json',
@@ -17,7 +16,7 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('Opened cache');
+        console.log('Opened cache and caching app shell');
         return cache.addAll(urlsToCache);
       })
   );
@@ -40,45 +39,35 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Serve from cache or network with offline-first strategies
+// Fetch: Implement a robust cache-first strategy
 self.addEventListener('fetch', (event) => {
-  // We only handle GET requests
+  // We only handle GET requests, as other requests (POST, etc.) are for the API.
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Strategy for navigation requests (the HTML page): Network-first, falling back to cache.
-  // This ensures the user gets the latest app version if online, but it still works offline.
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request)
-        .catch(() => {
-          // If the network fails, serve the cached app shell.
-          return caches.match(APP_SHELL_URL);
-        })
-    );
-    return;
-  }
-
-  // Strategy for all other requests (assets like JS, CSS, images): Cache-first.
-  // This is fast and efficient for assets that don't change often.
   event.respondWith(
     caches.match(event.request)
-      .then((response) => {
-        // If we have a cached response, return it.
-        if (response) {
-          return response;
+      .then((cachedResponse) => {
+        // If a cached response is found, return it.
+        if (cachedResponse) {
+          return cachedResponse;
         }
 
         // If not in cache, fetch from the network.
         return fetch(event.request).then((networkResponse) => {
           // Check for a valid response before caching
+          // We only cache basic responses (from our own origin) to avoid caching third-party scripts.
           if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
             return networkResponse;
           }
 
-          // Cache the new resource for future offline use.
+          // IMPORTANT: Clone the response. A response is a stream
+          // and because we want the browser to consume the response
+          // as well as the cache consuming the response, we need
+          // to clone it so we have two streams.
           const responseToCache = networkResponse.clone();
+
           caches.open(CACHE_NAME)
             .then((cache) => {
               cache.put(event.request, responseToCache);
