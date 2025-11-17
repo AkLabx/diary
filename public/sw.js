@@ -1,4 +1,4 @@
-const CACHE_NAME = 'diary-cache-v7'; // Updated version to trigger SW update
+const CACHE_NAME = 'diary-cache-v8'; // Updated version to trigger SW update
 
 const urlsToCache = [
   '.',
