@@ -70,7 +70,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     }
 
     return (
-        <aside className="w-64 bg-white/80 dark:bg-slate-900/50 border-l border-[#EAE1D6] dark:border-slate-800 p-4 space-y-6 flex-shrink-0 transition-transform duration-300 ease-in-out transform translate-x-0 overflow-y-auto">
+        <aside className="w-64 h-full bg-white/80 dark:bg-slate-900/50 border-l border-[#EAE1D6] dark:border-slate-800 p-4 space-y-6 flex-shrink-0 overflow-y-auto">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tools</h2>
             
              <div className="space-y-4">
