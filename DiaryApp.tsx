@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
@@ -170,8 +171,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 
         if (error) throw error;
 
-        const decrypted = await decrypt(key, data.encrypted_entry, data.iv);
-        const { title, content } = JSON.parse(decrypted);
+        // Fix: Explicitly cast to string to handle potential 'unknown' type inference from Supabase
+        const encryptedEntry = data.encrypted_entry as string;
+        const iv = data.iv as string;
+
+        const decrypted = await decrypt(key, encryptedEntry, iv);
+        // Fix: Explicitly type the parsed result to avoid 'unknown' type errors
+        const { title, content } = JSON.parse(decrypted) as { title: string; content: string };
 
         setEntries(prev => prev.map(e => e.id === id ? {
             ...e,
@@ -268,7 +274,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       const contentToEncrypt = JSON.stringify({ title: entryData.title, content: entryData.content });
       const { iv, data: encrypted_entry } = await encrypt(key, contentToEncrypt);
 
-      const isUpdate = typeof editingEntry === 'object' && 'id' in editingEntry;
+      const isUpdate = typeof editingEntry === 'object' && 'id' in editingEntry && editingEntry.id !== '';
       const record = {
         encrypted_entry, iv,
         mood: entryData.mood, tags: entryData.tags,
@@ -276,22 +282,29 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       };
 
       if (isUpdate) {
-        const { error } = await supabase.from('diaries').update(record).eq('id', editingEntry.id);
+        const { error } = await supabase.from('diaries').update(record).eq('id', (editingEntry as DiaryEntry).id);
         if (error) throw error;
-        // Ensure we mark the updated entry as decrypted since we just wrote it
-        setEntries(prev => prev.map(e => e.id === editingEntry.id ? { ...e, ...entryData, isDecrypted: true } : e));
+        
+        // Update list state
+        setEntries(prev => prev.map(e => e.id === (editingEntry as DiaryEntry).id ? { ...e, ...entryData, isDecrypted: true } : e));
+        // Update editor state to ensure it's not stale
+        setEditingEntry(prev => ({ ...(prev as DiaryEntry), ...entryData }));
+        
       } else {
         const { data, error } = await supabase.from('diaries').insert({ ...record, owner_id: session.user.id }).select('id, created_at, mood, tags, owner_id').single();
         if (error) throw error;
+        
         // New entry is definitely decrypted in memory
         const newEntry: DiaryEntry = { ...data, ...entryData, isDecrypted: true, isLoading: false };
         setEntries(prev => [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+        
+        // IMPORTANT: Transition the editor from "New" mode to "Edit" mode for the created entry
+        // This ensures subsequent auto-saves perform updates, not inserts.
+        setEditingEntry(newEntry);
       }
-      addToast('Entry saved!', 'success');
-      setEditingEntry(null);
-      setActiveView('timeline');
-      setLeftSidebarVisible(true);
+      
       setSaveStatus('synced');
+      
     } catch (error) {
       console.error("Error saving entry:", error);
       addToast("Failed to save entry.", "error");
@@ -370,10 +383,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   };
 
   const handleExportData = () => {
-     // NOTE: Export now triggers a load of all entries if not loaded.
-     // For now, we simply export what is loaded to avoid mass-decryption of thousands of entries which would crash the browser.
-     // In a production app, we would stream this or handle it server-side (but we can't due to client-side encryption).
-     // Best effort: warn user.
      const loadedEntries = entries.filter(e => e.isDecrypted);
      if (loadedEntries.length < entries.length) {
          addToast(`Exporting ${loadedEntries.length} loaded entries. Scroll down to load more before exporting.`, "info");
@@ -555,7 +564,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
             {editingEntry ? (
               <DiaryEditor 
                 ref={editorRef}
-                key={typeof editingEntry === 'object' ? editingEntry.id : 'new'}
+                /* FIX: Ensure key remains 'new' even if editingEntry becomes a draft object with id="" 
+                   This prevents the editor from remounting and losing text when metadata (mood/tags) is updated for a new entry. */
+                key={(typeof editingEntry === 'object' && editingEntry.id) ? editingEntry.id : 'new'}
                 entry={typeof editingEntry === 'object' ? editingEntry : undefined}
                 onSave={handleSaveEntry}
                 onWordCountChange={setWordCount}

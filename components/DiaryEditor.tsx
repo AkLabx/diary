@@ -56,22 +56,66 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [entryDate, setEntryDate] = useState(new Date());
+  const [currentEntryId, setCurrentEntryId] = useState<string | undefined>(entry?.id);
 
   const quillRef = useRef<ReactQuill>(null);
-  
   const { addToast } = useToast();
 
+  // Track what we last successfully saved to compare against for auto-save
+  // We initialize with the props passed in.
+  const lastSavedRef = useRef({ title: entry?.title || '', content: entry?.content || '' });
+
+  // Smart Sync Effect: Only update state from props if it's a NEW navigation
+  // or a distinct entry change, ignoring re-renders caused by auto-save return.
   useEffect(() => {
-    if (entry) {
-      setTitle(entry.title);
-      setContent(entry.content);
-      setEntryDate(new Date(entry.created_at));
+    // Normalize IDs for comparison.
+    // We treat `undefined` (new entry), `null`, and `''` (draft entry with metadata) as the same logical "new" entity.
+    // This is critical for the "Mood/Tag update" scenario where entry.id changes from undefined -> ''
+    // without this normalization, the editor would think it's a new entry and reset content to empty.
+    const incomingId = entry?.id || 'new_placeholder';
+    const currentIdNormalized = currentEntryId || 'new_placeholder';
+    
+    // If we switched to a different entry entirely
+    if (incomingId !== currentIdNormalized) {
+        // SPECIAL CASE: Transition from "New" (undefined/empty) to "Saved" (valid UUID)
+        // If we just saved a new entry, the ID changes from 'new_placeholder' -> 'UUID'.
+        // We want to capture the new ID, but NOT reset the content, because the local state
+        // is the most up-to-date version (the user might be typing).
+        
+        // Logic: If we were 'new' and now we have a real ID (longer than empty/placeholder)
+        const isTransitionFromNewToSaved = (currentIdNormalized === 'new_placeholder') && (entry?.id && entry.id.length > 0);
+
+        if (isTransitionFromNewToSaved) {
+             setCurrentEntryId(entry!.id);
+             // Update our reference point for what "saved" looks like
+             if (entry) {
+                lastSavedRef.current = { title: entry.title, content: entry.content };
+             }
+             return;
+        }
+
+        // Otherwise, it's a standard navigation to a different entry. Sync full state.
+        if (entry) {
+          setTitle(entry.title);
+          setContent(entry.content);
+          setEntryDate(new Date(entry.created_at));
+          lastSavedRef.current = { title: entry.title, content: entry.content };
+        } else {
+          // For new entries, set defaults
+          setTitle("Today's diary entry...");
+          setContent('');
+          setEntryDate(new Date());
+          lastSavedRef.current = { title: '', content: '' };
+        }
+        setCurrentEntryId(entry?.id);
     } else {
-      // For new entries, set a default title
-      setTitle("Today's diary entry...");
-      setEntryDate(new Date());
+        // Even if ID is same, if we received new props (e.g. from a save), update our reference of "truth"
+        // This ensures subsequent dirty checks are accurate.
+        if (entry) {
+             lastSavedRef.current = { title: entry.title, content: entry.content };
+        }
     }
-  }, [entry]);
+  }, [entry, currentEntryId]);
 
   useEffect(() => {
     const text = content.replace(/<[^>]*>?/gm, '');
@@ -81,12 +125,20 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
     onCharacterCountChange(text.length);
   }, [content, onWordCountChange, onCharacterCountChange]);
   
-  const handleInternalSave = useCallback(() => {
+  const handleInternalSave = useCallback((isAutoSave = false) => {
      const isContentEmpty = !content || content.replace(/<(.|\n)*?>/g, '').trim().length === 0;
+     
      if (title.trim() === '' || isContentEmpty) {
-      addToast('Please provide a title and some content for your entry.', 'error');
+      // If auto-saving, be silent about validation errors to avoid annoying toast spam
+      if (!isAutoSave) {
+          addToast('Please provide a title and some content for your entry.', 'error');
+      }
       return;
     }
+
+    // Update our local ref so we don't auto-save again immediately
+    lastSavedRef.current = { title, content };
+
     const currentData = entry || {};
     onSave({ 
         ...currentData,
@@ -98,8 +150,25 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
     });
   }, [title, content, entryDate, entry, onSave, addToast]);
 
+  // Auto-Save Effect
+  useEffect(() => {
+      // Check if dirty (different from last known saved state)
+      const isDirty = title !== lastSavedRef.current.title || content !== lastSavedRef.current.content;
+      
+      // Also check if it's a new entry that hasn't been saved yet but has content
+      const isNewAndDirty = !entry && (title !== "Today's diary entry..." || content !== '');
+
+      if (isDirty || isNewAndDirty) {
+          const timer = setTimeout(() => {
+              handleInternalSave(true);
+          }, 2000); // 2 second debounce
+
+          return () => clearTimeout(timer);
+      }
+  }, [title, content, entry, handleInternalSave]);
+
   useImperativeHandle(ref, () => ({
-    save: handleInternalSave,
+    save: () => handleInternalSave(false),
     getEditor: () => quillRef.current?.getEditor(),
   }), [handleInternalSave]);
 
