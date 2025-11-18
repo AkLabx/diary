@@ -7,4 +7,9 @@ export default defineConfig({
       // For a repository named `<username>.github.io`, the base path should be '/'.
           // This ensures that assets are loaded correctly from the root of the domain.
               base: '/',
+              build: {
+                rollupOptions: {
+                  external: ['@zip.js/zip.js']
+                }
+              }
                   })

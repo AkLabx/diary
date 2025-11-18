@@ -7,6 +7,11 @@ import { useCrypto } from './contexts/CryptoContext';
 import { useToast } from './contexts/ToastContext';
 import { fetchWeather } from './lib/weather';
 
+// Import zip.js classes. Note: These are provided via importmap in index.html.
+// We rely on the import map to resolve '@zip.js/zip.js'.
+// @ts-ignore
+import { ZipWriter, BlobWriter, TextReader } from '@zip.js/zip.js';
+
 import LeftSidebar from './components/LeftSidebar';
 import TopBar from './components/TopBar';
 import StatusBar from './components/StatusBar';
@@ -37,6 +42,9 @@ interface DiaryAppProps {
 
 type KeyStatus = 'checking' | 'needed' | 'reauth' | 'ready';
 type SelectedImageFormat = { align?: string; width?: string; float?: string };
+
+// Helper to prevent UI freezing during heavy processing loops
+const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
 const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) => {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
@@ -396,32 +404,114 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     }
   };
 
-  const handleExportData = () => {
-     // NOTE: Export now triggers a load of all entries if not loaded.
-     // For now, we simply export what is loaded to avoid mass-decryption of thousands of entries which would crash the browser.
-     // In a production app, we would stream this or handle it server-side (but we can't due to client-side encryption).
-     // Best effort: warn user.
-     const loadedEntries = entries.filter(e => e.isDecrypted);
-     if (loadedEntries.length < entries.length) {
-         addToast(`Exporting ${loadedEntries.length} loaded entries. Scroll down to load more before exporting.`, "info");
-     }
+  // New Streaming ZIP Export Implementation with Anti-Freeze
+  const handleExportData = async (onProgress: (progress: string) => void) => {
+    if (!key) return;
     
-    if (loadedEntries.length === 0) {
-      addToast("No loaded entries to export.", "info");
-      return;
+    try {
+      // 1. Get total count for progress tracking
+      const { count, error: countError } = await supabase
+        .from('diaries')
+        .select('*', { count: 'exact', head: true });
+      
+      if (countError) throw countError;
+      const totalEntries = count || 0;
+      
+      if (totalEntries === 0) {
+        addToast("No entries to export.", "info");
+        return;
+      }
+
+      // 2. Initialize ZipWriter (from zip.js)
+      const blobWriter = new BlobWriter("application/zip");
+      const zipWriter = new ZipWriter(blobWriter);
+
+      const BATCH_SIZE = 50;
+      let processedCount = 0;
+      let currentMonthBuffer: any[] = [];
+      let currentMonthKey = ""; // "YYYY-MM"
+
+      // 3. Fetch in batches to conserve memory
+      for (let i = 0; i < totalEntries; i += BATCH_SIZE) {
+        onProgress(`Processing ${processedCount} / ${totalEntries}`);
+        
+        // Give the UI thread a breather before fetching/processing the next batch
+        await yieldToMain();
+
+        const { data: batch, error } = await supabase
+          .from('diaries')
+          .select('*')
+          .order('created_at', { ascending: false }) // Newest first
+          .range(i, i + BATCH_SIZE - 1);
+
+        if (error) throw error;
+        if (!batch) continue;
+
+        for (const entry of batch) {
+            try {
+                // While decryption is async, having many in a tight loop can still jitter the UI.
+                // We can optionally yield here if entries are very large, but usually per-batch yielding is enough.
+                
+                const decryptedString = await decrypt(key, entry.encrypted_entry, entry.iv);
+                const content = JSON.parse(decryptedString);
+                
+                const entryDate = new Date(entry.created_at);
+                const monthKey = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}`;
+
+                // If month changed and we have data, write the previous month to ZIP
+                if (currentMonthKey && monthKey !== currentMonthKey && currentMonthBuffer.length > 0) {
+                     await zipWriter.add(`${currentMonthKey}.json`, new TextReader(JSON.stringify(currentMonthBuffer, null, 2)));
+                     currentMonthBuffer = [];
+                     // Yield after a heavy write/stringify
+                     await yieldToMain();
+                }
+
+                currentMonthKey = monthKey;
+                
+                // Add to buffer
+                currentMonthBuffer.push({
+                    id: entry.id,
+                    created_at: entry.created_at,
+                    title: content.title,
+                    content: content.content,
+                    tags: entry.tags,
+                    mood: entry.mood,
+                    journal: entry.journal
+                });
+                
+            } catch (err) {
+                console.error(`Failed to export entry ${entry.id}`, err);
+                // Continue exporting other entries even if one fails
+            }
+            processedCount++;
+        }
+      }
+
+      // 4. Flush remaining buffer
+      if (currentMonthBuffer.length > 0) {
+          await zipWriter.add(`${currentMonthKey}.json`, new TextReader(JSON.stringify(currentMonthBuffer, null, 2)));
+      }
+      
+      onProgress("Finalizing ZIP...");
+      await yieldToMain();
+      
+      // 5. Close ZIP and trigger download
+      const blob = await zipWriter.close();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `diary_export_${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      
+      addToast("Export complete!", "success");
+      
+    } catch (error) {
+      console.error("Export failed:", error);
+      addToast("Export failed. Please check console.", "error");
     }
-    
-    const dataStr = JSON.stringify(loadedEntries.map(({title, content, created_at, tags, mood, journal}) => ({title, content, created_at, tags, mood, journal})), null, 2);
-    const blob = new Blob([dataStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `diary_export_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    addToast("Data exported successfully!", "success");
   };
   
   const handleImageUpload = async (file: File) => {
