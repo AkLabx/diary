@@ -229,9 +229,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                 const formats = quill.getFormat(range.index, 1);
                 const parentFormats = quill.getFormat(range.index - 1, 1);
                 setSelectedImageFormat({
-                    width: formats.width,
-                    align: parentFormats.align,
-                    float: formats.float,
+                    width: formats.width as string,
+                    align: parentFormats.align as string,
+                    float: formats.float as string,
                 });
             } else {
                 setSelectedImageFormat(null);
@@ -268,7 +268,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       const contentToEncrypt = JSON.stringify({ title: entryData.title, content: entryData.content });
       const { iv, data: encrypted_entry } = await encrypt(key, contentToEncrypt);
 
-      const isUpdate = typeof editingEntry === 'object' && 'id' in editingEntry;
+      const isUpdate = typeof editingEntry === 'object' && 'id' in editingEntry && editingEntry.id !== '';
       const record = {
         encrypted_entry, iv,
         mood: entryData.mood, tags: entryData.tags,
@@ -276,10 +276,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       };
 
       if (isUpdate) {
-        const { error } = await supabase.from('diaries').update(record).eq('id', editingEntry.id);
+        const { error } = await supabase.from('diaries').update(record).eq('id', (editingEntry as DiaryEntry).id);
         if (error) throw error;
         // Ensure we mark the updated entry as decrypted since we just wrote it
-        setEntries(prev => prev.map(e => e.id === editingEntry.id ? { ...e, ...entryData, isDecrypted: true } : e));
+        setEntries(prev => prev.map(e => e.id === (editingEntry as DiaryEntry).id ? { ...e, ...entryData, isDecrypted: true } : e));
       } else {
         const { data, error } = await supabase.from('diaries').insert({ ...record, owner_id: session.user.id }).select('id, created_at, mood, tags, owner_id').single();
         if (error) throw error;
@@ -555,7 +555,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
             {editingEntry ? (
               <DiaryEditor 
                 ref={editorRef}
-                key={typeof editingEntry === 'object' ? editingEntry.id : 'new'}
+                // Use a stable key for new entries and drafts (where ID is empty) to prevent re-mounting
+                // and loss of editor state when metadata (like mood) updates.
+                key={(typeof editingEntry === 'object' && editingEntry.id) ? editingEntry.id : 'draft_session'}
                 entry={typeof editingEntry === 'object' ? editingEntry : undefined}
                 onSave={handleSaveEntry}
                 onWordCountChange={setWordCount}

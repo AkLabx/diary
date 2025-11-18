@@ -58,10 +58,25 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const [entryDate, setEntryDate] = useState(new Date());
 
   const quillRef = useRef<ReactQuill>(null);
+  // Track the ID of the entry currently loaded into state to prevent unnecessary overwrites.
+  // Initialized to a sentinel value so the first load always happens.
+  const loadedIdRef = useRef<string | null>('INITIAL_MOUNT');
   
   const { addToast } = useToast();
 
   useEffect(() => {
+    // Normalize ID: undefined (new) and '' (draft) are treated as the same 'draft' session.
+    const incomingId = entry?.id || 'draft';
+    
+    // If we are still editing the same logical entry, DO NOT reset the content.
+    // This allows the parent component to update metadata props (like mood/tags) 
+    // without wiping the text the user is currently typing.
+    if (loadedIdRef.current === incomingId) {
+        return;
+    }
+
+    loadedIdRef.current = incomingId;
+
     if (entry) {
       setTitle(entry.title);
       setContent(entry.content);
@@ -69,6 +84,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
     } else {
       // For new entries, set a default title
       setTitle("Today's diary entry...");
+      setContent(""); // Explicitly clear content for a fresh entry
       setEntryDate(new Date());
     }
   }, [entry]);
