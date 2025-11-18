@@ -127,7 +127,8 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       if (error) throw error;
       
       // Initialize entries with placeholders for title/content and flags
-      const initialEntries: DiaryEntry[] = (data || []).map((entry) => ({
+      // Fix: Explicitly type entry as any to avoid 'unknown' type errors during mapping
+      const initialEntries: DiaryEntry[] = (data || []).map((entry: any) => ({
         id: entry.id,
         created_at: entry.created_at,
         mood: entry.mood,
@@ -295,7 +296,8 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         if (error) throw error;
         
         // New entry is definitely decrypted in memory
-        const newEntry: DiaryEntry = { ...data, ...entryData, isDecrypted: true, isLoading: false };
+        // Fix: Cast data to any to prevent spread of 'unknown' properties into DiaryEntry
+        const newEntry: DiaryEntry = { ...(data as any), ...entryData, isDecrypted: true, isLoading: false };
         setEntries(prev => [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
         
         // IMPORTANT: Transition the editor from "New" mode to "Edit" mode for the created entry
@@ -507,6 +509,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                     entry={selectedEntry} 
                     onEdit={() => handleEditEntry(selectedEntry)}
                     onDelete={() => requestDeleteEntry(selectedEntry)}
+                    onBack={() => setSelectedEntry(null)}
                   />
         }
         const entriesToShow = selectedDate
@@ -530,7 +533,8 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setEditingEntry(null);
     setSelectedDate(null);
     setActiveView(view);
-    setLeftSidebarVisible(true);
+    // BUG FIX: Do not force sidebar to open here. 
+    // This prevents the sidebar from popping up when clicking the Profile icon (TopBar) on mobile.
   };
 
   return (
@@ -631,3 +635,4 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 };
 
 export default DiaryApp;
+    

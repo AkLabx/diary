@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { DiaryEntry } from '../types';
 import DOMPurify from 'dompurify';
@@ -7,9 +8,10 @@ interface DiaryEntryViewProps {
   entry: DiaryEntry;
   onEdit: () => void;
   onDelete: () => void;
+  onBack: () => void;
 }
 
-const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete }) => {
+const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete, onBack }) => {
   const fullDate = formatFullTimestamp(entry.created_at);
   const relativeTime = formatRelativeTime(entry.created_at);
 
@@ -59,6 +61,16 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
 
   return (
     <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in">
+      <button 
+        onClick={onBack}
+        className="mb-4 flex items-center gap-2 text-sm font-semibold text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+        </svg>
+        Back to Timeline
+      </button>
+
       <div className="border-b border-slate-200 dark:border-slate-700 pb-4 mb-4">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
           <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{entry.title}</h1>
