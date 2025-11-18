@@ -6,6 +6,7 @@ export interface DiaryEntry {
   created_at: string;
   tags?: string[];
   mood?: string;
+  journal?: string; // New field for Multiple Journals feature
   // Fields for lazy loading architecture
   isDecrypted?: boolean;
   isLoading?: boolean;

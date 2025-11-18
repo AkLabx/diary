@@ -30,11 +30,17 @@ import { createClient } from '@supabase/supabase-js';
     iv text NOT NULL,
     tags text[] NULL,
     mood text NULL,
+    journal text DEFAULT 'Personal', -- NEW: For Multiple Journals feature
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT diaries_pkey PRIMARY KEY (id),
     CONSTRAINT owner_id FOREIGN KEY (owner_id) REFERENCES auth.users (id) ON DELETE CASCADE
   );
 */
+//
+//    *** UPDATE FOR EXISTING USERS ***
+//    If you already have the table, run this to add the 'journal' column:
+//    ALTER TABLE public.diaries ADD COLUMN journal text DEFAULT 'Personal';
+//
 //
 // 3. Set up Row Level Security (RLS) to protect user data.
 //    These policies are CRITICAL for security.

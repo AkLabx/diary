@@ -54,11 +54,20 @@ const DiaryListItem: React.FC<{
             className="bg-white/50 dark:bg-slate-800/50 p-6 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600"
         >
             <div className="flex justify-between items-start gap-4">
-                {entry.isDecrypted ? (
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{entry.title || 'Untitled'}</h2>
-                ) : (
-                    <div className="h-7 bg-slate-200 dark:bg-slate-700 rounded w-2/3 animate-pulse" />
-                )}
+                <div className="flex flex-col gap-1">
+                     {/* Journal Badge */}
+                    <div className="flex items-center gap-1.5 mb-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v11.494m0-11.494M12 6.253a4.093 4.093 0 00-3.32 6.19l-2.06 2.06a1 1 0 001.42 1.42l2.06-2.06A4.094 4.094 0 0012 17.747m0 0a4.093 4.093 0 003.32-6.19l2.06-2.06a1 1 0 00-1.42-1.42l-2.06 2.06A4.094 4.094 0 0012 6.253z" /></svg>
+                        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">{entry.journal || 'Personal'}</span>
+                    </div>
+
+                    {entry.isDecrypted ? (
+                        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{entry.title || 'Untitled'}</h2>
+                    ) : (
+                        <div className="h-7 bg-slate-200 dark:bg-slate-700 rounded w-48 animate-pulse" />
+                    )}
+                </div>
+                
                 <div className="text-right flex-shrink-0">
                     <span 
                         className="text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap"

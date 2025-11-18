@@ -5,13 +5,14 @@ type SelectedImageFormat = { align?: string; width?: string; float?: string };
 
 interface ToolsPanelProps {
   entry: DiaryEntry | 'new';
-  onUpdateEntry: (updates: Partial<Pick<DiaryEntry, 'mood' | 'tags'>>) => void;
+  onUpdateEntry: (updates: Partial<Pick<DiaryEntry, 'mood' | 'tags' | 'journal'>>) => void;
   editorFont: 'serif' | 'sans' | 'mono';
   onFontChange: (font: 'serif' | 'sans' | 'mono') => void;
   onImageUpload: (file: File) => void;
   isUploadingImage: boolean;
   selectedImageFormat: SelectedImageFormat | null;
   onImageFormatChange: (formats: { [key: string]: any }) => void;
+  availableJournals: string[];
 }
 
 const moods = ['😊', '😢', '😠', '😎', '🤔', '😍', '😴', '🥳'];
@@ -24,10 +25,12 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     onImageUpload, 
     isUploadingImage,
     selectedImageFormat,
-    onImageFormatChange
+    onImageFormatChange,
+    availableJournals
 }) => {
     const currentMood = typeof entry === 'object' ? entry.mood : undefined;
     const currentTags = typeof entry === 'object' ? (entry.tags || []) : [];
+    const currentJournal = (typeof entry === 'object' && entry.journal) ? entry.journal : 'Personal';
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleImageInsertClick = () => {
@@ -50,11 +53,39 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     const handleMoodUpdate = (newMood: string) => {
         onUpdateEntry({ mood: newMood === currentMood ? undefined : newMood });
     }
+    
+    const handleJournalUpdate = (val: string) => {
+        onUpdateEntry({ journal: val });
+    }
 
     return (
         <aside className="w-64 bg-white/80 dark:bg-slate-900/50 border-l border-[#EAE1D6] dark:border-slate-800 p-4 space-y-6 flex-shrink-0 transition-transform duration-300 ease-in-out transform translate-x-0 overflow-y-auto">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tools</h2>
-            <div className="space-y-4">
+            
+             <div className="space-y-4">
+                <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Journal</h3>
+                    <div className="relative">
+                        <input 
+                            type="text"
+                            list="journal-options"
+                            value={currentJournal}
+                            onChange={(e) => handleJournalUpdate(e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            placeholder="Select or type..."
+                        />
+                        <datalist id="journal-options">
+                            {availableJournals.map(j => <option key={j} value={j} />)}
+                             {!availableJournals.includes('Personal') && <option value="Personal" />}
+                             {!availableJournals.includes('Work') && <option value="Work" />}
+                             {!availableJournals.includes('Ideas') && <option value="Ideas" />}
+                        </datalist>
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">Type a new name to create a book.</p>
+                </div>
+            </div>
+
+            <div className="space-y-4 pt-2 border-t border-slate-200 dark:border-slate-700">
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
                 <button 
                     onClick={handleImageInsertClick} 

@@ -41,6 +41,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<ViewState>('timeline');
+  const [activeJournal, setActiveJournal] = useState<string | null>(null); // null means 'All'
   
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | 'new' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
@@ -117,10 +118,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     if (!key) return;
     setLoading(true);
     try {
-      // Select only lightweight metadata columns. DO NOT fetch encrypted_entry yet.
+      // Select only lightweight metadata columns including 'journal'. DO NOT fetch encrypted_entry yet.
       const { data, error } = await supabase
         .from('diaries')
-        .select('id, created_at, mood, tags, owner_id')
+        .select('id, created_at, mood, tags, owner_id, journal')
         .order('created_at', { ascending: false });
         
       if (error) throw error;
@@ -132,6 +133,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         mood: entry.mood,
         tags: entry.tags,
         owner_id: entry.owner_id,
+        journal: entry.journal || 'Personal', // Default to 'Personal' if null
         title: '', // Placeholder
         content: '', // Placeholder
         isDecrypted: false,
@@ -259,6 +261,15 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [entries]);
 
+  const uniqueJournals = useMemo(() => {
+      const journals = new Set<string>();
+      entries.forEach(e => {
+          if (e.journal) journals.add(e.journal);
+          else journals.add('Personal'); // Default fallback
+      });
+      return Array.from(journals).sort();
+  }, [entries]);
+
   const handleSaveEntry = useCallback(async (entryData: Omit<DiaryEntry, 'id' | 'owner_id'>) => {
     if (!key) { addToast("Security session expired.", "error"); return; }
     if (!editingEntry) { addToast("Cannot save: no entry is currently being edited.", "error"); return; }
@@ -272,6 +283,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       const record = {
         encrypted_entry, iv,
         mood: entryData.mood, tags: entryData.tags,
+        journal: entryData.journal || 'Personal',
         created_at: entryData.created_at
       };
 
@@ -281,7 +293,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         // Ensure we mark the updated entry as decrypted since we just wrote it
         setEntries(prev => prev.map(e => e.id === (editingEntry as DiaryEntry).id ? { ...e, ...entryData, isDecrypted: true } : e));
       } else {
-        const { data, error } = await supabase.from('diaries').insert({ ...record, owner_id: session.user.id }).select('id, created_at, mood, tags, owner_id').single();
+        const { data, error } = await supabase.from('diaries').insert({ ...record, owner_id: session.user.id }).select('id, created_at, mood, tags, owner_id, journal').single();
         if (error) throw error;
         // New entry is definitely decrypted in memory
         const newEntry: DiaryEntry = { ...data, ...entryData, isDecrypted: true, isLoading: false };
@@ -333,6 +345,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setSelectedEntry(null);
     setActiveView('timeline');
   };
+  
+  const handleJournalSelect = (journal: string | null) => {
+      setActiveJournal(journal);
+      setActiveView('timeline');
+      setSelectedEntry(null);
+      setSelectedDate(null);
+  }
 
   const handleBackToTimeline = () => {
     setSelectedEntry(null);
@@ -388,7 +407,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       return;
     }
     
-    const dataStr = JSON.stringify(loadedEntries.map(({title, content, created_at, tags, mood}) => ({title, content, created_at, tags, mood})), null, 2);
+    const dataStr = JSON.stringify(loadedEntries.map(({title, content, created_at, tags, mood, journal}) => ({title, content, created_at, tags, mood, journal})), null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -505,9 +524,18 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                     onBack={handleBackToTimeline}
                   />
         }
-        const entriesToShow = selectedDate
-          ? entries.filter(e => toLocalDateString(new Date(e.created_at)) === toLocalDateString(selectedDate))
-          : entries;
+        
+        let entriesToShow = entries;
+        
+        // Apply Date Filter
+        if (selectedDate) {
+             entriesToShow = entriesToShow.filter(e => toLocalDateString(new Date(e.created_at)) === toLocalDateString(selectedDate));
+        }
+        
+        // Apply Journal Filter
+        if (activeJournal) {
+            entriesToShow = entriesToShow.filter(e => (e.journal || 'Personal') === activeJournal);
+        }
 
         return <DiaryList 
                   entries={entriesToShow} 
@@ -526,7 +554,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setEditingEntry(null);
     setSelectedDate(null);
     setActiveView(view);
-    // Removing setLeftSidebarVisible(true) here fixes the bug where profile button forces sidebar open.
   };
 
   return (
@@ -564,6 +591,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
           activeView={activeView}
           onChangeView={changeView}
           onNewEntry={handleNewEntry}
+          journals={uniqueJournals}
+          activeJournal={activeJournal}
+          onSelectJournal={handleJournalSelect}
         />
         <div className={`flex-1 flex transition-all duration-300 ${isLeftSidebarVisible ? 'md:pl-64' : 'pl-0'}`}>
           <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto">
@@ -613,6 +643,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
               isUploadingImage={isUploadingImage}
               selectedImageFormat={selectedImageFormat}
               onImageFormatChange={handleImageFormatChange}
+              availableJournals={uniqueJournals}
             />
           )}
         </div>
