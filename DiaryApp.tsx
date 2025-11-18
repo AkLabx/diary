@@ -334,6 +334,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setActiveView('timeline');
   };
 
+  const handleBackToTimeline = () => {
+    setSelectedEntry(null);
+  };
+
   const handleSignOut = async () => { await supabase.auth.signOut(); };
 
   const handleUpdateProfile = async (updates: { full_name?: string }) => {
@@ -498,6 +502,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                     entry={selectedEntry} 
                     onEdit={() => handleEditEntry(selectedEntry)}
                     onDelete={() => requestDeleteEntry(selectedEntry)}
+                    onBack={handleBackToTimeline}
                   />
         }
         const entriesToShow = selectedDate
@@ -521,7 +526,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setEditingEntry(null);
     setSelectedDate(null);
     setActiveView(view);
-    setLeftSidebarVisible(true);
+    // Removing setLeftSidebarVisible(true) here fixes the bug where profile button forces sidebar open.
   };
 
   return (
@@ -542,6 +547,16 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         isLeftSidebarVisible={isLeftSidebarVisible}
       />
       {!isLeftSidebarVisible && <HamburgerMenu onClick={() => setLeftSidebarVisible(true)} />}
+      
+      {/* Backdrop for mobile sidebar */}
+      {isLeftSidebarVisible && (
+          <div 
+            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 md:hidden"
+            onClick={() => setLeftSidebarVisible(false)}
+            aria-hidden="true"
+          />
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         <LeftSidebar 
           isVisible={isLeftSidebarVisible}
