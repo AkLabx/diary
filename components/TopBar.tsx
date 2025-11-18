@@ -50,24 +50,23 @@ const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDat
         {/* 
            Left Section: Date/Time/Weather
            On mobile editing: Hidden to save space for action buttons.
+           Otherwise: Flex layout, wrapping allowed.
            Padding logic: 'pl-12' provides space for the fixed hamburger menu on mobile.
         */}
-        <div className={`flex items-center gap-4 text-sm text-slate-600 dark:text-slate-300 transition-all duration-300 ${!isLeftSidebarVisible ? 'pl-12 md:pl-16' : ''} ${isEditing ? 'hidden md:flex' : 'flex'}`}>
-          <span className="font-semibold hidden sm:inline">{format(currentTime, 'p')}</span>
+        <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-300 transition-all duration-300 ${!isLeftSidebarVisible ? 'pl-12 md:pl-16' : ''} ${isEditing ? 'hidden md:flex' : 'flex'}`}>
+          <span className="font-semibold">{format(currentTime, 'p')}</span>
           <span className="font-semibold">{format(currentDate, 'MMMM d, yyyy')}</span>
           {weather && (
-            <div className="flex items-center gap-2 hidden lg:flex">
-              <span className="w-2.5 h-2.5 bg-orange-500 rounded-full"></span>
-              <span>{weather.location}, {Math.round(weather.temp)}°C</span>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 bg-orange-500 rounded-full flex-shrink-0"></span>
+              <span className="truncate max-w-[200px]">{weather.location}, {Math.round(weather.temp)}°C</span>
             </div>
           )}
         </div>
 
         {/* 
            Center/Action Section: Save/Cancel 
-           On mobile editing: This becomes the primary left-aligned content (pushed by 'pl' on container if needed, but here we use ml-auto to group it with right side or let it float).
-           Actually, if left section is hidden, justify-between puts this on the left.
-           We add 'pl-12' spacer conditionally on mobile if editing to avoid hamburger overlap.
+           On mobile editing: This becomes the primary left-aligned content.
         */}
         <div className={`flex items-center gap-3 ${isEditing && !isLeftSidebarVisible ? 'pl-12 md:pl-0' : ''}`}>
             {isEditing ? (
@@ -82,7 +81,7 @@ const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDat
         </div>
 
         {/* Right Section: Tools/Theme/Profile */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 ml-auto md:ml-0">
            {isEditing && (
              <button onClick={onToggleToolsPanel} title="Toggle Tools Panel" className={`p-2 rounded-full transition-colors ${isToolsPanelVisible ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'hover:bg-slate-200/50 dark:hover:bg-slate-700/50 text-slate-500'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
