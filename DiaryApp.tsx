@@ -20,7 +20,13 @@ import PasswordPrompt from './components/PasswordPrompt';
 import ProfileView from './components/ProfileView';
 import HamburgerMenu from './components/HamburgerMenu';
 import ConfirmationModal from './components/ConfirmationModal';
-import type { RangeStatic } from 'quill';
+
+// Fix: RangeStatic is not exported as a named export from 'quill' in some type definitions.
+// Defining it locally ensures compatibility.
+interface RangeStatic {
+  index: number;
+  length: number;
+}
 
 interface DiaryAppProps {
   session: Session;
@@ -55,6 +61,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedImageFormat, setSelectedImageFormat] = useState<SelectedImageFormat | null>(null);
+
+  // Ref to track loading promises to avoid duplicate requests
+  const loadingEntriesRef = useRef<Set<string>>(new Set());
 
   const { addToast } = useToast();
 
@@ -103,31 +112,84 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     } catch (error) { console.error("Error fetching profile:", error); }
   }, [session.user.id]);
 
+  // PERFORMANCE UPDATE: Only fetch metadata initially
   const fetchEntries = useCallback(async () => {
     if (!key) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('diaries').select('*').order('created_at', { ascending: false });
+      // Select only lightweight metadata columns. DO NOT fetch encrypted_entry yet.
+      const { data, error } = await supabase
+        .from('diaries')
+        .select('id, created_at, mood, tags, owner_id')
+        .order('created_at', { ascending: false });
+        
       if (error) throw error;
       
-      const results = await Promise.allSettled(
-        (data || []).map(async (entry) => {
-          const decrypted = await decrypt(key, entry.encrypted_entry, entry.iv);
-          const { title, content } = JSON.parse(decrypted);
-          return { ...entry, title, content };
-        })
-      );
+      // Initialize entries with placeholders for title/content and flags
+      const initialEntries: DiaryEntry[] = (data || []).map((entry) => ({
+        id: entry.id,
+        created_at: entry.created_at,
+        mood: entry.mood,
+        tags: entry.tags,
+        owner_id: entry.owner_id,
+        title: '', // Placeholder
+        content: '', // Placeholder
+        isDecrypted: false,
+        isLoading: false
+      }));
 
-      const decryptedEntries = results
-        .filter((r): r is PromiseFulfilledResult<DiaryEntry> => r.status === 'fulfilled')
-        .map(r => r.value);
-      
-      setEntries(decryptedEntries);
+      setEntries(initialEntries);
     } catch (error) {
       console.error("Error fetching entries:", error);
       addToast("Could not fetch entries.", "error");
     } finally { setLoading(false); }
-  }, [key, decrypt, addToast]);
+  }, [key, addToast]);
+
+  // PERFORMANCE UPDATE: Function to load content on demand
+  const loadEntryContent = useCallback(async (id: string) => {
+    // Prevent duplicate fetches for the same ID
+    if (loadingEntriesRef.current.has(id) || !key) return;
+
+    const entryIndex = entries.findIndex(e => e.id === id);
+    if (entryIndex === -1) return;
+    
+    // If already decrypted, do nothing
+    if (entries[entryIndex].isDecrypted) return;
+
+    loadingEntriesRef.current.add(id);
+    
+    // Optimistic update to show loading state
+    setEntries(prev => prev.map(e => e.id === id ? { ...e, isLoading: true } : e));
+
+    try {
+        const { data, error } = await supabase
+            .from('diaries')
+            .select('encrypted_entry, iv')
+            .eq('id', id)
+            .single();
+
+        if (error) throw error;
+
+        const decrypted = await decrypt(key, data.encrypted_entry, data.iv);
+        const { title, content } = JSON.parse(decrypted);
+
+        setEntries(prev => prev.map(e => e.id === id ? {
+            ...e,
+            title,
+            content,
+            isDecrypted: true,
+            isLoading: false
+        } : e));
+
+    } catch (error) {
+        console.error(`Error decrypting entry ${id}:`, error);
+        // Reset loading state so retry is possible
+        setEntries(prev => prev.map(e => e.id === id ? { ...e, isLoading: false } : e));
+    } finally {
+        loadingEntriesRef.current.delete(id);
+    }
+  }, [entries, key, decrypt]);
+
 
   useEffect(() => {
     if (keyStatus === 'ready') {
@@ -136,6 +198,23 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     }
   }, [fetchEntries, fetchProfile, keyStatus]);
   
+  // If selected entry is not decrypted, load it immediately
+  useEffect(() => {
+    if (selectedEntry && !selectedEntry.isDecrypted && !selectedEntry.isLoading) {
+        loadEntryContent(selectedEntry.id);
+    }
+  }, [selectedEntry, loadEntryContent]);
+  
+  // Update selectedEntry when entries state changes (e.g. after decryption)
+  useEffect(() => {
+    if (selectedEntry) {
+        const updated = entries.find(e => e.id === selectedEntry.id);
+        if (updated && (updated.isDecrypted !== selectedEntry.isDecrypted || updated.isLoading !== selectedEntry.isLoading)) {
+            setSelectedEntry(updated);
+        }
+    }
+  }, [entries, selectedEntry]);
+
   // Effect to listen for editor selection changes to show contextual image tools
   useEffect(() => {
     if (!editorRef.current || !editingEntry) return;
@@ -199,11 +278,14 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       if (isUpdate) {
         const { error } = await supabase.from('diaries').update(record).eq('id', editingEntry.id);
         if (error) throw error;
-        setEntries(prev => prev.map(e => e.id === editingEntry.id ? { ...e, ...entryData } : e));
+        // Ensure we mark the updated entry as decrypted since we just wrote it
+        setEntries(prev => prev.map(e => e.id === editingEntry.id ? { ...e, ...entryData, isDecrypted: true } : e));
       } else {
-        const { data, error } = await supabase.from('diaries').insert({ ...record, owner_id: session.user.id }).select().single();
+        const { data, error } = await supabase.from('diaries').insert({ ...record, owner_id: session.user.id }).select('id, created_at, mood, tags, owner_id').single();
         if (error) throw error;
-        setEntries(prev => [{ ...data, ...entryData }, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+        // New entry is definitely decrypted in memory
+        const newEntry: DiaryEntry = { ...data, ...entryData, isDecrypted: true, isLoading: false };
+        setEntries(prev => [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
       }
       addToast('Entry saved!', 'success');
       setEditingEntry(null);
@@ -288,11 +370,21 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   };
 
   const handleExportData = () => {
-    if (entries.length === 0) {
-      addToast("You have no entries to export.", "info");
+     // NOTE: Export now triggers a load of all entries if not loaded.
+     // For now, we simply export what is loaded to avoid mass-decryption of thousands of entries which would crash the browser.
+     // In a production app, we would stream this or handle it server-side (but we can't due to client-side encryption).
+     // Best effort: warn user.
+     const loadedEntries = entries.filter(e => e.isDecrypted);
+     if (loadedEntries.length < entries.length) {
+         addToast(`Exporting ${loadedEntries.length} loaded entries. Scroll down to load more before exporting.`, "info");
+     }
+    
+    if (loadedEntries.length === 0) {
+      addToast("No loaded entries to export.", "info");
       return;
     }
-    const dataStr = JSON.stringify(entries.map(({title, content, created_at, tags, mood}) => ({title, content, created_at, tags, mood})), null, 2);
+    
+    const dataStr = JSON.stringify(loadedEntries.map(({title, content, created_at, tags, mood}) => ({title, content, created_at, tags, mood})), null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -416,6 +508,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                   entries={entriesToShow} 
                   onThisDayEntries={onThisDayEntries} 
                   onSelectEntry={(id) => setSelectedEntry(entries.find(e => e.id === id) || null)} 
+                  onLoadContent={loadEntryContent}
                   profile={profile}
                   filteredDate={selectedDate}
                   onClearFilter={() => setSelectedDate(null)}

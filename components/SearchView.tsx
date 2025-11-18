@@ -53,9 +53,10 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry }) => {
 
     return entries.filter(entry => {
       const lowerSearchTerm = searchTerm.toLowerCase();
+      // Note: Search only works on loaded/decrypted content. Tags and Moods work globally.
       const matchesSearch = searchTerm.trim() === '' ||
-        entry.title.toLowerCase().includes(lowerSearchTerm) ||
-        stripHtml(entry.content).toLowerCase().includes(lowerSearchTerm);
+        (entry.title || '').toLowerCase().includes(lowerSearchTerm) ||
+        stripHtml(entry.content || '').toLowerCase().includes(lowerSearchTerm);
 
       const matchesMood = !selectedMood || entry.mood === selectedMood;
 
@@ -98,7 +99,7 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry }) => {
           </svg>
           <input
             type="search"
-            placeholder="Search by keywords, title, or date"
+            placeholder="Search by keywords, title, or date..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-11 pr-4 py-3 border border-slate-300 dark:border-slate-600 rounded-full shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-base dark:bg-slate-700 dark:text-slate-200 dark:placeholder-slate-400"
@@ -165,6 +166,12 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry }) => {
 
       <div>
         <h2 className="text-2xl font-bold text-slate-800 dark:text-slate-100 mb-4">Search Results</h2>
+        {searchTerm.length > 0 && (
+            <p className="text-xs text-slate-500 mb-4 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-200 dark:border-yellow-800">
+                Note: Text search only searches entries that have been viewed (decrypted) in this session. Tags and Moods search all entries.
+            </p>
+        )}
+        
         {!hasActiveFilter ? (
           <div className="text-center py-16">
             <p className="text-slate-500 dark:text-slate-400">Use the search bar or filters above to find your entries.</p>
@@ -174,7 +181,11 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry }) => {
             {filteredEntries.map(entry => (
               <div key={entry.id} onClick={() => onSelectEntry(entry.id)} className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 flex flex-col">
                 <div className="flex justify-between items-start gap-3">
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{entry.title}</h3>
+                  {entry.isDecrypted ? (
+                    <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{entry.title}</h3>
+                  ) : (
+                    <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-3/4 animate-pulse"></div>
+                  )}
                   {entry.mood && <span className="text-2xl" aria-label={`Mood: ${entry.mood}`}>{entry.mood}</span>}
                 </div>
                 <p 
@@ -183,9 +194,18 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry }) => {
                 >
                   {formatTimestamp(entry.created_at)}
                 </p>
-                <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3 flex-grow">
-                  {stripHtml(entry.content)}
-                </p>
+                <div className="flex-grow">
+                 {entry.isDecrypted ? (
+                     <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-3">
+                        {stripHtml(entry.content)}
+                     </p>
+                 ) : (
+                     <div className="space-y-2 animate-pulse">
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full"></div>
+                        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-5/6"></div>
+                     </div>
+                 )}
+                </div>
               </div>
             ))}
           </div>

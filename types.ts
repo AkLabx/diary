@@ -6,6 +6,9 @@ export interface DiaryEntry {
   created_at: string;
   tags?: string[];
   mood?: string;
+  // Fields for lazy loading architecture
+  isDecrypted?: boolean;
+  isLoading?: boolean;
 }
 
 export interface Profile {
