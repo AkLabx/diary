@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { generateSalt, deriveKey, encrypt, KEY_CHECK_STRING } from '../lib/crypto';
+import { generateSalt, deriveKey, encrypt, exportKey, KEY_CHECK_STRING } from '../lib/crypto';
+import { generateRecoveryKit } from '../lib/recoveryKit';
 // Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
 import type { Session } from '@supabase/supabase-js';
 
@@ -10,6 +11,14 @@ interface InitializeEncryptionProps {
   session: Session;
 }
 
+interface RecoveryData {
+    key: CryptoKey;
+    rawKey: string;
+    salt: string;
+    password: string;
+    email: string;
+}
+
 const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, session }) => {
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -17,6 +26,10 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
   const [error, setError] = useState<string | null>(null);
   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
+  // Recovery Kit State
+  const [recoveryData, setRecoveryData] = useState<RecoveryData | null>(null);
+  const [hasDownloadedKit, setHasDownloadedKit] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +68,15 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
         
         if (insertError) throw insertError;
         
-        onSuccess(key);
+        const rawKey = await exportKey(key);
+        
+        setRecoveryData({
+            key,
+            rawKey,
+            salt,
+            password,
+            email: user.email || 'Unknown Email'
+        });
 
     } catch (err: any) {
         setError(err.error_description || err.message || "An unknown error occurred during setup.");
@@ -64,7 +85,72 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
         setLoading(false);
     }
   };
+
+  const handleDownloadKit = () => {
+    if (!recoveryData) return;
+    generateRecoveryKit({
+        email: recoveryData.email,
+        password: recoveryData.password,
+        salt: recoveryData.salt,
+        rawKey: recoveryData.rawKey
+    });
+    setHasDownloadedKit(true);
+  };
+
+  const handleContinue = () => {
+      if (recoveryData) {
+          onSuccess(recoveryData.key);
+      }
+  };
   
+  if (recoveryData) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+            <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-md border-t-4 border-green-500 animate-fade-in">
+                <div className="text-center">
+                    <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 dark:bg-green-900 mb-4">
+                        <svg className="h-6 w-6 text-green-600 dark:text-green-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Setup Complete!</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mt-2">Your secure diary is ready.</p>
+                </div>
+
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-md p-4">
+                    <h3 className="text-sm font-bold text-yellow-800 dark:text-yellow-200 flex items-center gap-2">
+                         <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        Important: Backup Required
+                    </h3>
+                    <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
+                        Because we can't reset your password, you <strong>must</strong> download your Recovery Kit. It contains your password and raw encryption keys.
+                    </p>
+                </div>
+
+                <button 
+                    onClick={handleDownloadKit}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 font-semibold text-white bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 rounded-md transition-all shadow-lg"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Download Recovery Kit
+                </button>
+
+                <button 
+                    onClick={handleContinue}
+                    disabled={!hasDownloadedKit}
+                    className="w-full px-4 py-2 font-semibold text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 transition-colors dark:bg-transparent dark:text-indigo-400 dark:hover:text-indigo-300 dark:disabled:text-slate-600"
+                >
+                    {hasDownloadedKit ? "Continue to App" : "Download Kit to Continue"}
+                </button>
+            </div>
+        </div>
+      );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
         <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">

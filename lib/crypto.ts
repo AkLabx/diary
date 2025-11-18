@@ -130,3 +130,14 @@ export async function deriveAndVerifyKey(password: string, userId: string): Prom
     return null;
   }
 }
+
+/**
+ * Exports the raw key material to a base64 string.
+ * IMPORTANT: This should only be used for generating the recovery kit.
+ * @param key The CryptoKey to export
+ * @returns Base64 string of the raw key
+ */
+export const exportKey = async (key: CryptoKey): Promise<string> => {
+  const exported = await window.crypto.subtle.exportKey("raw", key);
+  return encodeBase64(exported);
+};
