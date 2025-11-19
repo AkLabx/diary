@@ -39,7 +39,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
                           img.style.transition = 'opacity 0.3s';
 
                           const { data: encryptedBlob, error } = await supabase.storage
-                              .from('diary-secure-images')
+                              .from('diary-images')
                               .download(metadata.path);
                           
                           if (error) throw error;

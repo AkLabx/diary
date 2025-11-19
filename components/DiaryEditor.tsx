@@ -100,7 +100,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
                    img.style.opacity = '0.5';
                    
                    const { data: encryptedBlob, error } = await supabase.storage
-                      .from('diary-secure-images')
+                      .from('diary-images')
                       .download(metadata.path);
 
                    if (error) throw error;

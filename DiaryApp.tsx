@@ -645,7 +645,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setIsUploadingImage(true);
     try {
       // 1. Process (Resize/Compress)
-      // Removed unused 'extension' variable to fix build error
       const { blob } = await processImage(file);
 
       // 2. Encrypt
@@ -655,9 +654,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       const fileName = `${session.user.id}/${Date.now()}.bin`; // .bin because it's encrypted
       const encryptedBlob = new Blob([data], { type: 'application/octet-stream' });
 
-      // 3. Upload to PRIVATE bucket
+      // 3. Upload to 'diary-images' bucket (as requested)
       const { error: uploadError } = await supabase.storage
-          .from('diary-secure-images')
+          .from('diary-images')
           .upload(fileName, encryptedBlob, {
               contentType: 'application/octet-stream',
               upsert: false
@@ -681,15 +680,40 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       // Reset selection to after image
       quill.setSelection(range.index + 1, 0, 'user');
       
-      // 5. Trigger immediate decryption for the user so they see what they uploaded
-      // Fix: Use getLeaf to find the exact node we just inserted instead of querySelector with potential quoting issues
-      const [leaf] = quill.getLeaf(range.index);
-      const img = leaf?.domNode as HTMLImageElement;
-      
-      if (img) {
-          const url = URL.createObjectURL(blob); // We already have the blob locally!
-          img.src = url;
-      }
+      // 5. Trigger immediate decryption/preview
+      // We attempt to find the image node we just inserted.
+      // Using a slight delay ensures the DOM is ready for manipulation.
+      setTimeout(() => {
+          try {
+              // Try standard leaf retrieval
+              const [leaf] = quill.getLeaf(range.index);
+              let img = leaf?.domNode as HTMLImageElement;
+
+              // Fallback: If leaf is null, try selecting by the secure class within the editor root
+              if (!img || img.tagName !== 'IMG') {
+                  const editorRoot = quill.root;
+                  // Find the last inserted secure image, usually the one we just added
+                  const images = editorRoot.querySelectorAll('img.secure-diary-image');
+                  if (images.length > 0) {
+                      // Check the one with matching metadata path
+                      for(let i = 0; i < images.length; i++) {
+                          if (images[i].getAttribute('alt')?.includes(fileName)) {
+                              img = images[i] as HTMLImageElement;
+                              break;
+                          }
+                      }
+                  }
+              }
+              
+              if (img) {
+                  const url = URL.createObjectURL(blob); // Use local blob for instant preview
+                  img.src = url;
+                  img.style.opacity = '1';
+              }
+          } catch (err) {
+              console.error("Error setting preview image", err);
+          }
+      }, 50);
 
     } catch (error) {
       addToast("Failed to upload image.", "error");
