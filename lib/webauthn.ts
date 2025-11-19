@@ -115,7 +115,7 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
     // 5. Derive a Wrapping Key from the PRF output
     const wrappingKey = await window.crypto.subtle.importKey(
         'raw',
-        prfKeyMaterial,
+        prfKeyMaterial as any,
         'AES-GCM',
         false,
         ['encrypt', 'decrypt']
@@ -175,7 +175,7 @@ export const unlockBiometric = async (data: BiometricData): Promise<CryptoKey> =
     const prfKeyMaterial = new Uint8Array(prfResults.results.first as any);
     const wrappingKey = await window.crypto.subtle.importKey(
         'raw',
-        prfKeyMaterial,
+        prfKeyMaterial as any,
         'AES-GCM',
         false,
         ['encrypt', 'decrypt']
