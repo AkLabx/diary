@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo, useRef, forwardRef, useImperativeHandle, 
 import { DiaryEntry } from '../types';
 import ReactQuill from 'react-quill';
 import { useToast } from '../contexts/ToastContext';
+import { supabase } from '../lib/supabaseClient';
+import { useCrypto } from '../contexts/CryptoContext';
 
 // --- Quill Customization ---
 // We need to get the Quill constructor from the ReactQuill component.
@@ -16,6 +18,9 @@ if (Quill) {
         if (domNode.style.width) formats.width = domNode.style.width;
         if (domNode.style.float) formats.float = domNode.style.float;
         if (domNode.style.margin) formats.margin = domNode.style.margin;
+        // Preserve Class and Alt for E2EE metadata
+        if (domNode.hasAttribute('class')) formats.class = domNode.getAttribute('class');
+        if (domNode.hasAttribute('alt')) formats.alt = domNode.getAttribute('alt');
         return formats;
     }
 
@@ -24,9 +29,17 @@ if (Quill) {
     const widthStyle = new Parchment.Attributor.Style('width', 'width');
     const floatStyle = new Parchment.Attributor.Style('float', 'float');
     const marginStyle = new Parchment.Attributor.Style('margin', 'margin');
+    
+    // Register Class and Alt attributors (Attributes, not Styles)
+    const classAttribute = new Parchment.Attributor.Attribute('class', 'class', { scope: Parchment.Scope.INLINE });
+    const altAttribute = new Parchment.Attributor.Attribute('alt', 'alt', { scope: Parchment.Scope.INLINE });
+
     Quill.register(widthStyle, true);
     Quill.register(floatStyle, true);
     Quill.register(marginStyle, true);
+    Quill.register(classAttribute, true);
+    Quill.register(altAttribute, true);
+
     // Register align style for block elements (like paragraphs containing images)
     const AlignStyle = Quill.import('attributors/style/align');
     Quill.register(AlignStyle, true);
@@ -59,18 +72,59 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
   const quillRef = useRef<ReactQuill>(null);
   // Track the ID of the entry currently loaded into state to prevent unnecessary overwrites.
-  // Initialized to a sentinel value so the first load always happens.
   const loadedIdRef = useRef<string | null>('INITIAL_MOUNT');
   
   const { addToast } = useToast();
+  const { key, decryptBinary } = useCrypto();
+
+  // Helper to hydrate secure images (decrypt them)
+  const hydrateSecureImages = useCallback(async (htmlContent: string, editor: any) => {
+      if (!key || !htmlContent.includes('secure-diary-image')) return;
+
+      // We need to work on the actual DOM nodes managed by Quill
+      const root = editor.root as HTMLElement;
+      const images = root.querySelectorAll('img.secure-diary-image');
+
+      for (let i = 0; i < images.length; i++) {
+          const img = images[i] as HTMLImageElement;
+          const rawSrc = img.getAttribute('src');
+          const altData = img.getAttribute('alt');
+
+          // Skip if already decrypted (blob url) or no metadata
+          if (rawSrc?.startsWith('blob:') || !altData) continue;
+
+          try {
+              const metadata = JSON.parse(altData);
+              if (metadata && metadata.path && metadata.iv) {
+                   // Add loading class/style if desired
+                   img.style.opacity = '0.5';
+                   
+                   const { data: encryptedBlob, error } = await supabase.storage
+                      .from('diary-secure-images')
+                      .download(metadata.path);
+
+                   if (error) throw error;
+
+                   const encryptedBuffer = await encryptedBlob.arrayBuffer();
+                   const decryptedBuffer = await decryptBinary(key, encryptedBuffer, metadata.iv);
+                   
+                   const decryptedBlob = new Blob([decryptedBuffer], { type: 'image/webp' }); // Assuming webp from upload logic
+                   const url = URL.createObjectURL(decryptedBlob);
+                   
+                   img.src = url;
+                   img.style.opacity = '1';
+              }
+          } catch (e) {
+              console.error("Failed to decrypt image in editor", e);
+          }
+      }
+  }, [key, decryptBinary]);
+
 
   useEffect(() => {
     // Normalize ID: undefined (new) and '' (draft) are treated as the same 'draft' session.
     const incomingId = entry?.id || 'draft';
     
-    // If we are still editing the same logical entry, DO NOT reset the content.
-    // This allows the parent component to update metadata props (like mood/tags) 
-    // without wiping the text the user is currently typing.
     if (loadedIdRef.current === incomingId) {
         return;
     }
@@ -79,15 +133,23 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
     if (entry) {
       setTitle(entry.title);
+      // When loading content, we just set it. The useEffect below will trigger hydration.
       setContent(entry.content);
       setEntryDate(new Date(entry.created_at));
+      
+      // Hydrate images after a brief delay to allow Quill to render
+      setTimeout(() => {
+          if (quillRef.current) {
+              hydrateSecureImages(entry.content, quillRef.current.getEditor());
+          }
+      }, 100);
+
     } else {
-      // For new entries, set a default title
       setTitle("Today's diary entry...");
-      setContent(""); // Explicitly clear content for a fresh entry
+      setContent(""); 
       setEntryDate(new Date());
     }
-  }, [entry]);
+  }, [entry, hydrateSecureImages]);
 
   useEffect(() => {
     const text = content.replace(/<[^>]*>?/gm, '');

@@ -125,20 +125,24 @@ import { createClient } from '@supabase/supabase-js';
 */
 //
 // 6. (Required for Diary Images) Set up Supabase Storage for diary images.
+//    UPDATED: We now use a PRIVATE bucket for end-to-end encrypted images.
 /*
-  -- Step 1: In your Supabase dashboard, go to Storage and create a new PUBLIC bucket named 'diary-images'.
-  --
-  -- Step 2: Go to the policies for the 'diary-images' bucket. DELETE any existing policies, especially
-  --         the default templates like "Give users authenticated access...".
-  --
-  -- Step 3: Add the following single policy to control uploads. This ensures users can only
-  --         upload images to their own dedicated folder within the bucket.
-  --
-  -- Run this in your Supabase SQL Editor:
-  CREATE POLICY "Authenticated users can upload diary images to their own folder"
+  -- Step 1: Create a new PRIVATE bucket named 'diary-secure-images'.
+  -- Go to Storage > New Bucket > Name: 'diary-secure-images' > Public Bucket: UNCHECKED (Private).
+  
+  -- Step 2: Add policies. Run these in SQL Editor:
+  
+  -- Allow uploads
+  CREATE POLICY "Authenticated users can upload secure images"
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK ( bucket_id = 'diary-images' AND (storage.foldername(name))[1] = auth.uid()::text );
+  WITH CHECK ( bucket_id = 'diary-secure-images' AND (storage.foldername(name))[1] = auth.uid()::text );
+
+  -- Allow downloads (Critical for viewing decrypted images)
+  CREATE POLICY "Users can view their own secure images"
+  ON storage.objects FOR SELECT
+  TO authenticated
+  USING ( bucket_id = 'diary-secure-images' AND (storage.foldername(name))[1] = auth.uid()::text );
 */
 //
 // 7. (Required for Audio Entries) Set up Supabase Storage for audio files.

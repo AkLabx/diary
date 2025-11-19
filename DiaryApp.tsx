@@ -48,6 +48,9 @@ type SelectedImageFormat = { align?: string; width?: string; float?: string };
 // Helper to prevent UI freezing during heavy processing loops
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
+// Transparent 1x1 placeholder for secure images
+const SECURE_PLACEHOLDER = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
 const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) => {
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +60,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | 'new' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
   
-  const { key, setKey, encrypt, decrypt, encryptBinary } = useCrypto();
+  const { key, setKey, encrypt, decrypt, encryptBinary, decryptBinary } = useCrypto();
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('checking');
   const [profile, setProfile] = useState<Profile | null>(null);
   
@@ -289,6 +292,23 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       });
       return Array.from(journals).sort();
   }, [entries]);
+  
+  // Helper to cleanup HTML before saving: revert blob URLs to placeholders
+  const cleanContentBeforeSave = (htmlContent: string) => {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(htmlContent, 'text/html');
+      
+      const images = doc.querySelectorAll('img.secure-diary-image');
+      images.forEach(img => {
+          // If the src is a local blob URL (decrypted), revert it to the placeholder
+          // to ensure we don't save expired blob URLs to the database.
+          if (img.getAttribute('src')?.startsWith('blob:')) {
+              img.setAttribute('src', SECURE_PLACEHOLDER);
+          }
+      });
+      
+      return doc.body.innerHTML;
+  };
 
   const executeSave = useCallback(async (entryData: Partial<DiaryEntry> & Pick<DiaryEntry, 'title' | 'content' | 'created_at'>) => {
      if (!key) { addToast("Security session expired.", "error"); return; }
@@ -330,9 +350,12 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
        }
 
        // 2. Encrypt Main Content (Text + Audio Metadata)
+       // CRITICAL: Clean the content (remove blob URLs) before encryption
+       const cleanContent = cleanContentBeforeSave(entryData.content);
+
        const contentToEncrypt = JSON.stringify({ 
            title: entryData.title, 
-           content: entryData.content,
+           content: cleanContent, 
            audio: audioMetadata
        });
        const { iv, data: encrypted_entry } = await encrypt(key, contentToEncrypt);
@@ -350,10 +373,11 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
          if (error) throw error;
          
          // Update local state
+         // Note: we keep the 'dirty' content with blob URLs in the local state so the editor doesn't flicker
          setEntries(prev => prev.map(e => e.id === (editingEntry as DiaryEntry).id ? { 
              ...e, 
              ...entryData, 
-             audio: audioMetadata, // Update audio metadata in local state
+             audio: audioMetadata, 
              isDecrypted: true 
          } as DiaryEntry : e));
 
@@ -616,29 +640,55 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   
   const handleImageUpload = async (file: File) => {
     const quill = editorRef.current?.getEditor();
-    if (!quill) return;
+    if (!quill || !key) return;
     
     setIsUploadingImage(true);
     try {
-      // Client-side compression and resizing
+      // 1. Process (Resize/Compress)
       const { blob, extension } = await processImage(file);
 
-      const fileName = `${session.user.id}/${Date.now()}.${extension}`;
-      
-      // Upload the processed blob instead of the raw file
-      const { error: uploadError } = await supabase.storage.from('diary-images').upload(fileName, blob, {
-          contentType: 'image/webp',
-          upsert: false
-      });
+      // 2. Encrypt
+      const buffer = await blob.arrayBuffer();
+      const { iv, data } = await encryptBinary(key, buffer);
+
+      const fileName = `${session.user.id}/${Date.now()}.bin`; // .bin because it's encrypted
+      const encryptedBlob = new Blob([data], { type: 'application/octet-stream' });
+
+      // 3. Upload to PRIVATE bucket
+      const { error: uploadError } = await supabase.storage
+          .from('diary-secure-images')
+          .upload(fileName, encryptedBlob, {
+              contentType: 'application/octet-stream',
+              upsert: false
+          });
 
       if (uploadError) throw uploadError;
       
-      const { data } = supabase.storage.from('diary-images').getPublicUrl(fileName);
-      
+      // 4. Insert Placeholder with Metadata into Editor
       const range = quill.getSelection(true);
-      quill.insertEmbed(range.index, 'image', data.publicUrl, 'user');
+      
+      // We insert the image with the placeholder SRC.
+      // We embed the secure path and IV into the 'alt' attribute as a JSON string.
+      // We also add a specific class so we can identify it later.
+      const metadata = JSON.stringify({ path: fileName, iv: iv });
+      
+      quill.insertEmbed(range.index, 'image', SECURE_PLACEHOLDER, 'user');
+      
+      // Quill's format API acts on the selection. We select the image we just inserted.
+      quill.setSelection(range.index, 1);
+      quill.format('alt', metadata);
+      quill.format('class', 'secure-diary-image');
+      
+      // Reset selection to after image
       quill.setSelection(range.index + 1, 0, 'user');
       
+      // 5. Trigger immediate decryption for the user so they see what they uploaded
+      const img = quill.root.querySelector(`img[alt='${metadata}']`);
+      if (img) {
+          const url = URL.createObjectURL(blob); // We already have the blob locally!
+          (img as HTMLImageElement).src = url;
+      }
+
     } catch (error) {
       addToast("Failed to upload image.", "error");
       console.error("Error uploading image:", error);

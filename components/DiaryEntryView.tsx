@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { DiaryEntry } from '../types';
 import DOMPurify from 'dompurify';
 import { formatFullTimestamp, formatRelativeTime } from '../lib/dateUtils';
 import SecureAudioPlayer from './SecureAudioPlayer';
+import { supabase } from '../lib/supabaseClient';
+import { useCrypto } from '../contexts/CryptoContext';
 
 interface DiaryEntryViewProps {
   entry: DiaryEntry;
@@ -14,6 +16,68 @@ interface DiaryEntryViewProps {
 const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete, onBack }) => {
   const fullDate = formatFullTimestamp(entry.created_at);
   const relativeTime = formatRelativeTime(entry.created_at);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { key, decryptBinary } = useCrypto();
+
+  useEffect(() => {
+      // Decrypt secure images
+      const decryptImages = async () => {
+          if (!contentRef.current || !key) return;
+
+          const images = contentRef.current.querySelectorAll('img.secure-diary-image');
+          
+          images.forEach(async (imgElement) => {
+              const img = imgElement as HTMLImageElement;
+              const altData = img.getAttribute('alt');
+              // Only process if we have the metadata and haven't already decrypted (check src)
+              if (altData && !img.src.startsWith('blob:')) {
+                  try {
+                      const metadata = JSON.parse(altData);
+                      if (metadata.path && metadata.iv) {
+                          // Show loading state (half opacity)
+                          img.style.opacity = '0.5';
+                          img.style.transition = 'opacity 0.3s';
+
+                          const { data: encryptedBlob, error } = await supabase.storage
+                              .from('diary-secure-images')
+                              .download(metadata.path);
+                          
+                          if (error) throw error;
+                          
+                          const encryptedBuffer = await encryptedBlob.arrayBuffer();
+                          const decryptedBuffer = await decryptBinary(key, encryptedBuffer, metadata.iv);
+                          
+                          const decryptedBlob = new Blob([decryptedBuffer], { type: 'image/webp' });
+                          const url = URL.createObjectURL(decryptedBlob);
+                          
+                          img.src = url;
+                          img.style.opacity = '1';
+                      }
+                  } catch (e) {
+                      console.error("Failed to decrypt image:", e);
+                  }
+              }
+          });
+      };
+
+      if (entry.isDecrypted) {
+          decryptImages();
+      }
+      
+      // Cleanup function to revoke object URLs when component unmounts or entry changes
+      return () => {
+          if (contentRef.current) {
+               const images = contentRef.current.querySelectorAll('img.secure-diary-image');
+               images.forEach((img) => {
+                   const src = (img as HTMLImageElement).src;
+                   if (src.startsWith('blob:')) {
+                       URL.revokeObjectURL(src);
+                   }
+               });
+          }
+      };
+  }, [entry.isDecrypted, entry.content, key, decryptBinary]);
+
 
   if (!entry.isDecrypted) {
       return (
@@ -30,7 +94,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   }
 
   // DOMPurify v3 removed ALLOWED_CSS_PROPS. We use a hook to achieve the same result for image styling.
-  const allowedCssProps = ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align'];
+  const allowedCssProps = ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align', 'opacity', 'transition'];
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
     // Check if the node is an element and has a style attribute
     if (node instanceof Element && node.hasAttribute('style')) {
@@ -52,7 +116,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
 
   const sanitizedContent = DOMPurify.sanitize(entry.content, {
     ADD_TAGS: ['img'],
-    ADD_ATTR: ['style', 'class'],
+    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-path', 'data-iv'], // Allow attributes needed for decryption
   });
   
   // It's good practice to remove hooks after use to prevent side-effects.
@@ -104,6 +168,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
       )}
 
       <div 
+        ref={contentRef}
         className="prose prose-slate dark:prose-invert max-w-none my-6"
         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
