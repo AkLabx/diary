@@ -685,19 +685,31 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       // Using a slight delay ensures the DOM is ready for manipulation.
       setTimeout(() => {
           try {
+              // Re-fetch editor instance to be safe inside async
+              const quill = editorRef.current?.getEditor();
+              if (!quill) return;
+
               // Try standard leaf retrieval
               const [leaf] = quill.getLeaf(range.index);
-              let img = leaf?.domNode as HTMLImageElement;
-
-              // Fallback: If leaf is null, try selecting by the secure class within the editor root
-              if (!img || img.tagName !== 'IMG') {
+              const candidateNode = leaf?.domNode;
+              
+              let img: HTMLImageElement | null = null;
+              
+              // Strict check: Is the node at this index actually an image element?
+              // This prevents crashes if 'leaf' is a Text node.
+              if (candidateNode instanceof Element && candidateNode.tagName === 'IMG') {
+                  img = candidateNode as HTMLImageElement;
+              }
+              
+              // Fallback: If direct leaf retrieval failed (e.g. cursor moved, structure changed),
+              // search by the unique metadata path in the alt attribute.
+              if (!img) {
                   const editorRoot = quill.root;
-                  // Find the last inserted secure image, usually the one we just added
                   const images = editorRoot.querySelectorAll('img.secure-diary-image');
                   if (images.length > 0) {
-                      // Check the one with matching metadata path
                       for(let i = 0; i < images.length; i++) {
-                          if (images[i].getAttribute('alt')?.includes(fileName)) {
+                          const alt = images[i].getAttribute('alt');
+                          if (alt && alt.includes(fileName)) {
                               img = images[i] as HTMLImageElement;
                               break;
                           }
