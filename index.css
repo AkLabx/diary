@@ -118,6 +118,17 @@ body {
   transition: all 0.1s ease-in-out;
 }
 
+/* Placeholder style for encrypted images while they load */
+.secure-diary-image {
+    background-color: #f1f5f9; /* slate-100 */
+    min-width: 50px;
+    min-height: 50px;
+}
+
+.dark .secure-diary-image {
+    background-color: #334155; /* slate-700 */
+}
+
 /*
   FIX: Resolved content overflow issue in DiaryEntryView.
   Content from the editor, especially with inline styles or long strings,

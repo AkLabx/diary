@@ -665,16 +665,14 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       if (uploadError) throw uploadError;
       
       // 4. Insert Placeholder with Metadata into Editor
-      const range = quill.getSelection(true);
+      // Fix: Ensure range exists, defaulting to end if not focused.
+      const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
       
-      // We insert the image with the placeholder SRC.
-      // We embed the secure path and IV into the 'alt' attribute as a JSON string.
-      // We also add a specific class so we can identify it later.
       const metadata = JSON.stringify({ path: fileName, iv: iv });
       
       quill.insertEmbed(range.index, 'image', SECURE_PLACEHOLDER, 'user');
       
-      // Quill's format API acts on the selection. We select the image we just inserted.
+      // Select the newly inserted image to apply formats
       quill.setSelection(range.index, 1);
       quill.format('alt', metadata);
       quill.format('class', 'secure-diary-image');
@@ -683,10 +681,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       quill.setSelection(range.index + 1, 0, 'user');
       
       // 5. Trigger immediate decryption for the user so they see what they uploaded
-      const img = quill.root.querySelector(`img[alt='${metadata}']`);
+      // Fix: Use getLeaf to find the exact node we just inserted instead of querySelector with potential quoting issues
+      const [leaf] = quill.getLeaf(range.index);
+      const img = leaf?.domNode as HTMLImageElement;
+      
       if (img) {
           const url = URL.createObjectURL(blob); // We already have the blob locally!
-          (img as HTMLImageElement).src = url;
+          img.src = url;
       }
 
     } catch (error) {
