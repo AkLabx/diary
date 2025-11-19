@@ -103,52 +103,63 @@ import { createClient } from '@supabase/supabase-js';
 */
 //
 // 5. (Optional but Recommended) Set up Supabase Storage for avatars.
+//    !!! IMPORTANT: THIS BUCKET MUST BE PRIVATE !!!
 /*
-  -- Step 1: In your Supabase dashboard, go to Storage and create a new PUBLIC bucket named 'avatars'.
-  --
-  -- Step 2: Go to the policies for the 'avatars' bucket. DELETE any existing policies that may have
-  -- been created by default (e.g., "Give users authenticated access to folder...").
-  --
-  -- Step 3: Add ONE new policy using the SQL script below. This policy allows any authenticated user
-  -- to UPLOAD files, but only into a folder that matches their own user ID. This is critical for security.
-  --
-  -- Run this in your Supabase SQL Editor (or create the policy through the UI):
-  CREATE POLICY "Authenticated users can upload to their own folder"
+  -- Step 1: In your Supabase dashboard, go to Storage and create a new bucket named 'avatars'.
+  -- ENSURE 'Public Bucket' IS UNCHECKED (OFF).
+  
+  -- Step 2: Add policies. Run these in SQL Editor:
+  
+  -- Allow authenticated users to upload files to their own folder
+  CREATE POLICY "Authenticated users can upload avatars"
   ON storage.objects FOR INSERT
   TO authenticated
   WITH CHECK ( bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text );
 
-  -- Why only one policy?
-  --   - SELECT (View): The bucket is PUBLIC, so anyone with the URL can view images. No policy needed.
-  --   - UPDATE / DELETE: The app doesn't update or delete storage files directly. It just uploads new ones.
-  --     This simpler approach avoids needing more complex policies.
+  -- Allow users to view their own avatars (Required for Signed URLs)
+  CREATE POLICY "Users can view their own avatars"
+  ON storage.objects FOR SELECT
+  TO authenticated
+  USING ( bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text );
 */
 //
 // 6. (Required for Diary Images) Set up Supabase Storage for diary images.
-//    UPDATED: We now use a PRIVATE bucket for end-to-end encrypted images.
+//    !!! IMPORTANT: THIS BUCKET MUST BE PRIVATE !!!
 /*
-  -- Step 1: Create a new PRIVATE bucket named 'diary-secure-images'.
-  -- Go to Storage > New Bucket > Name: 'diary-secure-images' > Public Bucket: UNCHECKED (Private).
+  -- Step 1: Create a new bucket named 'diary-images'.
+  -- ENSURE 'Public Bucket' IS UNCHECKED (OFF).
   
   -- Step 2: Add policies. Run these in SQL Editor:
   
-  -- Allow uploads
+  -- 2.1 Drop old policies if they exist to avoid conflicts
+  DROP POLICY IF EXISTS "Authenticated users can upload secure images" ON storage.objects;
+  DROP POLICY IF EXISTS "Users can view their own secure images" ON storage.objects;
+  DROP POLICY IF EXISTS "Users can delete their own secure images" ON storage.objects;
+
+  -- 2.2 Allow uploads
   CREATE POLICY "Authenticated users can upload secure images"
   ON storage.objects FOR INSERT
   TO authenticated
-  WITH CHECK ( bucket_id = 'diary-secure-images' AND (storage.foldername(name))[1] = auth.uid()::text );
+  WITH CHECK ( bucket_id = 'diary-images' AND (storage.foldername(name))[1] = auth.uid()::text );
 
-  -- Allow downloads (Critical for viewing decrypted images)
+  -- 2.3 Allow downloads (Critical for viewing decrypted images via Signed URLs)
   CREATE POLICY "Users can view their own secure images"
   ON storage.objects FOR SELECT
   TO authenticated
-  USING ( bucket_id = 'diary-secure-images' AND (storage.foldername(name))[1] = auth.uid()::text );
+  USING ( bucket_id = 'diary-images' AND (storage.foldername(name))[1] = auth.uid()::text );
+
+  -- 2.4 Allow deletions
+  CREATE POLICY "Users can delete their own secure images"
+  ON storage.objects FOR DELETE
+  TO authenticated
+  USING ( bucket_id = 'diary-images' AND (storage.foldername(name))[1] = auth.uid()::text );
 */
 //
 // 7. (Required for Audio Entries) Set up Supabase Storage for audio files.
+//    !!! IMPORTANT: THIS BUCKET MUST BE PRIVATE !!!
 /*
-  -- Step 1: Create a new PRIVATE bucket named 'diary-audio'.
-  -- Go to Storage > New Bucket > Name: 'diary-audio' > Public Bucket: UNCHECKED.
+  -- Step 1: Create a new bucket named 'diary-audio'.
+  -- ENSURE 'Public Bucket' IS UNCHECKED (OFF).
   
   -- Step 2: Add policies. Run these in SQL Editor:
   

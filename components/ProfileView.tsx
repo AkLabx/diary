@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent } from 'react';
+import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { Profile } from '../types';
 import { useCrypto } from '../contexts/CryptoContext';
@@ -6,6 +6,9 @@ import { exportKey } from '../lib/crypto';
 import { generateRecoveryKit } from '../lib/recoveryKit';
 import { isBiometricSupported, registerBiometric } from '../lib/webauthn';
 import { useToast } from '../contexts/ToastContext';
+import { supabase } from '../lib/supabaseClient';
+import Cropper from 'react-easy-crop';
+import getCroppedImg from '../lib/cropUtils';
 
 interface ProfileViewProps {
   session: Session;
@@ -47,6 +50,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const [isBioSupported, setIsBioSupported] = useState(false);
   const [isBioEnabled, setIsBioEnabled] = useState(false);
   const [isBioLoading, setIsBioLoading] = useState(false);
+  
+  // Avatar Display State
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+
+  // Cropping State
+  const [cropImage, setCropImage] = useState<string | null>(null);
+  const [crop, setCrop] = useState({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const { deriveAndVerifyKey, key } = useCrypto();
   const { addToast } = useToast();
@@ -64,6 +78,39 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       };
       checkBio();
   }, [session.user.id]);
+  
+  useEffect(() => {
+      let isMounted = true;
+      const resolveAvatar = async () => {
+          if (!profile?.avatar_url) {
+              if (isMounted) setAvatarSrc(null);
+              return;
+          }
+          
+          // Legacy public URL support (e.g. Google Auth images)
+          if (profile.avatar_url.startsWith('http')) {
+              if (isMounted) setAvatarSrc(profile.avatar_url);
+          } else {
+              // Resolve private bucket path to signed URL
+              try {
+                  const { data, error } = await supabase.storage
+                      .from('avatars')
+                      .createSignedUrl(profile.avatar_url, 3600); // 1 hour
+                  
+                  if (error) throw error;
+
+                  if (isMounted && data?.signedUrl) {
+                      setAvatarSrc(data.signedUrl);
+                  }
+              } catch (e) {
+                  console.error("Error resolving avatar URL. Check RLS policies.", e);
+                  if (isMounted) setAvatarSrc(null);
+              }
+          }
+      };
+      resolveAvatar();
+      return () => { isMounted = false; };
+  }, [profile?.avatar_url]);
 
   const handleNameSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,12 +122,49 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     setIsEditingName(false);
   };
 
-  const handleAvatarChange = async (e: ChangeEvent<HTMLInputElement>) => {
+  // Step 1: Select File and set up for cropping
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const imageUrl = URL.createObjectURL(file);
+      setCropImage(imageUrl);
+      setZoom(1);
+      setCrop({ x: 0, y: 0 });
+      
+      // Reset input so same file can be selected again if needed
+      e.target.value = ''; 
+    }
+  };
+  
+  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+    setCroppedAreaPixels(croppedAreaPixels);
+  };
+
+  // Step 2: Confirm Crop and Upload
+  const handleCropSave = async () => {
+    if (!cropImage || !croppedAreaPixels) return;
+
+    try {
       setIsUploading(true);
-      await onAvatarUpload(e.target.files[0]);
+      const croppedBlob = await getCroppedImg(cropImage, croppedAreaPixels);
+      const croppedFile = new File([croppedBlob], 'avatar.jpg', { type: 'image/jpeg' });
+      
+      await onAvatarUpload(croppedFile);
+      
+      // Cleanup
+      setCropImage(null);
+      addToast("Profile picture updated", "success");
+    } catch (e) {
+      console.error(e);
+      addToast("Failed to crop/upload image", "error");
+    } finally {
       setIsUploading(false);
     }
+  };
+  
+  const handleCropCancel = () => {
+      setCropImage(null);
+      setIsUploading(false);
   };
 
   const handleExportClick = async () => {
@@ -176,15 +260,22 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="relative flex-shrink-0">
                     <div className="w-24 h-24 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center">
-                        {profile?.avatar_url ? (
-                            <img src={profile.avatar_url} alt="User avatar" className="w-full h-full object-cover" />
+                        {avatarSrc ? (
+                            <img src={avatarSrc} alt="User avatar" className="w-full h-full object-cover" />
                         ) : (
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                             <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                             </svg>
                         )}
                     </div>
-                     <input type="file" id="avatar-upload" className="hidden" onChange={handleAvatarChange} accept="image/*" disabled={isUploading} />
+                     <input 
+                        ref={fileInputRef}
+                        type="file" 
+                        id="avatar-upload" 
+                        className="hidden" 
+                        onChange={handleFileChange} 
+                        accept="image/*" 
+                    />
                     <label htmlFor="avatar-upload" className="absolute -bottom-1 -right-1 bg-white dark:bg-slate-600 rounded-full p-1.5 cursor-pointer shadow-md hover:bg-slate-100 dark:hover:bg-slate-500 transition-colors">
                         {isUploading ? (
                              <svg className="animate-spin h-5 w-5 text-slate-600 dark:text-slate-200" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -302,6 +393,57 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 Sign Out
             </button>
         </div>
+
+        {/* CROPPER MODAL */}
+        {cropImage && (
+            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4 animate-fade-in">
+                <div className="relative w-full max-w-lg h-[400px] bg-slate-800 rounded-lg overflow-hidden mb-4">
+                    <Cropper
+                        image={cropImage}
+                        crop={crop}
+                        zoom={zoom}
+                        aspect={1}
+                        onCropChange={setCrop}
+                        onCropComplete={onCropComplete}
+                        onZoomChange={setZoom}
+                        cropShape="round"
+                        showGrid={false}
+                    />
+                </div>
+                
+                {/* Zoom Control */}
+                 <div className="w-full max-w-xs px-4 mb-6">
+                    <label className="block text-xs text-slate-400 mb-1 text-center">Zoom</label>
+                    <input
+                        type="range"
+                        value={zoom}
+                        min={1}
+                        max={3}
+                        step={0.1}
+                        aria-labelledby="Zoom"
+                        onChange={(e) => setZoom(Number(e.target.value))}
+                        className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
+                    />
+                </div>
+
+                <div className="flex gap-4">
+                    <button
+                        onClick={handleCropCancel}
+                        disabled={isUploading}
+                        className="px-6 py-2 text-sm font-semibold text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-md"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleCropSave}
+                        disabled={isUploading}
+                        className="px-6 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md flex items-center gap-2"
+                    >
+                        {isUploading ? 'Saving...' : 'Save Avatar'}
+                    </button>
+                </div>
+            </div>
+        )}
         
         {/* Password Confirmation Modal for Recovery Kit */}
         {isRecoveryModalOpen && (

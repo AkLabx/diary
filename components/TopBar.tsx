@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Weather, Profile } from '../types';
 import { format } from 'date-fns';
+import { supabase } from '../lib/supabaseClient';
 
 interface TopBarProps {
   isEditing: boolean;
@@ -34,6 +35,7 @@ const SaveStatusIndicator: React.FC<{ status: TopBarProps['saveStatus'] }> = ({ 
 
 const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDate, weather, theme, onToggleTheme, saveStatus, profile, onShowProfile, isToolsPanelVisible, onToggleToolsPanel, isLeftSidebarVisible }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
 
   useEffect(() => {
     const timerId = setInterval(() => {
@@ -42,6 +44,39 @@ const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDat
 
     return () => clearInterval(timerId);
   }, []);
+
+  useEffect(() => {
+      let isMounted = true;
+      const resolveAvatar = async () => {
+          if (!profile?.avatar_url) {
+              if (isMounted) setAvatarSrc(null);
+              return;
+          }
+          
+          // If it is a legacy public URL (starts with http), use it directly.
+          if (profile.avatar_url.startsWith('http')) {
+              if (isMounted) setAvatarSrc(profile.avatar_url);
+          } else {
+              // Otherwise, assume it is a storage path in the private 'avatars' bucket and sign it.
+              try {
+                  const { data, error } = await supabase.storage
+                      .from('avatars')
+                      .createSignedUrl(profile.avatar_url, 3600); // 1 hour expiry
+                  
+                  if (error) throw error;
+
+                  if (isMounted && data?.signedUrl) {
+                      setAvatarSrc(data.signedUrl);
+                  }
+              } catch (e) {
+                  console.error("Error resolving avatar URL in TopBar:", e);
+                  if (isMounted) setAvatarSrc(null);
+              }
+          }
+      };
+      resolveAvatar();
+      return () => { isMounted = false; };
+  }, [profile?.avatar_url]);
 
   return (
     <header className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-b border-[#EAE1D6] dark:border-slate-800 min-h-[4rem] flex-shrink-0 relative z-20 transition-all duration-200">
@@ -94,8 +129,8 @@ const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDat
              }
            </button>
            <button onClick={onShowProfile} title="Profile & Settings" className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center hover:ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all">
-                {profile?.avatar_url ? (
-                    <img src={profile.avatar_url} alt="User avatar" className="w-full h-full object-cover" />
+                {avatarSrc ? (
+                    <img src={avatarSrc} alt="User avatar" className="w-full h-full object-cover" />
                 ) : (
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />

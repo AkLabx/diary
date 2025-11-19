@@ -478,15 +478,17 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       const fileExt = file.name.split('.').pop();
       const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
       
+      // Upload to PRIVATE bucket 'avatars'
       const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
       if (uploadError) throw uploadError;
 
-      const { data } = supabase.storage.from('avatars').getPublicUrl(fileName);
-      
-      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: data.publicUrl }).eq('id', session.user.id);
+      // For private buckets, we cannot use getPublicUrl.
+      // We store the storage PATH in the database.
+      // The UI components will generate a Signed URL on the fly.
+      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: fileName }).eq('id', session.user.id);
       if (updateError) throw updateError;
       
-      setProfile(prev => prev ? { ...prev, avatar_url: data.publicUrl } : null);
+      setProfile(prev => prev ? { ...prev, avatar_url: fileName } : null);
       addToast("Avatar updated!", "success");
     } catch (error) {
       addToast("Failed to upload avatar.", "error");
@@ -631,17 +633,28 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       // Instant Preview: Find the specific image we just created
       setTimeout(() => {
           try {
+             // Improve robustness: Query for the image with the specific metadata we just added
+             // This avoids relying on index or simple alt text which might be duplicate
              const root = editorRef.current?.getEditor()?.root;
              if (!root) return;
              
-             // Find the image with the matching metadata we just inserted
-             const images = root.querySelectorAll(`img.secure-diary-image[data-secure-metadata='${metadata}']`);
+             // Use CSS.escape if metadata contains characters that break the selector (less likely with JSON stringify but safe)
+             // Or simpler: iterate images to find the matching data attribute
+             const images = root.querySelectorAll('img.secure-diary-image');
+             let targetImg: HTMLImageElement | null = null;
              
-             if (images.length > 0) {
-                 const targetImg = images[0] as HTMLImageElement;
+             for (let i = 0; i < images.length; i++) {
+                 const img = images[i] as HTMLImageElement;
+                 if (img.getAttribute('data-secure-metadata') === metadata) {
+                     targetImg = img;
+                     break;
+                 }
+             }
+             
+             if (targetImg) {
                  const url = URL.createObjectURL(blob);
                  targetImg.src = url;
-                 targetImg.style.opacity = '1';
+                 targetImg.style.opacity = '1'; // Reset opacity
              }
           } catch(err) {
               console.error("Preview error:", err);
