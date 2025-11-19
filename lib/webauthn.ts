@@ -75,7 +75,8 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
     const createResults = credential.getClientExtensionResults();
     
     if (createResults?.prf?.results?.first) {
-        prfKeyMaterial = new Uint8Array(createResults.prf.results.first);
+        // Cast to any to avoid strict TS ArrayBuffer/SharedArrayBuffer mismatches
+        prfKeyMaterial = new Uint8Array(createResults.prf.results.first as any);
     } else {
         // 4. Fallback: Assert (Login) to get PRF secret (Two-Step)
         // If creation didn't return the key, we try a second call.
@@ -102,7 +103,8 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
         const getResults = assertion?.getClientExtensionResults();
 
         if (getResults?.prf?.results?.first) {
-            prfKeyMaterial = new Uint8Array(getResults.prf.results.first);
+             // Cast to any to avoid strict TS ArrayBuffer/SharedArrayBuffer mismatches
+            prfKeyMaterial = new Uint8Array(getResults.prf.results.first as any);
         }
     }
 
@@ -169,7 +171,8 @@ export const unlockBiometric = async (data: BiometricData): Promise<CryptoKey> =
     }
 
     // 2. Re-derive Wrapping Key
-    const prfKeyMaterial = new Uint8Array(prfResults.results.first);
+    // Cast to any to avoid strict TS ArrayBuffer/SharedArrayBuffer mismatches
+    const prfKeyMaterial = new Uint8Array(prfResults.results.first as any);
     const wrappingKey = await window.crypto.subtle.importKey(
         'raw',
         prfKeyMaterial,
