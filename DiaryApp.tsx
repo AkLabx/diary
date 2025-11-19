@@ -489,10 +489,11 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       if (updateError) throw updateError;
       
       setProfile(prev => prev ? { ...prev, avatar_url: fileName } : null);
-      addToast("Avatar updated!", "success");
+      // Note: Success toast is now handled by the calling component (ProfileView)
     } catch (error) {
-      addToast("Failed to upload avatar.", "error");
+      // Removed toast here to let ProfileView handle UI feedback and avoid duplication
       console.error("Error uploading avatar:", error);
+      throw error; // Propagate error to caller
     }
   };
 

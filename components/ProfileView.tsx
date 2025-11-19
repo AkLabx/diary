@@ -136,7 +136,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     }
   };
   
-  const onCropComplete = (croppedArea: any, croppedAreaPixels: any) => {
+  // FIX: Renamed unused parameter to '_' to resolve build error
+  const onCropComplete = (_: any, croppedAreaPixels: any) => {
     setCroppedAreaPixels(croppedAreaPixels);
   };
 
@@ -151,12 +152,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       
       await onAvatarUpload(croppedFile);
       
-      // Cleanup
+      // Cleanup and Success Feedback
       setCropImage(null);
-      addToast("Profile picture updated", "success");
-    } catch (e) {
+      addToast("Profile picture updated successfully", "success");
+    } catch (e: any) {
       console.error(e);
-      addToast("Failed to crop/upload image", "error");
+      addToast(e.message || "Failed to update profile picture", "error");
     } finally {
       setIsUploading(false);
     }
