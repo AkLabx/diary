@@ -28,11 +28,14 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
           
           images.forEach(async (imgElement) => {
               const img = imgElement as HTMLImageElement;
-              const altData = img.getAttribute('alt');
+              
+              // Use data-secure-metadata attribute first, fallback to alt
+              const metadataStr = img.getAttribute('data-secure-metadata') || img.getAttribute('alt');
+              
               // Only process if we have the metadata and haven't already decrypted (check src)
-              if (altData && !img.src.startsWith('blob:')) {
+              if (metadataStr && !img.src.startsWith('blob:')) {
                   try {
-                      const metadata = JSON.parse(altData);
+                      const metadata = JSON.parse(metadataStr);
                       if (metadata.path && metadata.iv) {
                           // Show loading state (half opacity)
                           img.style.opacity = '0.5';
@@ -96,7 +99,6 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   // DOMPurify v3 removed ALLOWED_CSS_PROPS. We use a hook to achieve the same result for image styling.
   const allowedCssProps = ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align', 'opacity', 'transition'];
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-    // Check if the node is an element and has a style attribute
     if (node instanceof Element && node.hasAttribute('style')) {
       const style = node.getAttribute('style') || '';
       const sanitizedStyle = style.split(';').filter(prop => {
@@ -105,7 +107,6 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         return propName && allowedCssProps.includes(propName);
       }).join(';');
       
-      // If there are any allowed styles left, set the attribute, otherwise remove it.
       if (sanitizedStyle) {
         node.setAttribute('style', sanitizedStyle);
       } else {
@@ -116,10 +117,10 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
 
   const sanitizedContent = DOMPurify.sanitize(entry.content, {
     ADD_TAGS: ['img'],
-    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-path', 'data-iv'], // Allow attributes needed for decryption
+    // Allow our custom secure metadata attribute
+    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata'], 
   });
   
-  // It's good practice to remove hooks after use to prevent side-effects.
   DOMPurify.removeHook('afterSanitizeAttributes');
 
 
@@ -156,7 +157,6 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         </div>
       </div>
       
-      {/* Audio Player */}
       {entry.audio && (
           <div className="my-6">
               <SecureAudioPlayer 

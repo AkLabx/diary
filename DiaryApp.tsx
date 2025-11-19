@@ -29,8 +29,6 @@ import HamburgerMenu from './components/HamburgerMenu';
 import ConfirmationModal from './components/ConfirmationModal';
 import SmartTagsModal from './components/SmartTagsModal';
 
-// Fix: RangeStatic is not exported as a named export from 'quill' in some type definitions.
-// Defining it locally ensures compatibility.
 interface RangeStatic {
   index: number;
   length: number;
@@ -45,7 +43,6 @@ interface DiaryAppProps {
 type KeyStatus = 'checking' | 'needed' | 'reauth' | 'ready';
 type SelectedImageFormat = { align?: string; width?: string; float?: string };
 
-// Helper to prevent UI freezing during heavy processing loops
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
 
 // Transparent 1x1 placeholder for secure images
@@ -55,7 +52,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeView, setActiveView] = useState<ViewState>('timeline');
-  const [activeJournal, setActiveJournal] = useState<string | null>(null); // null means 'All'
+  const [activeJournal, setActiveJournal] = useState<string | null>(null);
   
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | 'new' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
@@ -64,7 +61,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('checking');
   const [profile, setProfile] = useState<Profile | null>(null);
   
-  // Responsive Sidebar: Start hidden on mobile, visible on desktop
   const [isLeftSidebarVisible, setLeftSidebarVisible] = useState(() => window.innerWidth >= 768);
   
   const [isToolsPanelVisible, setToolsPanelVisible] = useState(true);
@@ -80,12 +76,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedImageFormat, setSelectedImageFormat] = useState<SelectedImageFormat | null>(null);
 
-  // Smart Tags State
   const [isSmartTagsModalOpen, setIsSmartTagsModalOpen] = useState(false);
   const [pendingEntrySave, setPendingEntrySave] = useState<Partial<DiaryEntry> | null>(null);
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
 
-  // Ref to track loading promises to avoid duplicate requests
   const loadingEntriesRef = useRef<Set<string>>(new Set());
 
   const { addToast } = useToast();
@@ -135,12 +129,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     } catch (error) { console.error("Error fetching profile:", error); }
   }, [session.user.id]);
 
-  // PERFORMANCE UPDATE: Only fetch metadata initially
   const fetchEntries = useCallback(async () => {
     if (!key) return;
     setLoading(true);
     try {
-      // Select only lightweight metadata columns including 'journal'. DO NOT fetch encrypted_entry yet.
       const { data, error } = await supabase
         .from('diaries')
         .select('id, created_at, mood, tags, owner_id, journal')
@@ -148,16 +140,15 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         
       if (error) throw error;
       
-      // Initialize entries with placeholders for title/content and flags
       const initialEntries: DiaryEntry[] = (data || []).map((entry) => ({
         id: entry.id,
         created_at: entry.created_at,
         mood: entry.mood,
         tags: entry.tags,
         owner_id: entry.owner_id,
-        journal: entry.journal || 'Personal', // Default to 'Personal' if null
-        title: '', // Placeholder
-        content: '', // Placeholder
+        journal: entry.journal || 'Personal',
+        title: '',
+        content: '',
         isDecrypted: false,
         isLoading: false
       }));
@@ -169,20 +160,15 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     } finally { setLoading(false); }
   }, [key, addToast]);
 
-  // PERFORMANCE UPDATE: Function to load content on demand
   const loadEntryContent = useCallback(async (id: string) => {
-    // Prevent duplicate fetches for the same ID
     if (loadingEntriesRef.current.has(id) || !key) return;
 
     const entryIndex = entries.findIndex(e => e.id === id);
     if (entryIndex === -1) return;
     
-    // If already decrypted, do nothing
     if (entries[entryIndex].isDecrypted) return;
 
     loadingEntriesRef.current.add(id);
-    
-    // Optimistic update to show loading state
     setEntries(prev => prev.map(e => e.id === id ? { ...e, isLoading: true } : e));
 
     try {
@@ -201,14 +187,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
             ...e,
             title,
             content,
-            audio, // Set audio metadata if present
+            audio,
             isDecrypted: true,
             isLoading: false
         } : e));
 
     } catch (error) {
         console.error(`Error decrypting entry ${id}:`, error);
-        // Reset loading state so retry is possible
         setEntries(prev => prev.map(e => e.id === id ? { ...e, isLoading: false } : e));
     } finally {
         loadingEntriesRef.current.delete(id);
@@ -223,14 +208,12 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     }
   }, [fetchEntries, fetchProfile, keyStatus]);
   
-  // If selected entry is not decrypted, load it immediately
   useEffect(() => {
     if (selectedEntry && !selectedEntry.isDecrypted && !selectedEntry.isLoading) {
         loadEntryContent(selectedEntry.id);
     }
   }, [selectedEntry, loadEntryContent]);
   
-  // Update selectedEntry when entries state changes (e.g. after decryption)
   useEffect(() => {
     if (selectedEntry) {
         const updated = entries.find(e => e.id === selectedEntry.id);
@@ -240,7 +223,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     }
   }, [entries, selectedEntry]);
 
-  // Effect to listen for editor selection changes to show contextual image tools
   useEffect(() => {
     if (!editorRef.current || !editingEntry) return;
 
@@ -288,7 +270,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       const journals = new Set<string>();
       entries.forEach(e => {
           if (e.journal) journals.add(e.journal);
-          else journals.add('Personal'); // Default fallback
+          else journals.add('Personal');
       });
       return Array.from(journals).sort();
   }, [entries]);
@@ -300,8 +282,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       
       const images = doc.querySelectorAll('img.secure-diary-image');
       images.forEach(img => {
-          // If the src is a local blob URL (decrypted), revert it to the placeholder
-          // to ensure we don't save expired blob URLs to the database.
+          // Revert src to placeholder if it's a blob
           if (img.getAttribute('src')?.startsWith('blob:')) {
               img.setAttribute('src', SECURE_PLACEHOLDER);
           }
@@ -319,18 +300,16 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
        let audioMetadata = null;
        const currentEntryState = editingEntry === 'new' ? {} : editingEntry;
        
-       // 1. Handle Audio Encryption & Upload if present
        if (entryData.tempAudioBlob) {
             try {
                 const buffer = await entryData.tempAudioBlob.arrayBuffer();
                 const { iv, data } = await encryptBinary(key, buffer);
                 
-                // Upload as a blob with correct MIME type
                 const encryptedBlob = new Blob([data], { type: 'application/octet-stream' });
                 const fileName = `${session.user.id}/${Date.now()}-audio.bin`;
                 
                 const { error: uploadError } = await supabase.storage
-                    .from('diary-audio') // Ensure this bucket exists
+                    .from('diary-audio')
                     .upload(fileName, encryptedBlob, { upsert: true });
 
                 if (uploadError) throw uploadError;
@@ -345,12 +324,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                 addToast("Failed to secure audio. Saving text only.", "error");
             }
        } else if ('audio' in currentEntryState) {
-           // Preserve existing audio if not replaced/deleted
            audioMetadata = currentEntryState.audio;
        }
 
-       // 2. Encrypt Main Content (Text + Audio Metadata)
-       // CRITICAL: Clean the content (remove blob URLs) before encryption
        const cleanContent = cleanContentBeforeSave(entryData.content);
 
        const contentToEncrypt = JSON.stringify({ 
@@ -372,8 +348,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
          const { error } = await supabase.from('diaries').update(record).eq('id', (editingEntry as DiaryEntry).id);
          if (error) throw error;
          
-         // Update local state
-         // Note: we keep the 'dirty' content with blob URLs in the local state so the editor doesn't flicker
          setEntries(prev => prev.map(e => e.id === (editingEntry as DiaryEntry).id ? { 
              ...e, 
              ...entryData, 
@@ -389,7 +363,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
              ...data, 
              ...entryData,
              audio: audioMetadata,
-             id: data.id, // Explicitly set ID from DB
+             id: data.id,
              isDecrypted: true, 
              isLoading: false 
          } as DiaryEntry;
@@ -412,11 +386,8 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   }, [key, editingEntry, session.user.id, encrypt, encryptBinary, addToast]);
 
   const handleInitiateSave = useCallback((entryData: Omit<DiaryEntry, 'id' | 'owner_id'>) => {
-    // Intercept save to check for Smart Tags
     const existingTags = entryData.tags || [];
     const suggestions = generateSmartTags(entryData.content);
-    
-    // Filter out tags that are already in existingTags
     const newSuggestions = suggestions.filter(tag => !existingTags.includes(tag));
 
     if (newSuggestions.length > 0) {
@@ -424,14 +395,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         setSmartSuggestions(newSuggestions);
         setIsSmartTagsModalOpen(true);
     } else {
-        // No new suggestions, proceed to save directly
         executeSave(entryData);
     }
   }, [executeSave]);
 
   const handleConfirmSmartTags = (finalTags: string[]) => {
     if (pendingEntrySave) {
-        // @ts-ignore - TS strictness on Partial vs Omit match
+        // @ts-ignore
         executeSave({ ...pendingEntrySave, tags: finalTags });
     }
   };
@@ -459,9 +429,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 
       if (error) throw error;
       
-      // Note: We do not explicitly delete audio files from storage here to keep logic simple.
-      // In a production app, you'd likely want a cleanup cron job or a specific delete function for storage.
-
       setEntries(prev => prev.filter(e => e.id !== entryToDelete.id));
       addToast('Entry deleted successfully.', 'success');
       setSelectedEntry(null);
@@ -527,12 +494,9 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     }
   };
 
-  // New Streaming ZIP Export Implementation with Anti-Freeze
   const handleExportData = async (onProgress: (progress: string) => void) => {
     if (!key) return;
-    
     try {
-      // 1. Get total count for progress tracking
       const { count, error: countError } = await supabase
         .from('diaries')
         .select('*', { count: 'exact', head: true });
@@ -545,26 +509,22 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         return;
       }
 
-      // 2. Initialize ZipWriter (from zip.js)
       const blobWriter = new BlobWriter("application/zip");
       const zipWriter = new ZipWriter(blobWriter);
 
       const BATCH_SIZE = 50;
       let processedCount = 0;
       let currentMonthBuffer: any[] = [];
-      let currentMonthKey = ""; // "YYYY-MM"
+      let currentMonthKey = "";
 
-      // 3. Fetch in batches to conserve memory
       for (let i = 0; i < totalEntries; i += BATCH_SIZE) {
         onProgress(`Processing ${processedCount} / ${totalEntries}`);
-        
-        // Give the UI thread a breather before fetching/processing the next batch
         await yieldToMain();
 
         const { data: batch, error } = await supabase
           .from('diaries')
           .select('*')
-          .order('created_at', { ascending: false }) // Newest first
+          .order('created_at', { ascending: false })
           .range(i, i + BATCH_SIZE - 1);
 
         if (error) throw error;
@@ -572,26 +532,20 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 
         for (const entry of batch) {
             try {
-                // While decryption is async, having many in a tight loop can still jitter the UI.
-                // We can optionally yield here if entries are very large, but usually per-batch yielding is enough.
-                
                 const decryptedString = await decrypt(key, entry.encrypted_entry, entry.iv);
                 const content = JSON.parse(decryptedString);
                 
                 const entryDate = new Date(entry.created_at);
                 const monthKey = `${entryDate.getFullYear()}-${String(entryDate.getMonth() + 1).padStart(2, '0')}`;
 
-                // If month changed and we have data, write the previous month to ZIP
                 if (currentMonthKey && monthKey !== currentMonthKey && currentMonthBuffer.length > 0) {
                      await zipWriter.add(`${currentMonthKey}.json`, new TextReader(JSON.stringify(currentMonthBuffer, null, 2)));
                      currentMonthBuffer = [];
-                     // Yield after a heavy write/stringify
                      await yieldToMain();
                 }
 
                 currentMonthKey = monthKey;
                 
-                // Add to buffer
                 currentMonthBuffer.push({
                     id: entry.id,
                     created_at: entry.created_at,
@@ -605,13 +559,11 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
                 
             } catch (err) {
                 console.error(`Failed to export entry ${entry.id}`, err);
-                // Continue exporting other entries even if one fails
             }
             processedCount++;
         }
       }
 
-      // 4. Flush remaining buffer
       if (currentMonthBuffer.length > 0) {
           await zipWriter.add(`${currentMonthKey}.json`, new TextReader(JSON.stringify(currentMonthBuffer, null, 2)));
       }
@@ -619,7 +571,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       onProgress("Finalizing ZIP...");
       await yieldToMain();
       
-      // 5. Close ZIP and trigger download
       const blob = await zipWriter.close();
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -644,17 +595,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     
     setIsUploadingImage(true);
     try {
-      // 1. Process (Resize/Compress)
       const { blob } = await processImage(file);
-
-      // 2. Encrypt
       const buffer = await blob.arrayBuffer();
       const { iv, data } = await encryptBinary(key, buffer);
 
-      const fileName = `${session.user.id}/${Date.now()}.bin`; // .bin because it's encrypted
+      const fileName = `${session.user.id}/${Date.now()}.bin`;
       const encryptedBlob = new Blob([data], { type: 'application/octet-stream' });
 
-      // 3. Upload to 'diary-images' bucket
       const { error: uploadError } = await supabase.storage
           .from('diary-images')
           .upload(fileName, encryptedBlob, {
@@ -664,46 +611,34 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 
       if (uploadError) throw uploadError;
       
-      // 4. Insert Placeholder with Metadata into Editor
       const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
       const metadata = JSON.stringify({ path: fileName, iv: iv });
       
-      // Insert the image with our secure placeholder
-      quill.insertEmbed(range.index, 'image', SECURE_PLACEHOLDER, 'user');
-      
-      // Format it immediately with attributes
-      // Note: We select the range to ensure formatting applies to the specific image we just inserted
-      quill.setSelection(range.index, 1);
-      quill.format('alt', metadata);
-      quill.format('class', 'secure-diary-image');
+      // ATOMIC INSERTION: Use our custom 'image' blot which accepts an object.
+      // This sets src, alt, class, and data-secure-metadata all at once.
+      quill.insertEmbed(range.index, 'image', {
+          src: SECURE_PLACEHOLDER,
+          alt: "Secure Image", // Simple fallback alt text
+          className: 'secure-diary-image',
+          dataset: {
+              secureMetadata: metadata
+          }
+      }, 'user');
       
       // Move selection past image
       quill.setSelection(range.index + 1, 0, 'user');
       
-      // 5. Instant Preview
-      // Instead of complex DOM traversal, we use a simpler approach:
-      // We create the blob URL and attempt to find the specific image we just created.
-      // We search for an image with the exact placeholder SRC and the metadata we just added.
+      // Instant Preview: Find the specific image we just created
       setTimeout(() => {
           try {
-             // Refetch root to be safe
              const root = editorRef.current?.getEditor()?.root;
              if (!root) return;
              
-             const images = root.querySelectorAll('img.secure-diary-image');
-             let targetImg: HTMLImageElement | null = null;
+             // Find the image with the matching metadata we just inserted
+             const images = root.querySelectorAll(`img.secure-diary-image[data-secure-metadata='${metadata}']`);
              
-             for(let i = 0; i < images.length; i++) {
-                 const img = images[i] as HTMLImageElement;
-                 const alt = img.getAttribute('alt');
-                 // Check if this is the image we just added by matching the unique filename path in alt
-                 if (alt && alt.includes(fileName) && img.src === SECURE_PLACEHOLDER) {
-                     targetImg = img;
-                     break;
-                 }
-             }
-             
-             if (targetImg) {
+             if (images.length > 0) {
+                 const targetImg = images[0] as HTMLImageElement;
                  const url = URL.createObjectURL(blob);
                  targetImg.src = url;
                  targetImg.style.opacity = '1';
@@ -733,11 +668,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         const range = quill.getSelection();
         if(range) (quill as any).emitter.emit('selection-change', range, range, 'user');
     }, 0);
-  };
-
-
-  const toLocalDateString = (date: Date): string => {
-    return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
   };
 
   const handleEditEntry = (entry: DiaryEntry) => {
@@ -775,8 +705,8 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
 
   const renderMainView = () => {
     switch (activeView) {
-      case 'calendar': return <CalendarView entries={entries} onSelectDate={handleDateSelect} onBack={() => changeView('timeline')} />;
-      case 'search': return <SearchView entries={entries} onSelectEntry={(id) => handleEditEntry(entries.find(e => e.id === id)!)} onBack={() => changeView('timeline')} />;
+      case 'calendar': return <CalendarView entries={entries} onSelectDate={handleDateSelect} onBack={() => setActiveView('timeline')} />;
+      case 'search': return <SearchView entries={entries} onSelectEntry={(id) => handleEditEntry(entries.find(e => e.id === id)!)} onBack={() => setActiveView('timeline')} />;
       case 'profile': return (
         <ProfileView
             session={session}
@@ -802,12 +732,15 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
         
         let entriesToShow = entries;
         
-        // Apply Date Filter
         if (selectedDate) {
-             entriesToShow = entriesToShow.filter(e => toLocalDateString(new Date(e.created_at)) === toLocalDateString(selectedDate));
+             const dateStr = new Date(selectedDate.getTime() - (selectedDate.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+             entriesToShow = entriesToShow.filter(e => {
+                 const eDate = new Date(e.created_at);
+                 const eDateStr = new Date(eDate.getTime() - (eDate.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
+                 return eDateStr === dateStr;
+             });
         }
         
-        // Apply Journal Filter
         if (activeJournal) {
             entriesToShow = entriesToShow.filter(e => (e.journal || 'Personal') === activeJournal);
         }
@@ -850,7 +783,6 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       />
       {!isLeftSidebarVisible && <HamburgerMenu onClick={() => setLeftSidebarVisible(true)} />}
       
-      {/* Backdrop for mobile sidebar */}
       {isLeftSidebarVisible && (
           <div 
             className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 md:hidden"
@@ -871,13 +803,10 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
           onSelectJournal={handleJournalSelect}
         />
         
-        {/* Main Content Area - Ensures min-w-0 to prevent flex child overflow issues */}
         <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto min-w-0 w-full">
           {editingEntry ? (
             <DiaryEditor 
               ref={editorRef}
-              // Use a stable key for new entries and drafts (where ID is empty) to prevent re-mounting
-              // and loss of editor state when metadata (like mood) updates.
               key={(typeof editingEntry === 'object' && editingEntry.id) ? editingEntry.id : 'draft_session'}
               entry={typeof editingEntry === 'object' ? editingEntry : undefined}
               onSave={handleInitiateSave}
@@ -900,16 +829,13 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
           )}
         </main>
 
-        {/* Tools Panel Logic: Overlay on Mobile, Sidebar on Desktop */}
         {editingEntry && isToolsPanelVisible && (
            <>
-              {/* Mobile Backdrop */}
               <div 
                   className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 md:hidden"
                   onClick={() => setToolsPanelVisible(false)}
                   aria-hidden="true"
               />
-              {/* Panel Container */}
               <div className="fixed inset-y-0 right-0 z-30 h-full w-64 shadow-2xl md:relative md:shadow-none md:z-auto animate-slide-in-right md:animate-none">
                 <ToolsPanel 
                   entry={editingEntry}

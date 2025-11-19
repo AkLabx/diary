@@ -6,42 +6,55 @@ import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
 
 // --- Quill Customization ---
-// We need to get the Quill constructor from the ReactQuill component.
-// This allows us to register custom formats before the editor is initialized.
 const Quill = (ReactQuill as any).Quill; 
 if (Quill) {
-    const Image = Quill.import('formats/image');
-    // Override the default formats method to include our custom styles
-    const oldFormats = Image.formats;
-    Image.formats = function(domNode: HTMLElement) {
-        const formats = oldFormats.call(this, domNode);
-        if (domNode.style.width) formats.width = domNode.style.width;
-        if (domNode.style.float) formats.float = domNode.style.float;
-        if (domNode.style.margin) formats.margin = domNode.style.margin;
-        // Preserve Class and Alt for E2EE metadata
-        if (domNode.hasAttribute('class')) formats.class = domNode.getAttribute('class');
-        if (domNode.hasAttribute('alt')) formats.alt = domNode.getAttribute('alt');
-        return formats;
-    }
+    // Import the base Image Blot
+    const BaseImage = Quill.import('formats/image');
 
-    // Register style attributors so Quill knows how to handle them
+    // Extend the Image Blot to support our custom attributes natively
+    class SecureImage extends BaseImage {
+        static create(value: any) {
+            // Allow creating from a string (normal URL) or an object (our custom secure data)
+            const node = super.create(typeof value === 'string' ? value : value.src);
+            
+            if (typeof value === 'object') {
+                if (value.alt) node.setAttribute('alt', value.alt);
+                if (value.className) node.setAttribute('class', value.className);
+                if (value.dataset?.secureMetadata) {
+                     node.setAttribute('data-secure-metadata', value.dataset.secureMetadata);
+                }
+            }
+            return node;
+        }
+
+        static value(node: HTMLElement) {
+            return {
+                src: node.getAttribute('src'),
+                alt: node.getAttribute('alt'),
+                className: node.getAttribute('class'),
+                dataset: {
+                    secureMetadata: node.getAttribute('data-secure-metadata')
+                }
+            };
+        }
+    }
+    
+    // Explicitly define the blotName and tagName so it overrides the default 'image'
+    SecureImage.blotName = 'image';
+    SecureImage.tagName = 'IMG';
+
+    Quill.register(SecureImage, true);
+
+    // Register style attributors so Quill knows how to handle resize/align styles
     const Parchment = Quill.import('parchment');
     const widthStyle = new Parchment.Attributor.Style('width', 'width');
     const floatStyle = new Parchment.Attributor.Style('float', 'float');
     const marginStyle = new Parchment.Attributor.Style('margin', 'margin');
     
-    // Register Class and Alt attributors (Attributes, not Styles)
-    // CRITICAL FIX: Scope.ANY allow these attributes on Embeds (Images), not just Inline text.
-    const classAttribute = new Parchment.Attributor.Attribute('class', 'class', { scope: Parchment.Scope.ANY });
-    const altAttribute = new Parchment.Attributor.Attribute('alt', 'alt', { scope: Parchment.Scope.ANY });
-
     Quill.register(widthStyle, true);
     Quill.register(floatStyle, true);
     Quill.register(marginStyle, true);
-    Quill.register(classAttribute, true);
-    Quill.register(altAttribute, true);
 
-    // Register align style for block elements (like paragraphs containing images)
     const AlignStyle = Quill.import('attributors/style/align');
     Quill.register(AlignStyle, true);
 }
@@ -72,7 +85,6 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const [entryDate, setEntryDate] = useState(new Date());
 
   const quillRef = useRef<ReactQuill>(null);
-  // Track the ID of the entry currently loaded into state to prevent unnecessary overwrites.
   const loadedIdRef = useRef<string | null>('INITIAL_MOUNT');
   
   const { addToast } = useToast();
@@ -89,15 +101,15 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
       for (let i = 0; i < images.length; i++) {
           const img = images[i] as HTMLImageElement;
           const rawSrc = img.getAttribute('src');
-          const altData = img.getAttribute('alt');
+          // Look for metadata in the new data attribute first, fallback to alt for legacy support
+          const metadataStr = img.getAttribute('data-secure-metadata') || img.getAttribute('alt');
 
           // Skip if already decrypted (blob url) or no metadata
-          if (rawSrc?.startsWith('blob:') || !altData) continue;
+          if (rawSrc?.startsWith('blob:') || !metadataStr) continue;
 
           try {
-              const metadata = JSON.parse(altData);
+              const metadata = JSON.parse(metadataStr);
               if (metadata && metadata.path && metadata.iv) {
-                   // Add loading class/style if desired
                    img.style.opacity = '0.5';
                    
                    const { data: encryptedBlob, error } = await supabase.storage
@@ -109,7 +121,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
                    const encryptedBuffer = await encryptedBlob.arrayBuffer();
                    const decryptedBuffer = await decryptBinary(key, encryptedBuffer, metadata.iv);
                    
-                   const decryptedBlob = new Blob([decryptedBuffer], { type: 'image/webp' }); // Assuming webp from upload logic
+                   const decryptedBlob = new Blob([decryptedBuffer], { type: 'image/webp' });
                    const url = URL.createObjectURL(decryptedBlob);
                    
                    img.src = url;
@@ -123,7 +135,6 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
 
   useEffect(() => {
-    // Normalize ID: undefined (new) and '' (draft) are treated as the same 'draft' session.
     const incomingId = entry?.id || 'draft';
     
     if (loadedIdRef.current === incomingId) {
@@ -134,11 +145,9 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
     if (entry) {
       setTitle(entry.title);
-      // When loading content, we just set it. The useEffect below will trigger hydration.
       setContent(entry.content);
       setEntryDate(new Date(entry.created_at));
       
-      // Hydrate images after a brief delay to allow Quill to render
       setTimeout(() => {
           if (quillRef.current) {
               hydrateSecureImages(entry.content, quillRef.current.getEditor());
