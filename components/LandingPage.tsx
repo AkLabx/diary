@@ -76,7 +76,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         
         <button 
           onClick={onGetStarted}
-          className="px-6 py-2.5 bg-white text-indigo-600 font-bold rounded-full shadow-[4px_4px_10px_rgba(0,0,0,0.05),-4px_-4px_10px_rgba(255,255,255,0.8)] hover:shadow-[2px_2px_5px_rgba(0,0,0,0.05),-2px_-2px_5px_rgba(255,255,255,0.8)] hover:translate-y-px transition-all border border-slate-50"
+          className="px-8 py-2.5 rounded-full text-white font-semibold bg-gradient-to-br from-indigo-400 to-purple-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform border border-indigo-300/50"
         >
           Log In
         </button>
@@ -85,25 +85,30 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
       {/* Main Content */}
       <main className="relative z-10 max-w-6xl mx-auto px-6 flex flex-col items-center pb-20">
         
-        {/* 1. THE 3D PHONE (Now at Top) */}
-        <div className="w-full flex justify-center perspective-1000 py-12 sm:py-16">
-           <div className="relative w-[280px] h-[580px] bg-white rounded-[3.5rem] border-[8px] border-[#eef1f5] shadow-[0_50px_100px_-20px_rgba(50,50,93,0.15),0_30px_60px_-30px_rgba(0,0,0,0.15),inset_0_-2px_6px_rgba(0,0,0,0.05)] animate-float-phone preserve-3d ring-1 ring-slate-900/5">
+        {/* 1. THE 3D PHONE (Now at Top, Polished Black Metal) */}
+        <div className="w-full flex justify-center perspective-1000 py-12 sm:py-16 relative">
+           
+           {/* Grounding Shadow - The Floor */}
+           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-56 h-8 bg-black/20 blur-2xl rounded-[100%]" />
+
+           {/* The Phone Body */}
+           <div className="relative w-[280px] h-[580px] bg-slate-900 rounded-[3.5rem] border-[6px] border-slate-950 shadow-[0_0_0_1.5px_rgba(255,255,255,0.15),0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-float-phone preserve-3d">
               
-              {/* Phone Reflection/Gloss */}
-              <div className="absolute inset-0 rounded-[3rem] bg-gradient-to-tr from-white/60 to-transparent pointer-events-none z-20" />
+              {/* Metallic Gloss Reflection */}
+              <div className="absolute inset-0 rounded-[3.2rem] bg-gradient-to-tr from-white/10 via-transparent to-transparent pointer-events-none z-20" />
               
-              {/* Buttons */}
-              <div className="absolute top-24 -right-3 w-1 h-16 bg-slate-200 rounded-r-md" />
-              <div className="absolute top-24 -left-3 w-1 h-10 bg-slate-200 rounded-l-md" />
-              <div className="absolute top-36 -left-3 w-1 h-10 bg-slate-200 rounded-l-md" />
+              {/* Buttons (Darkened) */}
+              <div className="absolute top-24 -right-[7px] w-[7px] h-16 bg-slate-800 rounded-r-md border-l border-slate-950 shadow-sm" />
+              <div className="absolute top-24 -left-[7px] w-[7px] h-10 bg-slate-800 rounded-l-md border-r border-slate-950 shadow-sm" />
+              <div className="absolute top-36 -left-[7px] w-[7px] h-10 bg-slate-800 rounded-l-md border-r border-slate-950 shadow-sm" />
               
-              {/* Notch */}
-              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-7 bg-[#eef1f5] rounded-b-2xl z-30 flex justify-center items-center">
-                  <div className="w-12 h-1.5 bg-slate-300 rounded-full opacity-50" />
+              {/* Notch (Deep Black) */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/3 h-7 bg-black rounded-b-2xl z-30 flex justify-center items-center">
+                  <div className="w-12 h-1.5 bg-slate-800/50 rounded-full" />
               </div>
               
-              {/* Screen Content (Light Mode UI) */}
-              <div className="absolute inset-1 bg-[#FBF8F3] rounded-[3.2rem] overflow-hidden flex flex-col shadow-inner">
+              {/* Screen Content (Light Mode UI for Contrast) */}
+              <div className="absolute inset-[6px] bg-[#FBF8F3] rounded-[3.1rem] overflow-hidden flex flex-col shadow-inner">
                  {/* App Header */}
                  <div className="h-20 bg-white flex items-end pb-4 px-6 justify-between border-b border-slate-100">
                     <div className="w-8 h-8 rounded-full bg-indigo-100 animate-pulse" />
@@ -117,7 +122,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                         <div className="h-3 w-1/2 bg-slate-200/30 rounded" />
                     </div>
                     
-                    {/* The Typing/Encrypting Area - Light Mode */}
+                    {/* The Typing/Encrypting Area */}
                     <div className="p-5 rounded-2xl bg-white shadow-sm border border-slate-100 min-h-[220px] font-serif text-lg relative overflow-hidden flex flex-col">
                         <div className="text-xs font-sans uppercase tracking-wider text-slate-300 mb-4">Nov 18, 2025</div>
                         
@@ -128,7 +133,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                         )}
                         {demoStep === 1 && (
                             <div className="break-all animate-matrix text-emerald-600 font-mono text-xs leading-relaxed opacity-80">
-                                0x9F3a2B1c8D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e
+                                0x9F3a2B1c8D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e5F6a7B8c9D0e1F2a3B4c5D6e7F8a9B0c1D2e3F4a5B6c7D8e9F0a1B2c3D4e
                             </div>
                         )}
                         {demoStep === 2 && (
