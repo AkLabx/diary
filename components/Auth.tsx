@@ -26,7 +26,7 @@ const Auth: React.FC = () => {
 
   if (!isConfigured) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 animate-fade-in">
         <div className="w-full max-w-lg p-8 space-y-4 bg-white dark:bg-slate-800 rounded-lg shadow-md text-center">
           <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-200">Configuration Needed</h1>
           <p className="text-slate-600 dark:text-slate-300">
@@ -98,7 +98,7 @@ const Auth: React.FC = () => {
   const emailProgress = Math.min(email.length / 30, 1);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900">
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 dark:bg-slate-900 animate-fade-in">
       <div className="w-full max-w-md p-8 space-y-6 bg-white dark:bg-slate-800 rounded-lg shadow-md">
         <Monkey 
           focusState={focusState}

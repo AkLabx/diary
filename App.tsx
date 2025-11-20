@@ -4,6 +4,7 @@ import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
 import DiaryApp from './DiaryApp';
+import LandingPage from './components/LandingPage';
 import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
 
@@ -11,6 +12,7 @@ const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [showLanding, setShowLanding] = useState(true);
 
   useEffect(() => {
     // This is the v2 way to get the session
@@ -69,7 +71,15 @@ const App: React.FC = () => {
     <ToastProvider>
       <CryptoProvider>
         <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans">
-          {!session ? <Auth /> : <DiaryApp key={session.user.id} session={session} theme={theme} onToggleTheme={toggleTheme} />}
+          {!session ? (
+            showLanding ? (
+              <LandingPage onGetStarted={() => setShowLanding(false)} />
+            ) : (
+              <Auth />
+            )
+          ) : (
+            <DiaryApp key={session.user.id} session={session} theme={theme} onToggleTheme={toggleTheme} />
+          )}
         </div>
       </CryptoProvider>
     </ToastProvider>
