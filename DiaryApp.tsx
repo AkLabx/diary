@@ -8,7 +8,7 @@ import { fetchWeather } from './lib/weather';
 import { generateSmartTags } from './lib/smartTags';
 import { processImage } from './lib/imageUtils';
 
-// Import zip.js classes. Note: These are provided via importmap in index.html.
+// Import zip.js classes. Note: well These are provided via importmap in index.html.
 // We rely on the import map to resolve '@zip.js/zip.js'.
 // @ts-ignore
 import { ZipWriter, BlobWriter, TextReader } from '@zip.js/zip.js';
