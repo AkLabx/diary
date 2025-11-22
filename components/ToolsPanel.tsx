@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { DiaryEntry } from '../types';
 import AudioRecorder from './AudioRecorder';
 
@@ -34,7 +34,26 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     const currentJournal = (typeof entry === 'object' && entry.journal) ? entry.journal : 'Personal';
     const tempAudioBlob = typeof entry === 'object' ? entry.tempAudioBlob : undefined;
     
+    // Local state for tag input to allow typing commas/spaces without jitter
+    const [tagInput, setTagInput] = useState(currentTags.join(', '));
+
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Sync local tag input with props only when props change externally (e.g. switching entry or smart tags)
+    useEffect(() => {
+        const localParsed = tagInput.split(',').map(t => t.trim()).filter(Boolean);
+        const propTags = currentTags;
+        
+        // Check if semantic content is different
+        const isDifferent = JSON.stringify(localParsed) !== JSON.stringify(propTags);
+        
+        // Only override local input if the data is actually different.
+        // This allows "tag1," to remain "tag1," locally even if prop is ["tag1"].
+        if (isDifferent) {
+            setTagInput(propTags.join(', '));
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentTags]); // We intentionally exclude tagInput to avoid loop on typing
 
     const handleImageInsertClick = () => {
         fileInputRef.current?.click();
@@ -49,7 +68,10 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
         if(fileInputRef.current) fileInputRef.current.value = '';
     };
 
-    const handleTagUpdate = (newTags: string[]) => {
+    const handleTagInput = (val: string) => {
+        setTagInput(val);
+        const newTags = val.split(',').map(t => t.trim()).filter(Boolean);
+        // Update parent immediately
         onUpdateEntry({ tags: newTags });
     }
     
@@ -189,8 +211,8 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                 <div>
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Tags</h3>
                     <textarea 
-                        value={currentTags.join(', ')}
-                        onChange={(e) => handleTagUpdate(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                        value={tagInput}
+                        onChange={(e) => handleTagInput(e.target.value)}
                         placeholder="travel, work..."
                         className="w-full h-20 p-2 text-sm rounded-md bg-slate-100 dark:bg-slate-800 border-transparent focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
