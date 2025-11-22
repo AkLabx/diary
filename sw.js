@@ -1,12 +1,12 @@
 
-const CACHE_NAME = 'diary-cache-v8';
+const CACHE_NAME = 'diary-cache-v9';
 const BASE_PATH = '/diary';
 
 const urlsToCache = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
   `${BASE_PATH}/index.css`,
-  `${BASE_PATH}/pwa-icon.svg`, // Updated to new SVG icon
+  `${BASE_PATH}/pwa-icon.svg`,
   `${BASE_PATH}/manifest.json`,
   `${BASE_PATH}/privacy.html`,
   `${BASE_PATH}/terms.html`,
@@ -30,6 +30,8 @@ self.addEventListener('install', (event) => {
         return cache.addAll(urlsToCache);
       })
   );
+  // Force the waiting service worker to become the active service worker.
+  self.skipWaiting();
 });
 
 // Activate: Clean up old caches to ensure the new SW takes control
@@ -47,6 +49,8 @@ self.addEventListener('activate', (event) => {
       );
     })
   );
+  // Tell the active service worker to take control of the page immediately.
+  event.waitUntil(self.clients.claim());
 });
 
 // Fetch: Implement a robust strategy for SPAs and offline functionality

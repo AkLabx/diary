@@ -7,13 +7,8 @@
   "display": "standalone",
   "background_color": "#FBF8F3",
   "theme_color": "#FBF8F3",
+  "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/diary/pwa-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
     {
       "src": "/diary/pwa-icon.svg",
       "sizes": "192x192",
@@ -29,17 +24,17 @@
   ],
   "screenshots": [
     {
-      "src": "https://via.placeholder.com/720x1280/6366f1/ffffff?text=Diary+Mobile+View",
+      "src": "https://via.placeholder.com/720x1280/6366f1/ffffff?text=Mobile+Timeline",
       "sizes": "720x1280",
       "type": "image/png",
-      "label": "Mobile Timeline"
+      "label": "Timeline View"
     },
     {
-      "src": "https://via.placeholder.com/1280x720/FBF8F3/334155?text=Diary+Desktop+View",
+      "src": "https://via.placeholder.com/1280x720/FBF8F3/334155?text=Desktop+Editor",
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Desktop Editor"
+      "label": "Editor View"
     }
   ]
 }
