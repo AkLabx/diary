@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "homepage": "https://aaloksharmaofficial.github.io",
+  "homepage": "https://aklabx.github.io/diary/",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
