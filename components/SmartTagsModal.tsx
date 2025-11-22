@@ -86,9 +86,17 @@ const SmartTagsModal: React.FC<SmartTagsModalProps> = ({ isOpen, existingTags, s
             )}
           </div>
           
-          <p className="text-xs text-slate-400 mt-3">
-            <span className="font-semibold text-amber-500">Note:</span> Tags are stored unencrypted to help with searching. Remove any sensitive words.
-          </p>
+          <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-100 dark:border-blue-800 flex gap-3">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div className="text-xs text-slate-600 dark:text-slate-300">
+                <p className="font-semibold mb-1">Privacy Check:</p>
+                <p>1. Analysis happens <strong>offline</strong> on your device.</p>
+                <p>2. Tags are saved as <strong>unencrypted metadata</strong> (for search).</p>
+                <p>3. Your diary body remains <strong>fully encrypted</strong>.</p>
+            </div>
+          </div>
         </div>
 
         <div className="bg-slate-50 dark:bg-slate-900/80 px-6 py-4 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-700">
