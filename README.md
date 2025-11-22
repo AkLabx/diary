@@ -6,7 +6,7 @@
 
 A simple and elegant web application to write and save your life events. All your data is end-to-end encrypted and stored securely.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1Yn1tJRanxKZPeF1WvrS5gwznXM_2b1-D
+View your app live: https://aklabx.github.io/diary/
 
 ## Run Locally
 

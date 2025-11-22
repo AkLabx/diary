@@ -1,14 +1,15 @@
-const CACHE_NAME = 'diary-cache-v5'; // Updated version to trigger SW update
+const CACHE_NAME = 'diary-cache-v6';
+const BASE_PATH = '/diary';
 
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/index.css',
-  '/icon-192x192.png',
-  '/icon-512x512.png',
-  '/manifest.json',
-  '/privacy.html',
-  '/terms.html'
+  `${BASE_PATH}/`,
+  `${BASE_PATH}/index.html`,
+  `${BASE_PATH}/index.css`,
+  `${BASE_PATH}/icon-192x192.png`,
+  `${BASE_PATH}/icon-512x512.png`,
+  `${BASE_PATH}/manifest.json`,
+  `${BASE_PATH}/privacy.html`,
+  `${BASE_PATH}/terms.html`
 ];
 
 // Install: Cache the app shell
@@ -52,14 +53,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(event.request).catch(() => {
         // If the network fails, serve the main app page from the cache.
-        return caches.match('/index.html');
+        // Note: We explicitly check for the base path index.html
+        return caches.match(`${BASE_PATH}/index.html`);
       })
     );
     return;
   }
 
   // For all other requests (assets like CSS, images), use a cache-first strategy.
-  // This is fast and reliable for static assets.
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {

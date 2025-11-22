@@ -45,7 +45,8 @@ const App: React.FC = () => {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').then(registration => {
+        // Important: The SW must be registered at the scope of the GitHub Pages repo subpath
+        navigator.serviceWorker.register('/diary/sw.js', { scope: '/diary/' }).then(registration => {
           console.log('ServiceWorker registration successful with scope: ', registration.scope);
         }).catch(err => {
           console.log('ServiceWorker registration failed: ', err);
