@@ -1,13 +1,12 @@
 
-const CACHE_NAME = 'diary-cache-v7';
+const CACHE_NAME = 'diary-cache-v8';
 const BASE_PATH = '/diary';
 
 const urlsToCache = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
   `${BASE_PATH}/index.css`,
-  `${BASE_PATH}/icon-192x192.png`,
-  `${BASE_PATH}/icon-512x512.png`,
+  `${BASE_PATH}/pwa-icon.svg`, // Updated to new SVG icon
   `${BASE_PATH}/manifest.json`,
   `${BASE_PATH}/privacy.html`,
   `${BASE_PATH}/terms.html`,
