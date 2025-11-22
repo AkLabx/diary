@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { generateSalt, deriveKey, encrypt, exportKey, KEY_CHECK_STRING } from '../lib/crypto';
 import { generateRecoveryKit } from '../lib/recoveryKit';
-// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
-import type { Session } from '@supabase/supabase-js';
+
+type Session = any;
 
 
 interface InitializeEncryptionProps {

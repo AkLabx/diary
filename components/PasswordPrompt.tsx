@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useCrypto } from '../contexts/CryptoContext';
-// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
-import type { Session } from '@supabase/supabase-js';
+type Session = any;
 import { BiometricData } from '../types';
 import { unlockBiometric, isBiometricSupported } from '../lib/webauthn';
 

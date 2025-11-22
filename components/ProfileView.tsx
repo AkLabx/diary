@@ -1,5 +1,5 @@
 import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
-import type { Session } from '@supabase/supabase-js';
+type Session = any;
 import { Profile } from '../types';
 import { useCrypto } from '../contexts/CryptoContext';
 import { exportKey } from '../lib/crypto';

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
 import { 
   deriveAndVerifyKey as deriveAndVerifyKeyUtil, 
   encrypt as encryptUtil, 
@@ -15,12 +15,17 @@ interface CryptoContextType {
   decrypt: (key: CryptoKey, ciphertext: string, iv: string) => Promise<string>;
   encryptBinary: (key: CryptoKey, data: ArrayBuffer) => Promise<{ iv: string; data: ArrayBuffer; }>;
   decryptBinary: (key: CryptoKey, data: ArrayBuffer, iv: string) => Promise<ArrayBuffer>;
+  lock: () => void;
 }
 
 const CryptoContext = createContext<CryptoContextType | undefined>(undefined);
 
 export const CryptoProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [key, setKey] = useState<CryptoKey | null>(null);
+
+  const lock = useCallback(() => {
+    setKey(null);
+  }, []);
 
   const value = {
     key,
@@ -30,6 +35,7 @@ export const CryptoProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     decrypt: decryptUtil,
     encryptBinary: encryptBinaryUtil,
     decryptBinary: decryptBinaryUtil,
+    lock,
   };
 
   return (

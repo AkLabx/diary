@@ -79,13 +79,13 @@ const Auth: React.FC<AuthProps> = ({ onBackToHome }) => {
   }
   
   const handleSignUp = async () => {
-      const { error } = await supabase.auth.signUp({ email, password });
+      const { error } = await (supabase.auth as any).signUp({ email, password });
       if (error) throw error;
       addToast('Check your email for the confirmation link!', 'success');
   }
 
   const handleSignIn = async () => {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      const { error } = await (supabase.auth as any).signInWithPassword({ email, password });
       if (error) throw error;
   }
   
@@ -93,7 +93,7 @@ const Auth: React.FC<AuthProps> = ({ onBackToHome }) => {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
+      const { error } = await (supabase.auth as any).signInWithOAuth({
         provider: 'google',
       });
       if (error) throw error;

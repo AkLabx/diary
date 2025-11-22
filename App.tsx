@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-// Fix: Use 'import type' for Session to resolve potential module resolution issues with older Supabase versions.
-import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
 import DiaryApp from './DiaryApp';
 import LandingPage from './components/LandingPage';
 import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
+
+type Session = any;
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
@@ -16,7 +16,7 @@ const App: React.FC = () => {
 
   useEffect(() => {
     // This is the v2 way to get the session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    (supabase.auth as any).getSession().then(({ data: { session } }: any) => {
       setSession(session);
       setLoading(false);
     });
@@ -24,7 +24,7 @@ const App: React.FC = () => {
     // This is the v2 listener
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = (supabase.auth as any).onAuthStateChange((_event: any, session: any) => {
       setSession(session);
     });
 

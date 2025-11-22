@@ -1,6 +1,4 @@
-
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import type { Session } from '@supabase/supabase-js';
 import { supabase } from './lib/supabaseClient';
 import { DiaryEntry, ViewState, Profile, Weather } from './types';
 import { useCrypto } from './contexts/CryptoContext';
@@ -30,6 +28,8 @@ import HamburgerMenu from './components/HamburgerMenu';
 import ConfirmationModal from './components/ConfirmationModal';
 import SmartTagsModal from './components/SmartTagsModal';
 
+type Session = any;
+
 interface RangeStatic {
   index: number;
   length: number;
@@ -58,7 +58,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
   const [editingEntry, setEditingEntry] = useState<DiaryEntry | 'new' | null>(null);
   const [selectedEntry, setSelectedEntry] = useState<DiaryEntry | null>(null);
   
-  const { key, setKey, encrypt, decrypt, encryptBinary } = useCrypto();
+  const { key, setKey, encrypt, decrypt, encryptBinary, lock } = useCrypto();
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('checking');
   const [profile, setProfile] = useState<Profile | null>(null);
   
@@ -111,7 +111,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
       } catch (error) {
         console.error("Error checking profile:", error);
         addToast("Error accessing profile. Please log out and in again.", "error");
-        await supabase.auth.signOut();
+        await (supabase.auth as any).signOut();
       }
     };
     checkKeyStatus();
@@ -121,6 +121,32 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setKey(newKey);
     setKeyStatus('ready');
   };
+
+  // Auto-Lock Logic: Lock app if in background for > 2 minutes
+  useEffect(() => {
+      const handleVisibilityChange = () => {
+          if (document.visibilityState === 'hidden') {
+              // App went to background
+              localStorage.setItem('diary_last_active', Date.now().toString());
+          } else if (document.visibilityState === 'visible') {
+              // App came to foreground
+              const lastActive = localStorage.getItem('diary_last_active');
+              if (lastActive) {
+                  const inactiveTime = Date.now() - parseInt(lastActive, 10);
+                  // 2 minutes = 120 * 1000 ms
+                  if (inactiveTime > 120000 && key) {
+                      console.log("Auto-locking due to inactivity");
+                      lock();
+                      addToast("Diary locked for security.", "info");
+                  }
+                  localStorage.removeItem('diary_last_active');
+              }
+          }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [key, lock, addToast]);
   
   const fetchProfile = useCallback(async () => {
     try {
@@ -463,7 +489,7 @@ const DiaryApp: React.FC<DiaryAppProps> = ({ session, theme, onToggleTheme }) =>
     setSelectedEntry(null);
   };
 
-  const handleSignOut = async () => { await supabase.auth.signOut(); };
+  const handleSignOut = async () => { await (supabase.auth as any).signOut(); };
 
   const handleUpdateProfile = async (updates: { full_name?: string }) => {
     try {
