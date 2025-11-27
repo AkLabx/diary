@@ -79,7 +79,13 @@ const Auth: React.FC<AuthProps> = ({ onBackToHome }) => {
   }
   
   const handleSignUp = async () => {
-      const { error } = await (supabase.auth as any).signUp({ email, password });
+      const { error } = await (supabase.auth as any).signUp({ 
+        email, 
+        password,
+        options: {
+          emailRedirectTo: 'https://aklabx.github.io/diary/'
+        }
+      });
       if (error) throw error;
       addToast('Check your email for the confirmation link!', 'success');
   }
@@ -95,6 +101,9 @@ const Auth: React.FC<AuthProps> = ({ onBackToHome }) => {
     try {
       const { error } = await (supabase.auth as any).signInWithOAuth({
         provider: 'google',
+        options: {
+            redirectTo: 'https://aklabx.github.io/diary/'
+        }
       });
       if (error) throw error;
     } catch (error: any) {
@@ -239,7 +248,7 @@ const Auth: React.FC<AuthProps> = ({ onBackToHome }) => {
                 <div className="w-full border-t border-slate-200 dark:border-slate-600" />
             </div>
             <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400">Or continue with</span>
+                <span className="px-2 bg-.white dark:bg-slate-800 text-slate-500 dark:text-slate-400">Or continue with</span>
             </div>
         </div>
         
