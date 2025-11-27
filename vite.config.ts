@@ -12,5 +12,10 @@ export default defineConfig({
       // They are provided via <script type="importmap"> in index.html
       external: ['@zip.js/zip.js', 'compromise']
     }
+  },
+  // Add this to prevent Vite from trying to pre-bundle these dependencies
+  // during development. They are handled by the importmap.
+  optimizeDeps: {
+    exclude: ['@zip.js/zip.js', 'compromise']
   }
 })
