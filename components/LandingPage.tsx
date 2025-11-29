@@ -1,10 +1,8 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-interface LandingPageProps {
-  onGetStarted: () => void;
-}
-
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
+const LandingPage: React.FC = () => {
+  const navigate = useNavigate();
   const [demoStep, setDemoStep] = useState(0);
   // 0: Typing
   // 1: Encrypting
@@ -54,6 +52,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
     return () => clearInterval(interval);
   }, []);
 
+  const handleGetStarted = () => {
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen bg-[#FBF8F3] text-slate-800 font-sans overflow-x-hidden selection:bg-indigo-200">
       
@@ -75,7 +77,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         </div>
         
         <button 
-          onClick={onGetStarted}
+          onClick={handleGetStarted}
           className="px-8 py-2.5 rounded-full text-white font-semibold bg-gradient-to-br from-indigo-400 to-purple-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform border border-indigo-300/50"
         >
           Log In
@@ -173,7 +175,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
             <div className="flex flex-col sm:flex-row items-center gap-4 justify-center pt-4">
                 <button 
-                onClick={onGetStarted}
+                onClick={handleGetStarted}
                 className="px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-lg transition-all hover:scale-105 hover:-translate-y-1 shadow-xl shadow-indigo-200 flex items-center gap-2"
                 >
                 Get Started for Free
@@ -366,7 +368,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
                     Join thousands of others who have reclaimed their privacy. No credit card required.
                 </p>
                  <button 
-                    onClick={onGetStarted}
+                    onClick={handleGetStarted}
                     className="px-10 py-4 bg-white text-indigo-900 rounded-full font-bold text-lg hover:bg-indigo-50 transition-all hover:scale-105 shadow-xl"
                 >
                     Create Your Sanctuary
