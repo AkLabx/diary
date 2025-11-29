@@ -5,11 +5,8 @@ const BASE_PATH = '/diary';
 const urlsToCache = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
-  `${BASE_PATH}/index.css`,
   `${BASE_PATH}/pwa-icon.svg`,
   `${BASE_PATH}/manifest.json`,
-  `${BASE_PATH}/privacy.html`,
-  `${BASE_PATH}/terms.html`,
   // Cache external dependencies for offline functionality
   'https://aistudiocdn.com/react@^18.2.0',
   'https://aistudiocdn.com/react-dom@^18.2.0/client',

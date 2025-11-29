@@ -1,39 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Terms of Use - Diary</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com?plugins=typography"></script>
-    <script>
-      // Apply dark mode based on localStorage
-      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark')
-      } else {
-        document.documentElement.classList.remove('dark')
-      }
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              'serif': ['Lora', 'serif'],
-              'sans': ['Inter', 'sans-serif'],
-            }
-          }
-        }
-      }
-    </script>
-</head>
-<body class="bg-slate-50 dark:bg-slate-900 font-serif text-slate-700 dark:text-slate-300">
-    <div class="max-w-4xl mx-auto p-8 sm:p-12">
-        <h1 class="text-4xl font-bold text-slate-800 dark:text-slate-100 mb-4">Terms of Use</h1>
-        <p class="text-sm text-slate-500 dark:text-slate-400">Last updated: October 26, 2024</p>
+import React from 'react';
 
-        <article class="prose prose-lg dark:prose-invert mt-8 max-w-none">
+const TermsOfUse: React.FC = () => {
+  return (
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-900 font-serif text-slate-700 dark:text-slate-300">
+      <div className="max-w-4xl mx-auto p-8 sm:p-12">
+        <h1 className="text-4xl font-bold text-slate-800 dark:text-slate-100 mb-4">Terms of Use</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400">Last updated: October 26, 2024</p>
+
+        <article className="prose prose-lg dark:prose-invert mt-8 max-w-none">
             <h2>1. Acceptance of Terms</h2>
             <p>By accessing or using the Diary application ("Service"), you agree to be bound by these Terms of Use ("Terms"). If you disagree with any part of the terms, then you may not access the Service.</p>
 
@@ -64,6 +38,9 @@
             <h2>Contact Us</h2>
             <p>If you have any questions about these Terms, please contact us.</p>
         </article>
+      </div>
     </div>
-</body>
-</html>
+  );
+};
+
+export default TermsOfUse;
