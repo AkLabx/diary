@@ -1,34 +1,50 @@
 import React, { useState, useEffect } from 'react';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
-import DiaryApp from './DiaryApp';
 import LandingPage from './components/LandingPage';
+import PrivacyPolicy from './components/PrivacyPolicy';
+import TermsOfUse from './components/TermsOfUse';
+import NotFound from './components/NotFound';
+import DiaryLayout from './DiaryLayout';
 import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
+import { Session } from '@supabase/supabase-js';
 
-type Session = any;
+// Route Components (to be created in the next step, but importing them for structure)
+import Timeline from './routes/Timeline';
+import Calendar from './routes/Calendar';
+import Search from './routes/Search';
+import Profile from './routes/Profile';
+import EntryDetail from './routes/EntryDetail';
+import Editor from './routes/Editor';
+
+const ProtectedRoute = ({ children, session }: { children: React.ReactNode, session: Session | null }) => {
+  const location = useLocation();
+  if (!session) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  return <>{children}</>;
+};
 
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
-  const [showLanding, setShowLanding] = useState(true);
 
   useEffect(() => {
-    // This is the v2 way to get the session
-    (supabase.auth as any).getSession().then(({ data: { session } }: any) => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoading(false);
     });
 
-    // This is the v2 listener
     const {
       data: { subscription },
-    } = (supabase.auth as any).onAuthStateChange((_event: any, session: any) => {
+    } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
 
-    return () => subscription?.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -45,7 +61,6 @@ const App: React.FC = () => {
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        // Important: The SW must be registered at the scope of the GitHub Pages repo subpath
         navigator.serviceWorker.register('/diary/sw.js', { scope: '/diary/' }).then(registration => {
           console.log('ServiceWorker registration successful with scope: ', registration.scope);
         }).catch(err => {
@@ -59,29 +74,44 @@ const App: React.FC = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
-
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
-        <p className="text-slate-500 dark:text-slate-400">Loading...</p>
-      </div>
-    );
+     return (
+       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+         <p className="text-slate-500 dark:text-slate-400">Loading...</p>
+       </div>
+     );
   }
 
   return (
     <ToastProvider>
       <CryptoProvider>
-        <div className="min-h-screen bg-[#FBF8F3] dark:bg-slate-900 font-sans">
-          {!session ? (
-            showLanding ? (
-              <LandingPage onGetStarted={() => setShowLanding(false)} />
-            ) : (
-              <Auth onBackToHome={() => setShowLanding(true)} />
-            )
-          ) : (
-            <DiaryApp key={session.user.id} session={session} theme={theme} onToggleTheme={toggleTheme} />
-          )}
-        </div>
+        <HashRouter>
+          <Routes>
+            {/* Public Routes */}
+            <Route path="/" element={session ? <Navigate to="/app" /> : <LandingPage />} />
+            <Route path="/login" element={session ? <Navigate to="/app" /> : <Auth />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/terms" element={<TermsOfUse />} />
+
+            {/* Protected App Routes */}
+            <Route path="/app" element={
+              <ProtectedRoute session={session}>
+                <DiaryLayout session={session} theme={theme} onToggleTheme={toggleTheme} />
+              </ProtectedRoute>
+            }>
+               <Route index element={<Timeline />} />
+               <Route path="calendar" element={<Calendar />} />
+               <Route path="search" element={<Search />} />
+               <Route path="profile" element={<Profile />} />
+               <Route path="entry/:id" element={<EntryDetail />} />
+               <Route path="new" element={<Editor />} />
+               <Route path="edit/:id" element={<Editor />} />
+            </Route>
+
+            {/* 404 */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </HashRouter>
       </CryptoProvider>
     </ToastProvider>
   );
