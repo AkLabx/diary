@@ -5,7 +5,6 @@ const BASE_PATH = '/diary';
 const urlsToCache = [
   `${BASE_PATH}/`,
   `${BASE_PATH}/index.html`,
-  `${BASE_PATH}/index.css`,
   `${BASE_PATH}/pwa-icon.svg`,
   `${BASE_PATH}/manifest.json`,
   // Cache external dependencies for offline functionality
