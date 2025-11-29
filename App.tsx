@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
@@ -85,7 +85,7 @@ const App: React.FC = () => {
   return (
     <ToastProvider>
       <CryptoProvider>
-        <BrowserRouter basename="/diary/">
+        <HashRouter>
           <Routes>
             {/* Public Routes */}
             <Route path="/" element={session ? <Navigate to="/app" /> : <LandingPage />} />
@@ -111,7 +111,7 @@ const App: React.FC = () => {
             {/* 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </CryptoProvider>
     </ToastProvider>
   );
