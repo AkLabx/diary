@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { DiaryEntry, Profile } from '../types';
 import OnThisDay from './OnThisDay';
 import { formatTimestamp } from '../lib/dateUtils';
+import { Link } from 'react-router-dom';
 
 interface DiaryListProps {
   entries: DiaryEntry[];
@@ -16,10 +17,9 @@ interface DiaryListProps {
 // Sub-component to handle individual item visibility logic
 const DiaryListItem: React.FC<{ 
     entry: DiaryEntry; 
-    onSelect: () => void; 
     onLoadContent: (id: string) => void; 
-}> = ({ entry, onSelect, onLoadContent }) => {
-    const ref = useRef<HTMLDivElement>(null);
+}> = ({ entry, onLoadContent }) => {
+    const ref = useRef<HTMLAnchorElement>(null);
 
     useEffect(() => {
         // If already decrypted or currently loading, we don't need to observe
@@ -48,10 +48,10 @@ const DiaryListItem: React.FC<{
     };
 
     return (
-        <div
+        <Link
             ref={ref}
-            onClick={onSelect}
-            className="bg-white/50 dark:bg-slate-800/50 p-6 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600"
+            to={`/app/entry/${entry.id}`}
+            className="block bg-white/50 dark:bg-slate-800/50 p-6 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-indigo-600"
         >
             <div className="flex justify-between items-start gap-4">
                 <div className="flex flex-col gap-1">
@@ -102,7 +102,7 @@ const DiaryListItem: React.FC<{
                     </div>
                 )}
             </div>
-        </div>
+        </Link>
     );
 };
 
@@ -169,7 +169,6 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
           <DiaryListItem 
              key={entry.id} 
              entry={entry} 
-             onSelect={() => onSelectEntry(entry.id)}
              onLoadContent={onLoadContent}
           />
         ))}

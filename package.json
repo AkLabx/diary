@@ -21,7 +21,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-easy-crop": "^5.0.7",
-    "react-quill": "^2.0.0"
+    "react-quill": "^2.0.0",
+    "react-router-dom": "^7.9.6"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.13",
