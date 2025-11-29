@@ -12,6 +12,24 @@ const LandingPage: React.FC = () => {
   const [wordIndex, setWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    setDeferredPrompt(null);
+  };
 
   // Typewriter Effect for the Headline
   useEffect(() => {
@@ -76,12 +94,25 @@ const LandingPage: React.FC = () => {
            <span>Diary</span>
         </div>
         
-        <button 
-          onClick={handleGetStarted}
-          className="px-8 py-2.5 rounded-full text-white font-semibold bg-gradient-to-br from-indigo-400 to-purple-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform border border-indigo-300/50"
-        >
-          Log In
-        </button>
+        <div className="flex items-center gap-4">
+          {deferredPrompt && (
+             <button
+                onClick={handleInstallClick}
+                className="hidden sm:flex items-center gap-2 px-5 py-2.5 rounded-full text-indigo-700 font-semibold bg-white shadow-sm border border-indigo-100 hover:bg-indigo-50 transition-all hover:scale-105"
+             >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+                Install App
+             </button>
+          )}
+          <button
+            onClick={handleGetStarted}
+            className="px-8 py-2.5 rounded-full text-white font-semibold bg-gradient-to-br from-indigo-400 to-purple-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform border border-indigo-300/50"
+          >
+            Log In
+          </button>
+        </div>
       </nav>
 
       {/* Main Content */}
@@ -183,6 +214,19 @@ const LandingPage: React.FC = () => {
                     <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
                 </svg>
                 </button>
+
+                {deferredPrompt && (
+                   <button
+                      onClick={handleInstallClick}
+                      className="px-8 py-4 bg-white text-indigo-700 border-2 border-indigo-100 rounded-2xl font-bold text-lg transition-all hover:scale-105 hover:-translate-y-1 shadow-lg hover:shadow-xl flex items-center gap-2"
+                   >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                         <path d="M10.75 2.75a.75.75 0 00-1.5 0v8.614L6.295 8.235a.75.75 0 10-1.09 1.03l4.25 4.5a.75.75 0 001.09 0l4.25-4.5a.75.75 0 00-1.09-1.03l-2.965 3.129V2.75z" />
+                         <path d="M3.5 12.75a.75.75 0 00-1.5 0v2.5A2.75 2.75 0 004.75 18h10.5A2.75 2.75 0 0018 15.25v-2.5a.75.75 0 00-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5z" />
+                      </svg>
+                      Download App
+                   </button>
+                )}
             </div>
             
             <div className="pt-10 flex flex-wrap justify-center gap-x-8 gap-y-4 opacity-60 text-slate-400 font-medium text-sm">
