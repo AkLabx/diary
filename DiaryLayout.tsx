@@ -6,6 +6,7 @@ import { useCrypto } from './contexts/CryptoContext';
 import { useToast } from './contexts/ToastContext';
 import { fetchWeather } from './lib/weather';
 import { generateSmartTags } from './lib/smartTags';
+import { extractImagePaths, diffImagePaths } from './lib/cleanupUtils';
 
 // @ts-ignore
 import { ZipWriter, BlobWriter, TextReader } from '@zip.js/zip.js';
@@ -323,6 +324,18 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
        }
        // --- END MULTI-AUDIO ---
 
+       // --- IMAGE CLEANUP ---
+       // Check if images were deleted by comparing old content vs new content
+       if (existingEntry && existingEntry.content) {
+           const removedImagePaths = diffImagePaths(existingEntry.content, entryData.content);
+           if (removedImagePaths.length > 0) {
+               console.log(`Deleting ${removedImagePaths.length} removed images...`);
+               const { error: imgRemoveError } = await supabase.storage.from('diary-images').remove(removedImagePaths);
+               if (imgRemoveError) console.error("Failed to cleanup image files:", imgRemoveError);
+           }
+       }
+       // --- END IMAGE CLEANUP ---
+
 
        const cleanContent = cleanContentBeforeSave(entryData.content);
 
@@ -426,16 +439,31 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     try {
       // Cleanup Audio Files first
       const entryToDelete = entries.find(e => e.id === id);
-      if (entryToDelete && entryToDelete.audio) {
-          const audioList = Array.isArray(entryToDelete.audio)
-            ? entryToDelete.audio
-            : [entryToDelete.audio]; // legacy support
 
-          if (audioList.length > 0) {
-              const paths = audioList.map((a: any) => a.path).filter(Boolean);
-              if (paths.length > 0) {
-                   await supabase.storage.from('diary-audio').remove(paths);
-                   console.log(`Cleaned up ${paths.length} audio files.`);
+      // We can only cleanup images if the entry is decrypted and loaded locally.
+      // If it's not decrypted, we can't parse the content to find images.
+      // This is a trade-off for zero-knowledge encryption.
+      // However, usually delete is called from Detail View (decrypted).
+      if (entryToDelete) {
+          if (entryToDelete.isDecrypted && entryToDelete.content) {
+              const imagePaths = extractImagePaths(entryToDelete.content);
+              if (imagePaths.length > 0) {
+                  await supabase.storage.from('diary-images').remove(imagePaths);
+                  console.log(`Cleaned up ${imagePaths.length} image files.`);
+              }
+          }
+
+          if (entryToDelete.audio) {
+              const audioList = Array.isArray(entryToDelete.audio)
+                ? entryToDelete.audio
+                : [entryToDelete.audio]; // legacy support
+
+              if (audioList.length > 0) {
+                  const paths = audioList.map((a: any) => a.path).filter(Boolean);
+                  if (paths.length > 0) {
+                       await supabase.storage.from('diary-audio').remove(paths);
+                       console.log(`Cleaned up ${paths.length} audio files.`);
+                  }
               }
           }
       }
