@@ -109,8 +109,9 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
       );
   }
 
-  // DOMPurify v3 removed ALLOWED_CSS_PROPS. We use a hook to achieve the same result for image styling.
+  // DOMPurify config for secure images and captions
   const allowedCssProps = ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align', 'opacity', 'transition'];
+
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
     if (node instanceof Element && node.hasAttribute('style')) {
       const style = node.getAttribute('style') || '';
@@ -129,13 +130,17 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   });
 
   const sanitizedContent = DOMPurify.sanitize(entry.content, {
-    ADD_TAGS: ['img'],
-    // Allow our custom secure metadata attribute
-    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata'], 
+    ADD_TAGS: ['img', 'figure', 'figcaption'], // Allow figure elements
+    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata', 'contenteditable'], // Allow necessary attributes
   });
   
   DOMPurify.removeHook('afterSanitizeAttributes');
 
+  // Handle Multi-Audio Rendering
+  // Note: We handle legacy single object structure by converting it to array
+  const audioList = entry.audio
+    ? (Array.isArray(entry.audio) ? entry.audio : [entry.audio])
+    : [];
 
   return (
     <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in">
@@ -170,19 +175,23 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         </div>
       </div>
       
-      {entry.audio && (
-          <div className="my-6">
-              <SecureAudioPlayer 
-                  path={entry.audio.path} 
-                  iv={entry.audio.iv} 
-                  mimeType={entry.audio.type}
-              />
+      {/* Audio Section - Updated for Multi-Audio */}
+      {audioList.length > 0 && (
+          <div className="my-6 space-y-3">
+              {audioList.map((audio: any, index: number) => (
+                  <SecureAudioPlayer
+                      key={audio.id || index}
+                      path={audio.path}
+                      iv={audio.iv}
+                      mimeType={audio.type}
+                  />
+              ))}
           </div>
       )}
 
       <div 
         ref={contentRef}
-        className="prose prose-slate dark:prose-invert max-w-none my-6"
+        className="prose prose-slate dark:prose-invert max-w-none my-6 diary-content"
         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
 
