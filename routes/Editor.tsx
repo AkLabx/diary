@@ -19,7 +19,7 @@ interface RangeStatic {
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals } = useDiary();
+  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals, registerSaveHandler } = useDiary();
 
   const [entry, setEntry] = useState<DiaryEntry | 'new' | null>(null);
 
@@ -32,6 +32,17 @@ const Editor: React.FC = () => {
   const [selectedImageFormat, setSelectedImageFormat] = useState<SelectedImageFormat | null>(null);
 
   const editorRef = useRef<EditorHandle>(null);
+
+  // Register the save handler with the layout
+  useEffect(() => {
+    registerSaveHandler(() => {
+        if (editorRef.current) {
+            editorRef.current.save();
+        }
+    });
+    // Cleanup not strictly necessary as register will overwrite, but good practice
+    return () => registerSaveHandler(() => {});
+  }, [registerSaveHandler]);
 
   useEffect(() => {
       if (!id) {
