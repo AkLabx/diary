@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect, useMemo } from 'react';
+import { RouterProvider, createHashRouter, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
 import LandingPage from './components/LandingPage';
@@ -11,7 +11,7 @@ import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Session } from '@supabase/supabase-js';
 
-// Route Components (to be created in the next step, but importing them for structure)
+// Route Components
 import Timeline from './routes/Timeline';
 import Calendar from './routes/Calendar';
 import Search from './routes/Search';
@@ -20,6 +20,10 @@ import EntryDetail from './routes/EntryDetail';
 import Editor from './routes/Editor';
 
 const ProtectedRoute = ({ children, session }: { children: React.ReactNode, session: Session | null }) => {
+  // We can't use useLocation here if this component is rendered *outside* the provider context
+  // BUT, since this component is used inside 'element' of the router, it IS inside the context.
+  // However, createHashRouter defines the tree.
+  // actually, components rendered by RouterProvider have access to hooks.
   const location = useLocation();
   if (!session) {
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -57,7 +61,6 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  // Register the service worker for PWA functionality
   useEffect(() => {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -74,6 +77,48 @@ const App: React.FC = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
 
+  const router = useMemo(() => {
+     return createHashRouter([
+        {
+            path: "/",
+            element: session ? <Navigate to="/app" /> : <LandingPage />,
+        },
+        {
+            path: "/login",
+            element: session ? <Navigate to="/app" /> : <Auth />,
+        },
+        {
+            path: "/privacy",
+            element: <PrivacyPolicy />,
+        },
+        {
+            path: "/terms",
+            element: <TermsOfUse />,
+        },
+        {
+            path: "/app",
+            element: (
+                <ProtectedRoute session={session}>
+                    <DiaryLayout session={session} theme={theme} onToggleTheme={toggleTheme} />
+                </ProtectedRoute>
+            ),
+            children: [
+                { index: true, element: <Timeline /> },
+                { path: "calendar", element: <Calendar /> },
+                { path: "search", element: <Search /> },
+                { path: "profile", element: <Profile /> },
+                { path: "entry/:id", element: <EntryDetail /> },
+                { path: "new", element: <Editor /> },
+                { path: "edit/:id", element: <Editor /> },
+            ],
+        },
+        {
+            path: "*",
+            element: <NotFound />,
+        }
+     ]);
+  }, [session, theme]); // Dependencies ensure router updates if these change
+
   if (loading) {
      return (
        <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
@@ -85,33 +130,7 @@ const App: React.FC = () => {
   return (
     <ToastProvider>
       <CryptoProvider>
-        <HashRouter>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/" element={session ? <Navigate to="/app" /> : <LandingPage />} />
-            <Route path="/login" element={session ? <Navigate to="/app" /> : <Auth />} />
-            <Route path="/privacy" element={<PrivacyPolicy />} />
-            <Route path="/terms" element={<TermsOfUse />} />
-
-            {/* Protected App Routes */}
-            <Route path="/app" element={
-              <ProtectedRoute session={session}>
-                <DiaryLayout session={session} theme={theme} onToggleTheme={toggleTheme} />
-              </ProtectedRoute>
-            }>
-               <Route index element={<Timeline />} />
-               <Route path="calendar" element={<Calendar />} />
-               <Route path="search" element={<Search />} />
-               <Route path="profile" element={<Profile />} />
-               <Route path="entry/:id" element={<EntryDetail />} />
-               <Route path="new" element={<Editor />} />
-               <Route path="edit/:id" element={<Editor />} />
-            </Route>
-
-            {/* 404 */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </HashRouter>
+        <RouterProvider router={router} />
       </CryptoProvider>
     </ToastProvider>
   );
