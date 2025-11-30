@@ -47,6 +47,8 @@ export interface DiaryContextType {
   encryptBinary: (key: CryptoKey, data: ArrayBuffer) => Promise<{ iv: string; data: ArrayBuffer }>;
   session: Session;
   signOut: () => Promise<void>;
+  registerSaveHandler: (handler: () => void) => void;
+  isToolsPanelVisible: boolean;
 }
 
 // Helper for image placeholder
@@ -63,6 +65,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const [isLeftSidebarVisible, setLeftSidebarVisible] = useState(() => window.innerWidth >= 768);
+  const [isToolsPanelVisible, setToolsPanelVisible] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'synced' | 'encrypting' | 'error'>('synced');
   const [weather, setWeather] = useState<Weather | null>(null);
 
@@ -72,9 +75,15 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   const [smartSuggestions, setSmartSuggestions] = useState<string[]>([]);
 
   const loadingEntriesRef = useRef<Set<string>>(new Set());
+  const currentSaveHandler = useRef<(() => void) | null>(null);
+
   const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  const registerSaveHandler = useCallback((handler: () => void) => {
+      currentSaveHandler.current = handler;
+  }, []);
 
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
@@ -524,14 +533,21 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       entries, profile, loading, weather, uniqueJournals,
       refreshEntries: fetchEntries, loadEntryContent, saveEntry: handleInitiateSave, deleteEntry: handleDeleteEntry,
       updateProfile: handleUpdateProfile, uploadAvatar: handleAvatarUpload, exportData: handleExportData,
-      theme, onToggleTheme, key, encryptBinary, session, signOut: handleSignOut
+      theme, onToggleTheme, key, encryptBinary, session, signOut: handleSignOut,
+      registerSaveHandler, isToolsPanelVisible
   };
 
   return (
     <div className="h-screen w-screen flex flex-col font-sans bg-[#FBF8F3] dark:bg-slate-900">
        <TopBar
         isEditing={location.pathname.includes('/edit') || location.pathname.includes('/new')}
-        onSave={() => { /* Triggered by Editor via ref usually, this is harder now. Editor should handle its own save button or we use a portal/context event */ }}
+        onSave={() => {
+            if (currentSaveHandler.current) {
+                currentSaveHandler.current();
+            } else {
+                console.warn("No save handler registered");
+            }
+        }}
         onCancel={() => navigate(-1)}
         currentDate={new Date()} // Placeholder
         weather={weather}
@@ -540,8 +556,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         saveStatus={saveStatus}
         profile={profile}
         onShowProfile={() => navigate('/app/profile')}
-        isToolsPanelVisible={false} // Managed by Editor mostly now
-        onToggleToolsPanel={() => {}}
+        isToolsPanelVisible={isToolsPanelVisible}
+        onToggleToolsPanel={() => setToolsPanelVisible(prev => !prev)}
         isLeftSidebarVisible={isLeftSidebarVisible}
       />
       {!isLeftSidebarVisible && <HamburgerMenu onClick={() => setLeftSidebarVisible(true)} />}
