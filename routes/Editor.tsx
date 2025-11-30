@@ -19,7 +19,7 @@ interface RangeStatic {
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals, registerSaveHandler, isToolsPanelVisible } = useDiary();
+  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals, registerSaveHandler, isToolsPanelVisible, setToolsPanelVisible } = useDiary();
 
   const [entry, setEntry] = useState<DiaryEntry | 'new' | null>(null);
 
@@ -189,6 +189,7 @@ const Editor: React.FC = () => {
                       selectedImageFormat={selectedImageFormat}
                       onImageFormatChange={handleImageFormatChange}
                       availableJournals={uniqueJournals}
+                      onClose={() => setToolsPanelVisible(false)} // Pass close handler
                   />
          </div>
 
@@ -196,13 +197,7 @@ const Editor: React.FC = () => {
          {isToolsPanelVisible && (
              <div
                 className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 lg:hidden"
-                onClick={() => {
-                    // We can't toggle directly here easily without adding toggle function to context,
-                    // but for now relying on the TopBar toggle is okay, or we can add it later.
-                    // Ideally, we should close it.
-                    // NOTE: Since we didn't add toggleToolsPanel to context, user must click the gear icon to close.
-                    // Or we can add it to context in a future improvement.
-                }}
+                onClick={() => setToolsPanelVisible(false)} // Click outside to close
              />
          )}
     </div>

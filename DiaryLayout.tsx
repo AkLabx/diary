@@ -49,6 +49,7 @@ export interface DiaryContextType {
   signOut: () => Promise<void>;
   registerSaveHandler: (handler: () => void) => void;
   isToolsPanelVisible: boolean;
+  setToolsPanelVisible: (visible: boolean) => void;
 }
 
 // Helper for image placeholder
@@ -534,7 +535,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       refreshEntries: fetchEntries, loadEntryContent, saveEntry: handleInitiateSave, deleteEntry: handleDeleteEntry,
       updateProfile: handleUpdateProfile, uploadAvatar: handleAvatarUpload, exportData: handleExportData,
       theme, onToggleTheme, key, encryptBinary, session, signOut: handleSignOut,
-      registerSaveHandler, isToolsPanelVisible
+      registerSaveHandler, isToolsPanelVisible, setToolsPanelVisible
   };
 
   return (
