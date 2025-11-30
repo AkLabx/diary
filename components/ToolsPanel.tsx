@@ -14,6 +14,7 @@ interface ToolsPanelProps {
   selectedImageFormat: SelectedImageFormat | null;
   onImageFormatChange: (formats: { [key: string]: any }) => void;
   availableJournals: string[];
+  onClose?: () => void; // New optional prop for closing the panel
 }
 
 const moods = ['😊', '😢', '😠', '😎', '🤔', '😍', '😴', '🥳'];
@@ -27,7 +28,8 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     isUploadingImage,
     selectedImageFormat,
     onImageFormatChange,
-    availableJournals
+    availableJournals,
+    onClose
 }) => {
     const currentMood = typeof entry === 'object' ? entry.mood : undefined;
     const currentTags = typeof entry === 'object' ? (entry.tags || []) : [];
@@ -92,8 +94,22 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
     }
 
     return (
-        <aside className="w-64 h-full bg-white/80 dark:bg-slate-900/50 border-l border-[#EAE1D6] dark:border-slate-800 p-4 space-y-6 flex-shrink-0 overflow-y-auto">
-            <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tools</h2>
+        <aside className="w-64 h-full bg-white/80 dark:bg-slate-900/50 border-l border-[#EAE1D6] dark:border-slate-800 p-4 space-y-6 flex-shrink-0 overflow-y-auto relative">
+            {/* Header with Title and Close Button */}
+            <div className="flex justify-between items-center">
+                <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Tools</h2>
+                {onClose && (
+                    <button
+                        onClick={onClose}
+                        className="p-1 rounded-md text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-700 lg:hidden"
+                        aria-label="Close Tools Panel"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                            <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                        </svg>
+                    </button>
+                )}
+            </div>
             
              <div className="space-y-4">
                 <div>
