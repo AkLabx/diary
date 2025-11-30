@@ -4,6 +4,8 @@ import ReactQuill from 'react-quill';
 import { useToast } from '../contexts/ToastContext';
 import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
+import { useBlocker } from 'react-router-dom';
+import * as autoSave from '../lib/autoSave';
 
 // --- Quill Customization ---
 const Quill = (ReactQuill as any).Quill; 
@@ -85,11 +87,47 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const [entryDate, setEntryDate] = useState(new Date());
   const [isHydrating, setIsHydrating] = useState(false);
 
+  // Track initial state to determine dirtiness
+  const [initialTitle, setInitialTitle] = useState('');
+  const [initialContent, setInitialContent] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+
   const quillRef = useRef<ReactQuill>(null);
   const loadedIdRef = useRef<string | null>('INITIAL_MOUNT');
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { addToast } = useToast();
-  const { key, decryptBinary } = useCrypto();
+  const { key, encryptBinary, decryptBinary } = useCrypto();
+
+  // "The Guardian": Block internal navigation if dirty
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+      if (blocker.state === 'blocked') {
+          const confirmLeave = window.confirm("You have unsaved changes. Are you sure you want to leave?");
+          if (confirmLeave) {
+              blocker.proceed();
+          } else {
+              blocker.reset();
+          }
+      }
+  }, [blocker]);
+
+  // "The Guardian": Block external navigation (browser refresh/close)
+  useEffect(() => {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+          if (isDirty) {
+              e.preventDefault();
+              e.returnValue = ''; // Required for Chrome
+          }
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
 
   // Helper to hydrate secure images (decrypt them)
   const hydrateSecureImages = useCallback(async (htmlContent: string, editor: any) => {
@@ -142,36 +180,72 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   useEffect(() => {
     const incomingId = entry?.id || 'draft';
     
+    // Only reset state if the entry ID actually changes
     if (loadedIdRef.current === incomingId) {
         return;
     }
-
     loadedIdRef.current = incomingId;
 
-    if (entry) {
-      setTitle(entry.title);
-      setContent(entry.content);
-      setEntryDate(new Date(entry.created_at));
-      
-      const hasSecureImages = entry.content.includes('secure-diary-image');
-      setIsHydrating(hasSecureImages);
+    const loadEntry = async () => {
+        let loadedTitle = '';
+        let loadedContent = '';
+        let loadedDate = new Date();
 
-      setTimeout(async () => {
-          if (quillRef.current) {
-              if (hasSecureImages) {
-                  await hydrateSecureImages(entry.content, quillRef.current.getEditor());
-                  setIsHydrating(false);
-              }
-          }
-      }, 100);
+        // 1. Load from props first
+        if (entry) {
+            loadedTitle = entry.title;
+            loadedContent = entry.content;
+            loadedDate = new Date(entry.created_at);
+        } else {
+            loadedTitle = "Today's diary entry...";
+            loadedContent = "";
+        }
 
-    } else {
-      setTitle("Today's diary entry...");
-      setContent(""); 
-      setEntryDate(new Date());
-      setIsHydrating(false);
-    }
-  }, [entry, hydrateSecureImages]);
+        // 2. Check "The Black Box" (Auto-Save) for a newer local draft
+        try {
+            const draft = await autoSave.getDraft(incomingId);
+            if (draft && key) {
+                // If draft is newer than entry (or if entry is null/new), use draft
+                const entryTime = entry ? new Date(entry.updated_at || entry.created_at).getTime() : 0;
+                if (draft.timestamp > entryTime) {
+                    console.log("Restoring from auto-save draft...");
+                    const decryptedBuffer = await decryptBinary(key, await draft.encryptedData.arrayBuffer(), draft.iv);
+                    const decryptedString = new TextDecoder().decode(decryptedBuffer);
+                    const draftData = JSON.parse(decryptedString);
+
+                    if (draftData.title !== undefined) loadedTitle = draftData.title;
+                    if (draftData.content !== undefined) loadedContent = draftData.content;
+
+                    addToast("Restored unsaved draft", "success");
+                }
+            }
+        } catch (e) {
+            console.error("Failed to restore draft", e);
+        }
+
+        setTitle(loadedTitle);
+        setContent(loadedContent);
+        setEntryDate(loadedDate);
+        setInitialTitle(loadedTitle);
+        setInitialContent(loadedContent);
+        setIsDirty(false); // Reset dirty state after load
+
+        const hasSecureImages = loadedContent.includes('secure-diary-image');
+        setIsHydrating(hasSecureImages);
+
+        setTimeout(async () => {
+            if (quillRef.current) {
+                if (hasSecureImages) {
+                    await hydrateSecureImages(loadedContent, quillRef.current.getEditor());
+                    setIsHydrating(false);
+                }
+            }
+        }, 100);
+    };
+
+    loadEntry();
+
+  }, [entry, hydrateSecureImages, key, decryptBinary, addToast]);
 
   useEffect(() => {
     const text = content.replace(/<[^>]*>?/gm, '');
@@ -180,8 +254,47 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
     onWordCountChange(wordCount);
     onCharacterCountChange(text.length);
   }, [content, onWordCountChange, onCharacterCountChange]);
+
+  // Dirty Check Logic
+  useEffect(() => {
+      // Simple string comparison for dirty check
+      // Note: Quill might change HTML slightly, so strict equality is tricky but okay for now
+      const dirty = title !== initialTitle || content !== initialContent;
+      setIsDirty(dirty);
+  }, [title, content, initialTitle, initialContent]);
+
+  // "The Black Box": Auto-Save Logic
+  useEffect(() => {
+      if (!isDirty || !key) return;
+
+      // Debounce auto-save
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+
+      autoSaveTimerRef.current = setTimeout(async () => {
+          const idToSave = entry?.id || 'draft';
+          try {
+              const dataToEncrypt = JSON.stringify({ title, content });
+              const buffer = new TextEncoder().encode(dataToEncrypt);
+
+              // Correctly passing ArrayBuffer by accessing .buffer
+              const { iv, data } = await encryptBinary(key, buffer.buffer);
+
+              const blob = new Blob([data], { type: 'application/octet-stream' });
+
+              await autoSave.saveDraft(idToSave, blob, iv);
+              console.log("Auto-saved draft to IndexedDB");
+          } catch (e) {
+              console.error("Auto-save failed", e);
+          }
+      }, 2000); // 2 seconds debounce
+
+      return () => {
+          if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      }
+  }, [title, content, isDirty, key, encryptBinary, entry]);
+
   
-  const handleInternalSave = useCallback(() => {
+  const handleInternalSave = useCallback(async () => {
      const isContentEmpty = !content || content.replace(/<(.|\n)*?>/g, '').trim().length === 0;
      if (title.trim() === '' || isContentEmpty) {
       addToast('Please provide a title and some content for your entry.', 'error');
@@ -196,6 +309,17 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
         tags: entry?.tags,
         mood: entry?.mood
     });
+
+    // "The Black Box": Clear draft on successful manual save intent
+    // Note: Ideally we wait for actual success, but this is 'optimistic' cleanup
+    // or we can rely on next load to see that entry is newer than draft.
+    // Explicitly deleting is cleaner.
+    const idToDelete = entry?.id || 'draft';
+    await autoSave.deleteDraft(idToDelete);
+    setInitialTitle(title);
+    setInitialContent(content);
+    setIsDirty(false);
+
   }, [title, content, entryDate, entry, onSave, addToast]);
 
   useImperativeHandle(ref, () => ({
