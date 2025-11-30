@@ -4,48 +4,68 @@ import ReactQuill from 'react-quill';
 import { useToast } from '../contexts/ToastContext';
 import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
+import { useBlocker } from 'react-router-dom';
+import * as autoSave from '../lib/autoSave';
+import ConfirmationModal from './ConfirmationModal';
 
 // --- Quill Customization ---
 const Quill = (ReactQuill as any).Quill; 
 if (Quill) {
     // Import the base Image Blot
-    const BaseImage = Quill.import('formats/image');
+    const BlockEmbed = Quill.import('blots/block/embed');
 
-    // Extend the Image Blot to support our custom attributes natively
-    class SecureImage extends BaseImage {
+    class FigureBlot extends BlockEmbed {
         static create(value: any) {
-            // Allow creating from a string (normal URL) or an object (our custom secure data)
-            const node = super.create(typeof value === 'string' ? value : value.src);
+            const node = super.create();
+            const img = document.createElement('img');
             
-            if (typeof value === 'object') {
-                if (value.alt) node.setAttribute('alt', value.alt);
-                if (value.className) node.setAttribute('class', value.className);
-                if (value.dataset?.secureMetadata) {
-                     node.setAttribute('data-secure-metadata', value.dataset.secureMetadata);
-                }
+            // Set image attributes
+            img.setAttribute('src', value.src);
+            if (value.alt) img.setAttribute('alt', value.alt);
+            if (value.className) img.setAttribute('class', value.className);
+            if (value.dataset?.secureMetadata) {
+                img.setAttribute('data-secure-metadata', value.dataset.secureMetadata);
             }
+            if (value.style) {
+                img.setAttribute('style', value.style);
+            }
+
+            // Create caption
+            const figcaption = document.createElement('figcaption');
+            figcaption.innerText = value.caption || '';
+            figcaption.setAttribute('contenteditable', 'true'); // Allow editing caption directly in editor
+
+            node.appendChild(img);
+            node.appendChild(figcaption);
             return node;
         }
 
         static value(node: HTMLElement) {
+            const img = node.querySelector('img');
+            const figcaption = node.querySelector('figcaption');
             return {
-                src: node.getAttribute('src'),
-                alt: node.getAttribute('alt'),
-                className: node.getAttribute('class'),
+                src: img?.getAttribute('src'),
+                alt: img?.getAttribute('alt'),
+                className: img?.getAttribute('class'),
+                style: img?.getAttribute('style'),
+                caption: figcaption?.innerText,
                 dataset: {
-                    secureMetadata: node.getAttribute('data-secure-metadata')
+                    secureMetadata: img?.getAttribute('data-secure-metadata')
                 }
             };
         }
     }
     
-    // Explicitly define the blotName and tagName so it overrides the default 'image'
-    SecureImage.blotName = 'image';
-    SecureImage.tagName = 'IMG';
+    FigureBlot.blotName = 'secure-image'; // Changed name to avoid conflict with default image
+    FigureBlot.tagName = 'figure';
+    FigureBlot.className = 'diary-image-figure';
 
-    Quill.register(SecureImage, true);
+    Quill.register(FigureBlot, true);
 
-    // Register style attributors so Quill knows how to handle resize/align styles
+    // Note: We are no longer overriding 'image' blot, but introducing 'secure-image'.
+    // We need to ensure new insertions use 'secure-image'.
+
+    // Register style attributors
     const Parchment = Quill.import('parchment');
     const widthStyle = new Parchment.Attributor.Style('width', 'width');
     const floatStyle = new Parchment.Attributor.Style('float', 'float');
@@ -85,11 +105,45 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const [entryDate, setEntryDate] = useState(new Date());
   const [isHydrating, setIsHydrating] = useState(false);
 
+  // Track initial state to determine dirtiness
+  const [initialTitle, setInitialTitle] = useState('');
+  const [initialContent, setInitialContent] = useState('');
+  const [isDirty, setIsDirty] = useState(false);
+
+  // Custom Modal State
+  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+
   const quillRef = useRef<ReactQuill>(null);
   const loadedIdRef = useRef<string | null>('INITIAL_MOUNT');
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const { addToast } = useToast();
-  const { key, decryptBinary } = useCrypto();
+  const { key, encryptBinary, decryptBinary } = useCrypto();
+
+  // "The Guardian": Block internal navigation if dirty
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      isDirty && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+      if (blocker.state === 'blocked') {
+          setShowNavigationWarning(true);
+      }
+  }, [blocker]);
+
+  // "The Guardian": Block external navigation (browser refresh/close)
+  useEffect(() => {
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+          if (isDirty) {
+              e.preventDefault();
+              e.returnValue = ''; // Required for Chrome
+          }
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
 
   // Helper to hydrate secure images (decrypt them)
   const hydrateSecureImages = useCallback(async (htmlContent: string, editor: any) => {
@@ -97,15 +151,14 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
       // We need to work on the actual DOM nodes managed by Quill
       const root = editor.root as HTMLElement;
+      // Updated selector to find images inside figures or standalone
       const images = root.querySelectorAll('img.secure-diary-image');
 
       for (let i = 0; i < images.length; i++) {
           const img = images[i] as HTMLImageElement;
           const rawSrc = img.getAttribute('src');
-          // Look for metadata in the new data attribute first, fallback to alt for legacy support
           const metadataStr = img.getAttribute('data-secure-metadata') || img.getAttribute('alt');
 
-          // Skip if already decrypted (blob url) or no metadata
           if (rawSrc?.startsWith('blob:') || !metadataStr) continue;
 
           try {
@@ -113,7 +166,6 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
               if (metadata && metadata.path && metadata.iv) {
                    img.style.opacity = '0.5';
                    
-                   // Use createSignedUrl here as well
                    const { data: signedData, error: signedError } = await supabase.storage
                       .from('diary-images')
                       .createSignedUrl(metadata.path, 60);
@@ -145,33 +197,66 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
     if (loadedIdRef.current === incomingId) {
         return;
     }
-
     loadedIdRef.current = incomingId;
 
-    if (entry) {
-      setTitle(entry.title);
-      setContent(entry.content);
-      setEntryDate(new Date(entry.created_at));
-      
-      const hasSecureImages = entry.content.includes('secure-diary-image');
-      setIsHydrating(hasSecureImages);
+    const loadEntry = async () => {
+        let loadedTitle = '';
+        let loadedContent = '';
+        let loadedDate = new Date();
 
-      setTimeout(async () => {
-          if (quillRef.current) {
-              if (hasSecureImages) {
-                  await hydrateSecureImages(entry.content, quillRef.current.getEditor());
-                  setIsHydrating(false);
-              }
-          }
-      }, 100);
+        if (entry) {
+            loadedTitle = entry.title;
+            loadedContent = entry.content;
+            loadedDate = new Date(entry.created_at);
+        } else {
+            loadedTitle = "Today's diary entry...";
+            loadedContent = "";
+        }
 
-    } else {
-      setTitle("Today's diary entry...");
-      setContent(""); 
-      setEntryDate(new Date());
-      setIsHydrating(false);
-    }
-  }, [entry, hydrateSecureImages]);
+        // Auto-Save Restoration
+        try {
+            const draft = await autoSave.getDraft(incomingId);
+            if (draft && key) {
+                const entryTime = entry ? new Date(entry.updated_at || entry.created_at).getTime() : 0;
+                if (draft.timestamp > entryTime) {
+                    console.log("Restoring from auto-save draft...");
+                    const decryptedBuffer = await decryptBinary(key, await draft.encryptedData.arrayBuffer(), draft.iv);
+                    const decryptedString = new TextDecoder().decode(decryptedBuffer);
+                    const draftData = JSON.parse(decryptedString);
+
+                    if (draftData.title !== undefined) loadedTitle = draftData.title;
+                    if (draftData.content !== undefined) loadedContent = draftData.content;
+
+                    addToast("Restored unsaved draft", "success");
+                }
+            }
+        } catch (e) {
+            console.error("Failed to restore draft", e);
+        }
+
+        setTitle(loadedTitle);
+        setContent(loadedContent);
+        setEntryDate(loadedDate);
+        setInitialTitle(loadedTitle);
+        setInitialContent(loadedContent);
+        setIsDirty(false);
+
+        const hasSecureImages = loadedContent.includes('secure-diary-image');
+        setIsHydrating(hasSecureImages);
+
+        setTimeout(async () => {
+            if (quillRef.current) {
+                if (hasSecureImages) {
+                    await hydrateSecureImages(loadedContent, quillRef.current.getEditor());
+                    setIsHydrating(false);
+                }
+            }
+        }, 100);
+    };
+
+    loadEntry();
+
+  }, [entry, hydrateSecureImages, key, decryptBinary, addToast]);
 
   useEffect(() => {
     const text = content.replace(/<[^>]*>?/gm, '');
@@ -180,8 +265,41 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
     onWordCountChange(wordCount);
     onCharacterCountChange(text.length);
   }, [content, onWordCountChange, onCharacterCountChange]);
+
+  // Dirty Check Logic
+  useEffect(() => {
+      const dirty = title !== initialTitle || content !== initialContent;
+      setIsDirty(dirty);
+  }, [title, content, initialTitle, initialContent]);
+
+  // Auto-Save Logic
+  useEffect(() => {
+      if (!isDirty || !key) return;
+
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+
+      autoSaveTimerRef.current = setTimeout(async () => {
+          const idToSave = entry?.id || 'draft';
+          try {
+              const dataToEncrypt = JSON.stringify({ title, content });
+              const buffer = new TextEncoder().encode(dataToEncrypt);
+              const { iv, data } = await encryptBinary(key, buffer.buffer);
+              const blob = new Blob([data], { type: 'application/octet-stream' });
+
+              await autoSave.saveDraft(idToSave, blob, iv);
+              console.log("Auto-saved draft to IndexedDB");
+          } catch (e) {
+              console.error("Auto-save failed", e);
+          }
+      }, 2000);
+
+      return () => {
+          if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      }
+  }, [title, content, isDirty, key, encryptBinary, entry]);
+
   
-  const handleInternalSave = useCallback(() => {
+  const handleInternalSave = useCallback(async () => {
      const isContentEmpty = !content || content.replace(/<(.|\n)*?>/g, '').trim().length === 0;
      if (title.trim() === '' || isContentEmpty) {
       addToast('Please provide a title and some content for your entry.', 'error');
@@ -196,6 +314,13 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
         tags: entry?.tags,
         mood: entry?.mood
     });
+
+    const idToDelete = entry?.id || 'draft';
+    await autoSave.deleteDraft(idToDelete);
+    setInitialTitle(title);
+    setInitialContent(content);
+    setIsDirty(false);
+
   }, [title, content, entryDate, entry, onSave, addToast]);
 
   useImperativeHandle(ref, () => ({
@@ -251,6 +376,26 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
                 modules={modules}
             />
         </div>
+
+        {/* Custom Confirmation Modal */}
+        {blocker.state === 'blocked' && (
+             <ConfirmationModal
+                 isOpen={showNavigationWarning}
+                 title="Unsaved Changes"
+                 message="You have unsaved changes in your diary entry. Are you sure you want to leave? Your changes will be discarded."
+                 confirmLabel="Discard Changes"
+                 cancelLabel="Stay Here"
+                 type="warning"
+                 onConfirm={() => {
+                     blocker.proceed();
+                     setShowNavigationWarning(false);
+                 }}
+                 onCancel={() => {
+                     blocker.reset();
+                     setShowNavigationWarning(false);
+                 }}
+             />
+        )}
     </div>
   );
 });
