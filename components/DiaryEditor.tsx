@@ -86,6 +86,7 @@ interface DiaryEditorProps {
   onWordCountChange: (count: number) => void;
   onCharacterCountChange: (count: number) => void;
   editorFont: 'serif' | 'sans' | 'mono';
+  onImageDrop?: (file: File) => void;
 }
 
 export interface EditorHandle {
@@ -99,7 +100,7 @@ const fontClassMap = {
   mono: 'font-mono',
 };
 
-const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave, onWordCountChange, onCharacterCountChange, editorFont }, ref) => {
+const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave, onWordCountChange, onCharacterCountChange, editorFont, onImageDrop }, ref) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [entryDate, setEntryDate] = useState(new Date());
@@ -335,8 +336,29 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   
   const fontClass = fontClassMap[editorFont];
 
+  // Drag and Drop Handlers
+  const handleDragOver = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+          const file = e.dataTransfer.files[0];
+          if (file.type.startsWith('image/') && onImageDrop) {
+              onImageDrop(file);
+          }
+      }
+  };
+
   return (
-    <div className={`h-full flex flex-col paper-canvas rounded-lg overflow-hidden ${fontClass}`}>
+    <div
+        className={`h-full flex flex-col paper-canvas rounded-lg overflow-hidden ${fontClass}`}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+    >
         <div className="p-4 sm:p-6 md:px-8 border-b border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
             <input
                 type="text"

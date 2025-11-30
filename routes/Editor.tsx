@@ -190,6 +190,7 @@ const Editor: React.FC = () => {
               onWordCountChange={setWordCount}
               onCharacterCountChange={setCharacterCount}
               editorFont={editorFont}
+              onImageDrop={handleImageUpload} // Pass the handler
             />
             <StatusBar
                 wordCount={wordCount}
