@@ -48,6 +48,7 @@ export interface DiaryContextType {
   session: Session;
   signOut: () => Promise<void>;
   registerSaveHandler: (handler: () => void) => void;
+  isToolsPanelVisible: boolean;
 }
 
 // Helper for image placeholder
@@ -64,6 +65,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   const [profile, setProfile] = useState<Profile | null>(null);
 
   const [isLeftSidebarVisible, setLeftSidebarVisible] = useState(() => window.innerWidth >= 768);
+  const [isToolsPanelVisible, setToolsPanelVisible] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'synced' | 'encrypting' | 'error'>('synced');
   const [weather, setWeather] = useState<Weather | null>(null);
 
@@ -532,7 +534,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       refreshEntries: fetchEntries, loadEntryContent, saveEntry: handleInitiateSave, deleteEntry: handleDeleteEntry,
       updateProfile: handleUpdateProfile, uploadAvatar: handleAvatarUpload, exportData: handleExportData,
       theme, onToggleTheme, key, encryptBinary, session, signOut: handleSignOut,
-      registerSaveHandler
+      registerSaveHandler, isToolsPanelVisible
   };
 
   return (
@@ -554,8 +556,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         saveStatus={saveStatus}
         profile={profile}
         onShowProfile={() => navigate('/app/profile')}
-        isToolsPanelVisible={false} // Managed by Editor mostly now
-        onToggleToolsPanel={() => {}}
+        isToolsPanelVisible={isToolsPanelVisible}
+        onToggleToolsPanel={() => setToolsPanelVisible(prev => !prev)}
         isLeftSidebarVisible={isLeftSidebarVisible}
       />
       {!isLeftSidebarVisible && <HamburgerMenu onClick={() => setLeftSidebarVisible(true)} />}

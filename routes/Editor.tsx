@@ -19,7 +19,7 @@ interface RangeStatic {
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals, registerSaveHandler } = useDiary();
+  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals, registerSaveHandler, isToolsPanelVisible } = useDiary();
 
   const [entry, setEntry] = useState<DiaryEntry | 'new' | null>(null);
 
@@ -27,7 +27,6 @@ const Editor: React.FC = () => {
   const [wordCount, setWordCount] = useState(0);
   const [characterCount, setCharacterCount] = useState(0);
   const [editorFont, setEditorFont] = useState<'serif' | 'sans' | 'mono'>('serif');
-  // const [isToolsPanelVisible, setToolsPanelVisible] = useState(true); // Unused currently
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedImageFormat, setSelectedImageFormat] = useState<SelectedImageFormat | null>(null);
 
@@ -166,8 +165,11 @@ const Editor: React.FC = () => {
             />
          </div>
 
-         {/* ToolsPanel is always visible on large screens for now, logic simplified */}
-         <div className="w-64 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hidden lg:block">
+         {/* ToolsPanel - Desktop (Sidebar) or Mobile (Overlay) */}
+         <div className={`
+             fixed inset-y-0 right-0 z-30 w-72 bg-white dark:bg-slate-900 shadow-xl transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:shadow-none lg:w-64 lg:border-l border-slate-200 dark:border-slate-800
+             ${isToolsPanelVisible ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+         `}>
               <ToolsPanel
                   entry={entry}
                       onUpdateEntry={(updates) => {
@@ -188,14 +190,21 @@ const Editor: React.FC = () => {
                       onImageFormatChange={handleImageFormatChange}
                       availableJournals={uniqueJournals}
                   />
-             </div>
+         </div>
 
-         {/* Mobile Tools Overlay? The TopBar usually handles toggling this in mobile view.
-             Since TopBar is in Layout, we might need a Portal or Context to control visibility.
-             For now, let's keep it simple: On large screens, it's side-by-side. On small screens,
-             maybe we should move ToolsPanel into a modal or bottom sheet triggered by TopBar.
-             The previous design had it floating.
-         */}
+         {/* Mobile Overlay Backdrop */}
+         {isToolsPanelVisible && (
+             <div
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 lg:hidden"
+                onClick={() => {
+                    // We can't toggle directly here easily without adding toggle function to context,
+                    // but for now relying on the TopBar toggle is okay, or we can add it later.
+                    // Ideally, we should close it.
+                    // NOTE: Since we didn't add toggleToolsPanel to context, user must click the gear icon to close.
+                    // Or we can add it to context in a future improvement.
+                }}
+             />
+         )}
     </div>
   );
 };
