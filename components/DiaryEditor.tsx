@@ -6,6 +6,7 @@ import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
 import { useBlocker } from 'react-router-dom';
 import * as autoSave from '../lib/autoSave';
+import ConfirmationModal from './ConfirmationModal';
 
 // --- Quill Customization ---
 const Quill = (ReactQuill as any).Quill; 
@@ -92,6 +93,9 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const [initialContent, setInitialContent] = useState('');
   const [isDirty, setIsDirty] = useState(false);
 
+  // Custom Modal State
+  const [showNavigationWarning, setShowNavigationWarning] = useState(false);
+
   const quillRef = useRef<ReactQuill>(null);
   const loadedIdRef = useRef<string | null>('INITIAL_MOUNT');
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -107,16 +111,13 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
   useEffect(() => {
       if (blocker.state === 'blocked') {
-          const confirmLeave = window.confirm("You have unsaved changes. Are you sure you want to leave?");
-          if (confirmLeave) {
-              blocker.proceed();
-          } else {
-              blocker.reset();
-          }
+          // Instead of window.confirm, show our custom modal
+          setShowNavigationWarning(true);
       }
   }, [blocker]);
 
   // "The Guardian": Block external navigation (browser refresh/close)
+  // NOTE: Browser security forbids custom UI for beforeunload. It must remain native.
   useEffect(() => {
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
           if (isDirty) {
@@ -375,6 +376,26 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
                 modules={modules}
             />
         </div>
+
+        {/* Custom Confirmation Modal */}
+        {blocker.state === 'blocked' && (
+             <ConfirmationModal
+                 isOpen={showNavigationWarning}
+                 title="Unsaved Changes"
+                 message="You have unsaved changes in your diary entry. Are you sure you want to leave? Your changes will be discarded."
+                 confirmLabel="Discard Changes"
+                 cancelLabel="Stay Here"
+                 type="warning"
+                 onConfirm={() => {
+                     blocker.proceed();
+                     setShowNavigationWarning(false);
+                 }}
+                 onCancel={() => {
+                     blocker.reset();
+                     setShowNavigationWarning(false);
+                 }}
+             />
+        )}
     </div>
   );
 });
