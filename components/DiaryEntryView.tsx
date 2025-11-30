@@ -136,6 +136,11 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   
   DOMPurify.removeHook('afterSanitizeAttributes');
 
+  // Handle Multi-Audio Rendering
+  // Note: We handle legacy single object structure by converting it to array
+  const audioList = entry.audio
+    ? (Array.isArray(entry.audio) ? entry.audio : [entry.audio])
+    : [];
 
   return (
     <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in">
@@ -170,13 +175,17 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         </div>
       </div>
       
-      {entry.audio && (
-          <div className="my-6">
-              <SecureAudioPlayer 
-                  path={entry.audio.path} 
-                  iv={entry.audio.iv} 
-                  mimeType={entry.audio.type}
-              />
+      {/* Audio Section - Updated for Multi-Audio */}
+      {audioList.length > 0 && (
+          <div className="my-6 space-y-3">
+              {audioList.map((audio: any, index: number) => (
+                  <SecureAudioPlayer
+                      key={audio.id || index}
+                      path={audio.path}
+                      iv={audio.iv}
+                      mimeType={audio.type}
+                  />
+              ))}
           </div>
       )}
 

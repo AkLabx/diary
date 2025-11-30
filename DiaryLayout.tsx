@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Outlet, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
-import { DiaryEntry, Profile, Weather } from './types';
+import { DiaryEntry, Profile, Weather, AudioMetadata } from './types';
 import { useCrypto } from './contexts/CryptoContext';
 import { useToast } from './contexts/ToastContext';
 import { fetchWeather } from './lib/weather';
@@ -210,7 +210,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
             ...e,
             title,
             content,
-            audio,
+            audio, // This might now be an array or single object (legacy)
             isDecrypted: true,
             isLoading: false
         } : e));
@@ -260,33 +260,68 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
      setSaveStatus('encrypting');
      try {
-       let audioMetadata = null;
-       // Logic to get current audio metadata if we are editing an existing entry
-       // This is a bit tricky since 'entryData' might not have it if it wasn't touched
-       // But 'entries' state has the old data.
+       // --- MULTI-AUDIO HANDLING ---
+       // 1. Get current state to compare with
        const existingEntry = entryData.id ? entries.find(e => e.id === entryData.id) : null;
-       const currentEntryState = existingEntry || {};
+       const currentAudioList: AudioMetadata[] = [];
 
-       if (entryData.tempAudioBlob) {
-            try {
-                const buffer = await entryData.tempAudioBlob.arrayBuffer();
-                const { iv, data } = await encryptBinary(key, buffer);
-                const encryptedBlob = new Blob([data], { type: 'application/octet-stream' });
-                const fileName = `${session.user.id}/${Date.now()}-audio.bin`;
-                const { error: uploadError } = await supabase.storage.from('diary-audio').upload(fileName, encryptedBlob, { upsert: true });
-                if (uploadError) throw uploadError;
-                audioMetadata = { path: fileName, iv: iv, type: entryData.tempAudioBlob.type };
-            } catch (err) {
-                console.error("Audio upload failed", err);
-                addToast("Failed to secure audio. Saving text only.", "error");
-            }
-       } else if ('audio' in currentEntryState) {
-           // @ts-ignore
-           audioMetadata = currentEntryState.audio;
+       // Handle legacy single-object audio
+       if (existingEntry && existingEntry.audio) {
+           if (Array.isArray(existingEntry.audio)) {
+               currentAudioList.push(...existingEntry.audio);
+           } else {
+               // @ts-ignore: Handle legacy format
+               currentAudioList.push({ ...existingEntry.audio, id: 'legacy' });
+           }
        }
-       // If entryData explicitly has audio (e.g. cleared to null), respect it?
-       // For now assuming entryData.audio isn't passed directly unless modifying it.
-       if (entryData.audio !== undefined) audioMetadata = entryData.audio;
+
+       // 2. Determine what to keep from 'entryData.audio' (UI deletions propagate here)
+       // If entryData.audio is provided, it represents the *desired* list of existing audios.
+       // Any ID in currentAudioList but NOT in entryData.audio should be deleted from Storage.
+       let finalAudioList: AudioMetadata[] = [];
+
+       if (entryData.audio) {
+           // Diffing: Find removed items
+           const keptIds = new Set(entryData.audio.map(a => a.id));
+           const removedItems = currentAudioList.filter(a => !keptIds.has(a.id));
+
+           if (removedItems.length > 0) {
+               console.log(`Deleting ${removedItems.length} orphaned audio files...`);
+               const pathsToRemove = removedItems.map(a => a.path);
+               const { error: removeError } = await supabase.storage.from('diary-audio').remove(pathsToRemove);
+               if (removeError) console.error("Failed to cleanup audio files:", removeError);
+           }
+           finalAudioList = [...entryData.audio];
+       } else {
+           // If not provided in update, assume no change to existing list
+           finalAudioList = [...currentAudioList];
+       }
+
+       // 3. Process New Recordings (tempAudioBlobs)
+       if (entryData.tempAudioBlobs && entryData.tempAudioBlobs.length > 0) {
+           for (const recording of entryData.tempAudioBlobs) {
+                try {
+                    const buffer = await recording.blob.arrayBuffer();
+                    const { iv, data } = await encryptBinary(key, buffer);
+                    const encryptedBlob = new Blob([data], { type: 'application/octet-stream' });
+                    const fileName = `${session.user.id}/${Date.now()}-${recording.id}.bin`;
+
+                    const { error: uploadError } = await supabase.storage.from('diary-audio').upload(fileName, encryptedBlob, { upsert: true });
+                    if (uploadError) throw uploadError;
+
+                    finalAudioList.push({
+                        id: recording.id,
+                        path: fileName,
+                        iv: iv,
+                        type: recording.blob.type
+                    });
+                } catch (err) {
+                    console.error("Audio upload failed", err);
+                    addToast("Failed to secure one or more audio notes.", "error");
+                }
+           }
+       }
+       // --- END MULTI-AUDIO ---
 
 
        const cleanContent = cleanContentBeforeSave(entryData.content);
@@ -294,7 +329,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
        const contentToEncrypt = JSON.stringify({
            title: entryData.title,
            content: cleanContent,
-           audio: audioMetadata
+           audio: finalAudioList // Save as array
        });
        const { iv, data: encrypted_entry } = await encrypt(key, contentToEncrypt);
 
@@ -313,7 +348,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
          setEntries(prev => prev.map(e => e.id === entryData.id ? {
              ...e,
              ...entryData,
-             audio: audioMetadata,
+             audio: finalAudioList,
+             tempAudioBlobs: [], // Clear temps
              isDecrypted: true
          } as DiaryEntry : e));
 
@@ -328,7 +364,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
          const newEntry: DiaryEntry = {
              ...data,
              ...entryData,
-             audio: audioMetadata,
+             audio: finalAudioList,
+             tempAudioBlobs: [], // Clear temps
              id: data.id,
              isDecrypted: true,
              isLoading: false
@@ -387,6 +424,22 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
   const handleDeleteEntry = async (id: string) => {
     try {
+      // Cleanup Audio Files first
+      const entryToDelete = entries.find(e => e.id === id);
+      if (entryToDelete && entryToDelete.audio) {
+          const audioList = Array.isArray(entryToDelete.audio)
+            ? entryToDelete.audio
+            : [entryToDelete.audio]; // legacy support
+
+          if (audioList.length > 0) {
+              const paths = audioList.map((a: any) => a.path).filter(Boolean);
+              if (paths.length > 0) {
+                   await supabase.storage.from('diary-audio').remove(paths);
+                   console.log(`Cleaned up ${paths.length} audio files.`);
+              }
+          }
+      }
+
       const { error } = await supabase.from('diaries').delete().eq('id', id);
       if (error) throw error;
       setEntries(prev => prev.filter(e => e.id !== id));
