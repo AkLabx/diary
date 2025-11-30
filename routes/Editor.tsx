@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import { DiaryEntry } from '../types';
 import { processImage } from '../lib/imageUtils';
 
-type SelectedImageFormat = { align?: string; width?: string; float?: string };
+type SelectedImageFormat = { align?: string; width?: string; float?: string; caption?: string };
 // Transparent 1x1 placeholder for secure images
 const SECURE_PLACEHOLDER = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
@@ -19,7 +19,7 @@ interface RangeStatic {
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals } = useDiary();
+  const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals, registerSaveHandler, isToolsPanelVisible, setToolsPanelVisible } = useDiary();
 
   const [entry, setEntry] = useState<DiaryEntry | 'new' | null>(null);
 
@@ -27,11 +27,21 @@ const Editor: React.FC = () => {
   const [wordCount, setWordCount] = useState(0);
   const [characterCount, setCharacterCount] = useState(0);
   const [editorFont, setEditorFont] = useState<'serif' | 'sans' | 'mono'>('serif');
-  // const [isToolsPanelVisible, setToolsPanelVisible] = useState(true); // Unused currently
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [selectedImageFormat, setSelectedImageFormat] = useState<SelectedImageFormat | null>(null);
 
   const editorRef = useRef<EditorHandle>(null);
+
+  // Register the save handler with the layout
+  useEffect(() => {
+    registerSaveHandler(() => {
+        if (editorRef.current) {
+            editorRef.current.save();
+        }
+    });
+    // Cleanup not strictly necessary as register will overwrite, but good practice
+    return () => registerSaveHandler(() => {});
+  }, [registerSaveHandler]);
 
   useEffect(() => {
       if (!id) {
@@ -56,13 +66,18 @@ const Editor: React.FC = () => {
     const handler = (range: RangeStatic | null) => {
         if (range && range.length === 0) {
             const [blot] = quill.getLeaf(range.index);
-            if (blot && blot.statics.blotName === 'image') {
+            // Updated to check for 'secure-image' blot name
+            if (blot && (blot.statics.blotName === 'secure-image' || blot.statics.blotName === 'image')) {
                 const formats = quill.getFormat(range.index, 1);
-                const parentFormats = quill.getFormat(range.index - 1, 1);
+                // Parent might be figure now, so alignment might be on the figure itself
+                const blotFormat = blot.formats();
+
+                // Need to merge formats correctly from the blot value
                 setSelectedImageFormat({
-                    width: formats.width as string,
-                    align: parentFormats.align as string,
-                    float: formats.float as string,
+                    width: formats.width as string, // style attributor
+                    align: formats.align as string, // align style attributor
+                    float: formats.float as string, // float style attributor
+                    caption: (blotFormat['secure-image'] as any)?.caption // custom caption
                 });
             } else { setSelectedImageFormat(null); }
         } else if (!range) { setSelectedImageFormat(null); }
@@ -88,11 +103,13 @@ const Editor: React.FC = () => {
       const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
       const metadata = JSON.stringify({ path: fileName, iv: iv });
 
-      quill.insertEmbed(range.index, 'image', {
+      // Use 'secure-image' blot instead of 'image'
+      quill.insertEmbed(range.index, 'secure-image', {
           src: SECURE_PLACEHOLDER,
           alt: "Secure Image",
           className: 'secure-diary-image',
-          dataset: { secureMetadata: metadata }
+          dataset: { secureMetadata: metadata },
+          caption: '' // Initial empty caption
       }, 'user');
 
       quill.setSelection(range.index + 1, 0, 'user');
@@ -126,7 +143,33 @@ const Editor: React.FC = () => {
   const handleImageFormatChange = (formats: { [key: string]: any }) => {
     const quill = editorRef.current?.getEditor();
     if (!quill) return;
-    Object.keys(formats).forEach(formatName => { quill.format(formatName, formats[formatName], 'user'); });
+
+    const range = quill.getSelection();
+    if (!range) return;
+
+    // Check if we are updating the blot's data (caption) or styles (width/align)
+    if (formats.caption !== undefined) {
+        // Caption update is a data change, re-insert embed with new data?
+        // Or update attribute? Since FigureBlot reads from DOM, we can update DOM?
+        // Better: Quill 2.0 uses formats() update, but for 1.3 embed blot updates are tricky.
+        // Easiest approach for caption text update: Find the node and update it directly via Quill API if blot supports value() update?
+        // Standard approach: Get current blot, update its value.
+        const [blot] = quill.getLeaf(range.index);
+        if (blot && blot.statics.blotName === 'secure-image') {
+             const currentVal = blot.value();
+             // Update the value with new caption
+             // @ts-ignore
+             blot.replaceWith('secure-image', { ...currentVal, caption: formats.caption });
+        }
+    } else {
+        // Style updates (width, align, float) are handled by Parchment Attributors registered in DiaryEditor
+        Object.keys(formats).forEach(formatName => {
+            if (formatName !== 'caption') {
+                quill.format(formatName, formats[formatName], 'user');
+            }
+        });
+    }
+
     setTimeout(() => {
         const range = quill.getSelection();
         if(range) (quill as any).emitter.emit('selection-change', range, range, 'user');
@@ -147,6 +190,7 @@ const Editor: React.FC = () => {
               onWordCountChange={setWordCount}
               onCharacterCountChange={setCharacterCount}
               editorFont={editorFont}
+              onImageDrop={handleImageUpload} // Pass the handler
             />
             <StatusBar
                 wordCount={wordCount}
@@ -155,8 +199,11 @@ const Editor: React.FC = () => {
             />
          </div>
 
-         {/* ToolsPanel is always visible on large screens for now, logic simplified */}
-         <div className="w-64 border-l border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hidden lg:block">
+         {/* ToolsPanel - Desktop (Sidebar) or Mobile (Overlay) */}
+         <div className={`
+             fixed inset-y-0 right-0 z-30 w-72 bg-white dark:bg-slate-900 shadow-xl transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:shadow-none lg:w-64 lg:border-l border-slate-200 dark:border-slate-800
+             ${isToolsPanelVisible ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
+         `}>
               <ToolsPanel
                   entry={entry}
                       onUpdateEntry={(updates) => {
@@ -176,15 +223,17 @@ const Editor: React.FC = () => {
                       selectedImageFormat={selectedImageFormat}
                       onImageFormatChange={handleImageFormatChange}
                       availableJournals={uniqueJournals}
+                      onClose={() => setToolsPanelVisible(false)} // Pass close handler
                   />
-             </div>
+         </div>
 
-         {/* Mobile Tools Overlay? The TopBar usually handles toggling this in mobile view.
-             Since TopBar is in Layout, we might need a Portal or Context to control visibility.
-             For now, let's keep it simple: On large screens, it's side-by-side. On small screens,
-             maybe we should move ToolsPanel into a modal or bottom sheet triggered by TopBar.
-             The previous design had it floating.
-         */}
+         {/* Mobile Overlay Backdrop */}
+         {isToolsPanelVisible && (
+             <div
+                className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 lg:hidden"
+                onClick={() => setToolsPanelVisible(false)} // Click outside to close
+             />
+         )}
     </div>
   );
 };

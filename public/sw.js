@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'diary-cache-v9';
+const CACHE_NAME = 'diary-cache-v12';
 const BASE_PATH = '/diary';
 
 const urlsToCache = [
@@ -15,7 +15,10 @@ const urlsToCache = [
   'https://aistudiocdn.com/react-quill@^2.0.0',
   'https://aistudiocdn.com/quill@^2.0.0',
   'https://aistudiocdn.com/date-fns@^3.6.0',
-  'https://esm.sh/compromise@14.14.0'
+  'https://esm.sh/compromise@14.14.0',
+  'https://aistudiocdn.com/@zip.js/zip.js@2.7.53/index.js',
+  'https://esm.sh/tslib@2.6.2',
+  'https://esm.sh/react-easy-crop@5.0.7'
 ];
 
 // Install: Cache the app shell
@@ -24,7 +27,21 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache and caching app shell');
-        return cache.addAll(urlsToCache);
+        return Promise.all(
+            urlsToCache.map(url => {
+                return fetch(url).then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to fetch ${url} - Status: ${response.status}`);
+                    }
+                    return cache.put(url, response);
+                }).catch(err => {
+                    console.error(`Failed to cache ${url}:`, err);
+                    // Decide if we want to fail the install or not.
+                    // For now, we log but don't re-throw, so the SW still installs.
+                    // This might mean some offline functionality is broken, but the app loads.
+                });
+            })
+        );
       })
   );
   // Force the waiting service worker to become the active service worker.

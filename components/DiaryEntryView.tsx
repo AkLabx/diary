@@ -1,10 +1,11 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { DiaryEntry } from '../types';
 import DOMPurify from 'dompurify';
 import { formatFullTimestamp, formatRelativeTime } from '../lib/dateUtils';
 import SecureAudioPlayer from './SecureAudioPlayer';
 import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
+import Lightbox from './Lightbox';
 
 interface DiaryEntryViewProps {
   entry: DiaryEntry;
@@ -18,6 +19,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   const relativeTime = formatRelativeTime(entry.created_at);
   const contentRef = useRef<HTMLDivElement>(null);
   const { key, decryptBinary } = useCrypto();
+  const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
       // Decrypt secure images
@@ -41,6 +43,8 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
                           // Show loading state (half opacity)
                           img.style.opacity = '0.5';
                           img.style.transition = 'opacity 0.3s';
+                          // Add cursor pointer to indicate clickability for Lightbox
+                          img.style.cursor = 'zoom-in';
 
                           // STRATEGY CHANGE: Use createSignedUrl instead of download()
                           // This is more robust against bucket config mismatches (public/private)
@@ -94,6 +98,17 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
       };
   }, [entry.isDecrypted, entry.content, key, decryptBinary]);
 
+  // Handle Image Click for Lightbox
+  const handleContentClick = (e: React.MouseEvent<HTMLDivElement>) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'IMG' && target.classList.contains('secure-diary-image')) {
+          const src = (target as HTMLImageElement).src;
+          if (src && src.startsWith('blob:')) {
+              setSelectedImageSrc(src);
+          }
+      }
+  };
+
 
   if (!entry.isDecrypted) {
       return (
@@ -109,8 +124,9 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
       );
   }
 
-  // DOMPurify v3 removed ALLOWED_CSS_PROPS. We use a hook to achieve the same result for image styling.
+  // DOMPurify config for secure images and captions
   const allowedCssProps = ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align', 'opacity', 'transition'];
+
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
     if (node instanceof Element && node.hasAttribute('style')) {
       const style = node.getAttribute('style') || '';
@@ -129,85 +145,102 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   });
 
   const sanitizedContent = DOMPurify.sanitize(entry.content, {
-    ADD_TAGS: ['img'],
-    // Allow our custom secure metadata attribute
-    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata'], 
+    ADD_TAGS: ['img', 'figure', 'figcaption'], // Allow figure elements
+    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata', 'contenteditable'], // Allow necessary attributes
   });
   
   DOMPurify.removeHook('afterSanitizeAttributes');
 
+  // Handle Multi-Audio Rendering
+  // Note: We handle legacy single object structure by converting it to array
+  const audioList = entry.audio
+    ? (Array.isArray(entry.audio) ? entry.audio : [entry.audio])
+    : [];
 
   return (
-    <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in">
-      <button
-        onClick={onBack}
-        className="mb-6 flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors group"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 transform group-hover:-translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
-        </svg>
-        Back to Timeline
-      </button>
+    <>
+        <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in">
+        <button
+            onClick={onBack}
+            className="mb-6 flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors group"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1 transform group-hover:-translate-x-1 transition-transform" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+            </svg>
+            Back to Timeline
+        </button>
 
-      <div className="border-b border-slate-200 dark:border-slate-700 pb-4 mb-4">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{entry.title}</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {fullDate} ({relativeTime})
-          </p>
-        </div>
-         <div className="flex items-center gap-4 mt-3">
-          {entry.mood && <span className="text-3xl" aria-label={`Mood: ${entry.mood}`}>{entry.mood}</span>}
-          {entry.tags && entry.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {entry.tags.map(tag => (
-                <span key={tag} className="text-sm font-medium bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full dark:bg-indigo-900/50 dark:text-indigo-300">
-                  {tag}
-                </span>
-              ))}
+        <div className="border-b border-slate-200 dark:border-slate-700 pb-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+            <h1 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{entry.title}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+                {fullDate} ({relativeTime})
+            </p>
             </div>
-          )}
+            <div className="flex items-center gap-4 mt-3">
+            {entry.mood && <span className="text-3xl" aria-label={`Mood: ${entry.mood}`}>{entry.mood}</span>}
+            {entry.tags && entry.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                {entry.tags.map(tag => (
+                    <span key={tag} className="text-sm font-medium bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full dark:bg-indigo-900/50 dark:text-indigo-300">
+                    {tag}
+                    </span>
+                ))}
+                </div>
+            )}
+            </div>
         </div>
-      </div>
-      
-      {entry.audio && (
-          <div className="my-6">
-              <SecureAudioPlayer 
-                  path={entry.audio.path} 
-                  iv={entry.audio.iv} 
-                  mimeType={entry.audio.type}
-              />
-          </div>
-      )}
 
-      <div 
-        ref={contentRef}
-        className="prose prose-slate dark:prose-invert max-w-none my-6"
-        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
-      />
+        {/* Audio Section - Updated for Multi-Audio */}
+        {audioList.length > 0 && (
+            <div className="my-6 space-y-3">
+                {audioList.map((audio: any, index: number) => (
+                    <SecureAudioPlayer
+                        key={audio.id || index}
+                        path={audio.path}
+                        iv={audio.iv}
+                        mimeType={audio.type}
+                    />
+                ))}
+            </div>
+        )}
 
-      <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-6 flex justify-end gap-3">
-        <button
-          onClick={onEdit}
-          className="flex items-center gap-2 bg-slate-100 text-slate-700 font-semibold px-4 py-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors"
-        >
-           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
-            <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
-          </svg>
-          Edit
-        </button>
-        <button
-          onClick={onDelete}
-          className="flex items-center gap-2 bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-          </svg>
-          Delete
-        </button>
-      </div>
-    </div>
+        <div
+            ref={contentRef}
+            onClick={handleContentClick}
+            className="prose prose-slate dark:prose-invert max-w-none my-6 diary-content"
+            dangerouslySetInnerHTML={{ __html: sanitizedContent }}
+        />
+
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-6 flex justify-end gap-3">
+            <button
+            onClick={onEdit}
+            className="flex items-center gap-2 bg-slate-100 text-slate-700 font-semibold px-4 py-2 rounded-lg hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-slate-200 dark:hover:bg-slate-600 transition-colors"
+            >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                <path fillRule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clipRule="evenodd" />
+            </svg>
+            Edit
+            </button>
+            <button
+            onClick={onDelete}
+            className="flex items-center gap-2 bg-red-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+            >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            Delete
+            </button>
+        </div>
+        </div>
+
+        {/* Lightbox Component */}
+        <Lightbox
+            src={selectedImageSrc}
+            onClose={() => setSelectedImageSrc(null)}
+        />
+    </>
   );
 };
 

@@ -1,26 +1,32 @@
+export interface AudioMetadata {
+  id: string; // Unique ID for keying/diffing
+  path: string;
+  iv: string;
+  type: string;
+}
+
 export interface DiaryEntry {
   id: string; // Will be a UUID from Supabase
   title: string;
   content: string;
   owner_id: string;
   created_at: string;
+  updated_at?: string;
   tags?: string[];
   mood?: string;
   journal?: string; // New field for Multiple Journals feature
   
   // Audio Metadata (Stored inside encrypted content)
-  audio?: {
-    path: string;
-    iv: string;
-    type: string;
-  };
+  // Changed from single object to array
+  audio?: AudioMetadata[];
 
   // Fields for lazy loading architecture
   isDecrypted?: boolean;
   isLoading?: boolean;
   
   // Temporary state for editing
-  tempAudioBlob?: Blob;
+  // Changed from single blob to array of objects
+  tempAudioBlobs?: { id: string; blob: Blob }[];
 }
 
 export interface Profile {
