@@ -105,25 +105,75 @@ body {
   transition: all 0.1s ease-in-out;
 }
 
-.secure-diary-image {
+/* --- Secure Image & Caption Styles --- */
+.diary-image-figure {
+    margin: 1em 0;
+    display: table; /* Helps with width: auto behavior */
+    max-width: 100%;
+    clear: both; /* Prevent overlapping */
+}
+
+/* When the user sets a width (e.g. 50%), Parchment applies it to the figure.
+   We ensure the image fills that container. */
+.diary-image-figure img.secure-diary-image {
+    width: 100%;
+    height: auto;
+    display: block;
     background-color: #f1f5f9;
     min-width: 50px;
     min-height: 50px;
+    border-radius: 4px;
 }
 
-.dark .secure-diary-image {
+.dark .diary-image-figure img.secure-diary-image {
     background-color: #334155;
 }
 
+.diary-image-figure figcaption {
+    display: block;
+    caption-side: bottom;
+    text-align: center;
+    font-size: 0.875rem; /* text-sm */
+    color: #64748b; /* slate-500 */
+    margin-top: 0.5rem;
+    font-style: italic;
+    min-height: 1.5em; /* clickable area for empty caption */
+    padding: 0 4px;
+}
+
+.dark .diary-image-figure figcaption {
+    color: #94a3b8; /* slate-400 */
+}
+
+/* --- View Mode Styles --- */
 .prose {
   overflow-wrap: break-word;
   word-break: break-word;
   display: flow-root;
 }
 
+.prose figure {
+    margin: 1.5em 0;
+    display: table;
+    max-width: 100%;
+    clear: both;
+}
+
 .prose img {
   max-width: 100% !important;
   height: auto !important;
+  border-radius: 0.5rem;
+}
+
+.prose figcaption {
+    text-align: center;
+    font-size: 0.875rem;
+    color: #64748b;
+    margin-top: 0.5rem;
+    font-style: italic;
+}
+.dark .prose figcaption {
+    color: #94a3b8;
 }
 
 /* --- LANDING PAGE 3D ANIMATIONS --- */
