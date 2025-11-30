@@ -194,6 +194,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   useEffect(() => {
     const incomingId = entry?.id || 'draft';
     
+    // Only reset state if the entry ID actually changes
     if (loadedIdRef.current === incomingId) {
         return;
     }
