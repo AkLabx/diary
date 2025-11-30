@@ -4,6 +4,7 @@ export interface DiaryEntry {
   content: string;
   owner_id: string;
   created_at: string;
+  updated_at?: string; // Added optional updated_at
   tags?: string[];
   mood?: string;
   journal?: string; // New field for Multiple Journals feature
