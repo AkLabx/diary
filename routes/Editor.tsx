@@ -8,7 +8,7 @@ import { supabase } from '../lib/supabaseClient';
 import { DiaryEntry } from '../types';
 import { processImage } from '../lib/imageUtils';
 
-type SelectedImageFormat = { align?: string; width?: string; float?: string };
+type SelectedImageFormat = { align?: string; width?: string; float?: string; caption?: string };
 // Transparent 1x1 placeholder for secure images
 const SECURE_PLACEHOLDER = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
@@ -66,13 +66,18 @@ const Editor: React.FC = () => {
     const handler = (range: RangeStatic | null) => {
         if (range && range.length === 0) {
             const [blot] = quill.getLeaf(range.index);
-            if (blot && blot.statics.blotName === 'image') {
+            // Updated to check for 'secure-image' blot name
+            if (blot && (blot.statics.blotName === 'secure-image' || blot.statics.blotName === 'image')) {
                 const formats = quill.getFormat(range.index, 1);
-                const parentFormats = quill.getFormat(range.index - 1, 1);
+                // Parent might be figure now, so alignment might be on the figure itself
+                const blotFormat = blot.formats();
+
+                // Need to merge formats correctly from the blot value
                 setSelectedImageFormat({
-                    width: formats.width as string,
-                    align: parentFormats.align as string,
-                    float: formats.float as string,
+                    width: formats.width as string, // style attributor
+                    align: formats.align as string, // align style attributor
+                    float: formats.float as string, // float style attributor
+                    caption: (blotFormat['secure-image'] as any)?.caption // custom caption
                 });
             } else { setSelectedImageFormat(null); }
         } else if (!range) { setSelectedImageFormat(null); }
@@ -98,11 +103,13 @@ const Editor: React.FC = () => {
       const range = quill.getSelection(true) || { index: quill.getLength(), length: 0 };
       const metadata = JSON.stringify({ path: fileName, iv: iv });
 
-      quill.insertEmbed(range.index, 'image', {
+      // Use 'secure-image' blot instead of 'image'
+      quill.insertEmbed(range.index, 'secure-image', {
           src: SECURE_PLACEHOLDER,
           alt: "Secure Image",
           className: 'secure-diary-image',
-          dataset: { secureMetadata: metadata }
+          dataset: { secureMetadata: metadata },
+          caption: '' // Initial empty caption
       }, 'user');
 
       quill.setSelection(range.index + 1, 0, 'user');
@@ -136,7 +143,33 @@ const Editor: React.FC = () => {
   const handleImageFormatChange = (formats: { [key: string]: any }) => {
     const quill = editorRef.current?.getEditor();
     if (!quill) return;
-    Object.keys(formats).forEach(formatName => { quill.format(formatName, formats[formatName], 'user'); });
+
+    const range = quill.getSelection();
+    if (!range) return;
+
+    // Check if we are updating the blot's data (caption) or styles (width/align)
+    if (formats.caption !== undefined) {
+        // Caption update is a data change, re-insert embed with new data?
+        // Or update attribute? Since FigureBlot reads from DOM, we can update DOM?
+        // Better: Quill 2.0 uses formats() update, but for 1.3 embed blot updates are tricky.
+        // Easiest approach for caption text update: Find the node and update it directly via Quill API if blot supports value() update?
+        // Standard approach: Get current blot, update its value.
+        const [blot] = quill.getLeaf(range.index);
+        if (blot && blot.statics.blotName === 'secure-image') {
+             const currentVal = blot.value();
+             // Update the value with new caption
+             // @ts-ignore
+             blot.replaceWith('secure-image', { ...currentVal, caption: formats.caption });
+        }
+    } else {
+        // Style updates (width, align, float) are handled by Parchment Attributors registered in DiaryEditor
+        Object.keys(formats).forEach(formatName => {
+            if (formatName !== 'caption') {
+                quill.format(formatName, formats[formatName], 'user');
+            }
+        });
+    }
+
     setTimeout(() => {
         const range = quill.getSelection();
         if(range) (quill as any).emitter.emit('selection-change', range, range, 'user');

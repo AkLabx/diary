@@ -109,8 +109,9 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
       );
   }
 
-  // DOMPurify v3 removed ALLOWED_CSS_PROPS. We use a hook to achieve the same result for image styling.
+  // DOMPurify config for secure images and captions
   const allowedCssProps = ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align', 'opacity', 'transition'];
+
   DOMPurify.addHook('afterSanitizeAttributes', (node) => {
     if (node instanceof Element && node.hasAttribute('style')) {
       const style = node.getAttribute('style') || '';
@@ -129,9 +130,8 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   });
 
   const sanitizedContent = DOMPurify.sanitize(entry.content, {
-    ADD_TAGS: ['img'],
-    // Allow our custom secure metadata attribute
-    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata'], 
+    ADD_TAGS: ['img', 'figure', 'figcaption'], // Allow figure elements
+    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata', 'contenteditable'], // Allow necessary attributes
   });
   
   DOMPurify.removeHook('afterSanitizeAttributes');
@@ -191,7 +191,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
 
       <div 
         ref={contentRef}
-        className="prose prose-slate dark:prose-invert max-w-none my-6"
+        className="prose prose-slate dark:prose-invert max-w-none my-6 diary-content"
         dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
 

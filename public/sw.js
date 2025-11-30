@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'diary-cache-v10';
+const CACHE_NAME = 'diary-cache-v12';
 const BASE_PATH = '/diary';
 
 const urlsToCache = [
@@ -27,10 +27,6 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME)
       .then((cache) => {
         console.log('Opened cache and caching app shell');
-        // We use Promise.allSettled to ensure that one failing request doesn't break the entire install
-        // However, for critical assets, we might want to ensure they are cached.
-        // Given the importmap usage, many of these are critical.
-        // We will try to cache all, but log failures.
         return Promise.all(
             urlsToCache.map(url => {
                 return fetch(url).then(response => {

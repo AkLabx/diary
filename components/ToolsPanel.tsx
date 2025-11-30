@@ -2,7 +2,7 @@ import React, { useRef, useState, useEffect } from 'react';
 import { DiaryEntry } from '../types';
 import AudioRecorder, { RecordedAudio } from './AudioRecorder';
 
-type SelectedImageFormat = { align?: string; width?: string; float?: string };
+type SelectedImageFormat = { align?: string; width?: string; float?: string; caption?: string };
 
 interface ToolsPanelProps {
   entry: DiaryEntry | 'new';
@@ -180,6 +180,19 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
             {selectedImageFormat && (
                 <div className="border-t border-slate-200 dark:border-slate-700 pt-6 space-y-4">
                      <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">Image Tools</h2>
+
+                     {/* Caption Input */}
+                     <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">Caption</h3>
+                        <input
+                            type="text"
+                            value={selectedImageFormat.caption || ''}
+                            onChange={(e) => onImageFormatChange({ caption: e.target.value })}
+                            placeholder="Add a caption..."
+                            className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-md bg-slate-50 dark:bg-slate-800 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                        />
+                     </div>
+
                      <div className="grid grid-cols-4 gap-1">{['25%', '50%', '75%', '100%'].map(size => (<button key={size} onClick={() => onImageFormatChange({ width: size })} className={`p-2 text-xs rounded-md ${selectedImageFormat.width === size ? 'bg-indigo-500 text-white' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'}`}>{size}</button>))}</div>
                      <div className="grid grid-cols-3 gap-1">
                         <button onClick={() => onImageFormatChange({ align: false, float: 'left', margin: '0.5em 1em 0.5em 0' })} className={`p-2 rounded-md flex justify-center ${selectedImageFormat.float === 'left' ? 'bg-indigo-500 text-white' : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'}`}><svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M2 5a1 1 0 011-1h14a1 1 0 110 2H3a1 1 0 01-1-1zM2 9a1 1 0 011-1h5a1 1 0 110 2H3a1 1 0 01-1-1zm7 4a1 1 0 011-1h5a1 1 0 110 2h-5a1 1 0 01-1-1z" clipRule="evenodd" /></svg></button>
