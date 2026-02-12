@@ -3,7 +3,7 @@ import DiaryEditor, { EditorHandle } from '../components/DiaryEditor';
 import ToolsPanel from '../components/ToolsPanel';
 import StatusBar from '../components/StatusBar';
 import { useDiary } from '../DiaryLayout';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { DiaryEntry } from '../types';
 import { processImage } from '../lib/imageUtils';
@@ -19,6 +19,7 @@ interface RangeStatic {
 
 const Editor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
   const { entries, saveEntry, loadEntryContent, key, encryptBinary, session, uniqueJournals, registerSaveHandler, isToolsPanelVisible, setToolsPanelVisible } = useDiary();
 
   const [entry, setEntry] = useState<DiaryEntry | 'new' | null>(null);
@@ -45,7 +46,26 @@ const Editor: React.FC = () => {
 
   useEffect(() => {
       if (!id) {
-          setEntry('new');
+          const queryParams = new URLSearchParams(location.search);
+          const dateParam = queryParams.get('date');
+
+          if (dateParam) {
+              // Create a temporary entry object for the past date
+              setEntry({
+                  id: '',
+                  owner_id: '',
+                  title: '',
+                  content: '',
+                  created_at: new Date(dateParam).toISOString(),
+                  tags: [],
+                  mood: undefined,
+                  isDecrypted: true,
+                  isLoading: false,
+                  journal: 'Personal'
+              } as DiaryEntry);
+          } else {
+              setEntry('new');
+          }
       } else {
           const found = entries.find(e => e.id === id);
           if (found) {

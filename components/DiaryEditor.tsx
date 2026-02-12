@@ -210,6 +210,12 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
             loadedTitle = entry.title;
             loadedContent = entry.content;
             loadedDate = new Date(entry.created_at);
+
+            // Pre-fill title for new past-date entries
+            if (!entry.id && !loadedTitle) {
+                const options: Intl.DateTimeFormatOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                loadedTitle = `Entry for ${loadedDate.toLocaleDateString(undefined, options)}`;
+            }
         } else {
             loadedTitle = "Today's diary entry...";
             loadedContent = "";
@@ -365,7 +371,11 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full text-3xl font-bold bg-transparent focus:outline-none focus:ring-0 border-none p-0 text-slate-800 dark:text-slate-100 placeholder:text-slate-400"
-                placeholder="Today's diary entry..."
+                placeholder={
+                    new Date().toDateString() === entryDate.toDateString()
+                    ? "Today's diary entry..."
+                    : `Entry for ${entryDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}...`
+                }
             />
         </div>
         <div className="flex-grow overflow-y-auto relative">
