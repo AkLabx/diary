@@ -15,10 +15,18 @@ const Calendar: React.FC = () => {
     navigate(`/app?date=${dateStr}`);
   };
 
+  const handleCreateEntry = (date: Date) => {
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+    const dateStr = localDate.toISOString().split('T')[0];
+    navigate(`/app/new?date=${dateStr}`);
+  };
+
   return (
     <CalendarView
         entries={entries}
         onSelectDate={handleDateSelect}
+        onCreateEntry={handleCreateEntry}
         onBack={() => navigate('/app')}
     />
   );

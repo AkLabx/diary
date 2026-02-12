@@ -1,9 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { DiaryEntry } from '../types';
+import DateInteractionMenu from './DateInteractionMenu';
 
 interface CalendarViewProps {
   entries: DiaryEntry[];
   onSelectDate: (date: Date) => void;
+  onCreateEntry: (date: Date) => void;
   onBack: () => void;
 }
 
@@ -12,8 +14,10 @@ const toLocalDateString = (date: Date): string => {
     return new Date(date.getTime() - (date.getTimezoneOffset() * 60000)).toISOString().split("T")[0];
 };
 
-const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onBack }) => {
+const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onCreateEntry, onBack }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [interactionDate, setInteractionDate] = useState<Date | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number, left: number } | undefined>(undefined);
 
   const entryDates = useMemo(() => {
     const dates = new Set<string>();
@@ -63,19 +67,33 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onBa
     let days = [];
     let day = startDate;
 
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     while (day <= endDate) {
       for (let i = 0; i < 7; i++) {
         const cloneDay = new Date(day);
         const dayKey = toLocalDateString(cloneDay);
         const hasEntry = entryDates.has(dayKey);
+        const isFuture = cloneDay > today;
+        const isCurrentMonth = cloneDay.getMonth() === currentDate.getMonth();
         
         days.push(
           <div
             key={day.toString()}
-            className={`p-1 h-20 flex flex-col items-center justify-center rounded-lg transition-colors ${
-              cloneDay.getMonth() !== currentDate.getMonth() ? 'text-slate-300 dark:text-slate-600' : 'text-slate-700 dark:text-slate-300'
-            } ${hasEntry ? 'cursor-pointer bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30' : ''}`}
-            onClick={hasEntry ? () => onSelectDate(cloneDay) : undefined}
+            className={`p-1 h-20 flex flex-col items-center justify-center rounded-lg transition-colors relative
+              ${!isCurrentMonth ? 'text-slate-300 dark:text-slate-600' : 'text-slate-700 dark:text-slate-300'}
+              ${hasEntry ? 'bg-indigo-100 hover:bg-indigo-200 dark:bg-indigo-500/20 dark:hover:bg-indigo-500/30' : ''}
+              ${!isFuture ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700/50' : 'opacity-50 cursor-not-allowed'}
+              ${hasEntry && !isFuture ? 'hover:!bg-indigo-200 dark:hover:!bg-indigo-500/40' : ''}
+            `}
+            onClick={(e) => {
+                if (isFuture) return;
+                const rect = e.currentTarget.getBoundingClientRect();
+                // Use viewport coordinates for fixed positioning
+                setMenuPosition({ top: rect.bottom, left: rect.left });
+                setInteractionDate(cloneDay);
+            }}
           >
             <span className={`text-sm ${new Date().toDateString() === cloneDay.toDateString() ? 'bg-indigo-500 text-white rounded-full h-6 w-6 flex items-center justify-center' : ''}`}>
               {cloneDay.getDate()}
@@ -99,6 +117,22 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onBa
 
   return (
     <div className="animate-fade-in">
+      <DateInteractionMenu
+          isOpen={!!interactionDate}
+          onClose={() => setInteractionDate(null)}
+          date={interactionDate || new Date()}
+          hasEntries={interactionDate ? entryDates.has(toLocalDateString(interactionDate)) : false}
+          onCreate={(date) => {
+              setInteractionDate(null);
+              onCreateEntry(date);
+          }}
+          onView={(date) => {
+              setInteractionDate(null);
+              onSelectDate(date);
+          }}
+          position={menuPosition}
+      />
+
       <button
         onClick={onBack}
         className="mb-6 flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors group"
