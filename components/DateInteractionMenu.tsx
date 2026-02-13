@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 interface DateInteractionMenuProps {
   isOpen: boolean;
@@ -20,11 +21,18 @@ const DateInteractionMenu: React.FC<DateInteractionMenuProps> = ({
   position
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuRef = useRef<HTMLDivElement>(null);
 
   // Close on click outside (for popover)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      // Note: With createPortal, refs still point to the DOM nodes.
+      // And contains checks if target is descendant of ref.
+      const inDesktop = menuRef.current && menuRef.current.contains(target);
+      const inMobile = mobileMenuRef.current && mobileMenuRef.current.contains(target);
+
+      if (!inDesktop && !inMobile) {
         onClose();
       }
     };
@@ -45,6 +53,7 @@ const DateInteractionMenu: React.FC<DateInteractionMenuProps> = ({
   const MobileModal = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm lg:hidden" onClick={onClose}>
       <div
+        ref={mobileMenuRef}
         className="bg-white dark:bg-slate-800 rounded-lg shadow-xl w-full max-w-sm overflow-hidden animate-fade-in-up"
         onClick={(e) => e.stopPropagation()}
       >
@@ -134,11 +143,12 @@ const DateInteractionMenu: React.FC<DateInteractionMenuProps> = ({
       </div>
   );
 
-  return (
+  return createPortal(
     <>
         {MobileModal}
         {DesktopPopover}
-    </>
+    </>,
+    document.body
   );
 };
 
