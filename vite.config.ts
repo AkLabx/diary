@@ -10,12 +10,12 @@ export default defineConfig({
     rollupOptions: {
       // Mark these as external so Vite doesn't try to bundle them.
       // They are provided via <script type="importmap"> in index.html
-      external: ['@zip.js/zip.js', 'compromise']
+      external: ['@zip.js/zip.js']
     }
   },
   // Add this to prevent Vite from trying to pre-bundle these dependencies
   // during development. They are handled by the importmap.
   optimizeDeps: {
-    exclude: ['@zip.js/zip.js', 'compromise']
+    exclude: ['@zip.js/zip.js']
   }
 })
