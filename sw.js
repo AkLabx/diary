@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'diary-cache-v14';
+const CACHE_NAME = 'diary-cache-v13';
 const BASE_PATH = '/diary';
 
 const urlsToCache = [
@@ -9,6 +9,17 @@ const urlsToCache = [
   `${BASE_PATH}/pwa-icon.svg`,
   `${BASE_PATH}/manifest.json`,
   // Cache external dependencies for offline functionality
+  'https://aistudiocdn.com/react@^18.2.0',
+  'https://aistudiocdn.com/react-dom@^18.2.0/client',
+  'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm',
+  'https://aistudiocdn.com/dompurify@^3.3.0',
+  'https://aistudiocdn.com/react-quill@^2.0.0',
+  'https://aistudiocdn.com/quill@^2.0.0',
+  'https://aistudiocdn.com/date-fns@^3.6.0',
+  'https://esm.sh/compromise@14.14.0',
+  'https://aistudiocdn.com/@zip.js/zip.js@2.7.53/index.js',
+  'https://esm.sh/tslib@2.6.2',
+  'https://esm.sh/react-easy-crop@5.0.7'
 ];
 
 // Install: Cache the app shell
