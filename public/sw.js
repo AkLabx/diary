@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'diary-cache-v14';
+const CACHE_NAME = 'diary-cache-v15';
 const BASE_PATH = '/diary';
 
 const urlsToCache = [

@@ -37,10 +37,25 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    // Handle session initialization with error handling to prevent infinite loading
+    const initializeAuth = async () => {
+      try {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error("Error getting session:", error);
+        }
+        // Ensure we safely access session, defaulting to null if data is missing
+        setSession(data?.session ?? null);
+      } catch (err) {
+        console.error("Unexpected error during auth initialization:", err);
+        // Ensure session is null on error so the app can load in unauthenticated state
+        setSession(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
 
     const {
       data: { subscription },
