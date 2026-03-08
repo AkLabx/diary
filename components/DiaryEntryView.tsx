@@ -142,11 +142,17 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         node.removeAttribute('style');
       }
     }
+
+    // Security enhancement: Prevent reverse tabnabbing on user-generated links
+    if (node.tagName === 'A') {
+      node.setAttribute('target', '_blank');
+      node.setAttribute('rel', 'noopener noreferrer');
+    }
   });
 
   const sanitizedContent = DOMPurify.sanitize(entry.content, {
-    ADD_TAGS: ['img', 'figure', 'figcaption'], // Allow figure elements
-    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata', 'contenteditable'], // Allow necessary attributes
+    ADD_TAGS: ['img', 'figure', 'figcaption', 'a'], // Allow figure elements and links
+    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata', 'contenteditable', 'href', 'target', 'rel'], // Allow necessary attributes
   });
   
   DOMPurify.removeHook('afterSanitizeAttributes');
