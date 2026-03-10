@@ -80,6 +80,18 @@ const Auth: React.FC<AuthProps> = () => {
     );
   }
   
+  const getFriendlyErrorMessage = (error: any) => {
+    // Check for network errors (often manifest as "Failed to fetch" TypeError)
+    if (
+      (error?.name === 'TypeError' && error?.message === 'Failed to fetch') ||
+      error?.message?.includes('NetworkError') ||
+      error?.message?.includes('connection')
+    ) {
+      return "Network Error: Unable to connect to the server. Please check your internet connection and firewall settings.";
+    }
+    return error.error_description || error.message || "An unexpected error occurred.";
+  };
+
   const handleSignUp = async () => {
       const { error } = await (supabase.auth as any).signUp({ 
         email, 
@@ -109,7 +121,7 @@ const Auth: React.FC<AuthProps> = () => {
       });
       if (error) throw error;
     } catch (error: any) {
-      setError(error.error_description || error.message);
+      setError(getFriendlyErrorMessage(error));
       setLoading(false);
     }
   };
@@ -127,7 +139,7 @@ const Auth: React.FC<AuthProps> = () => {
       }
     } catch (error: any)
       {
-      setError(error.error_description || error.message);
+      setError(getFriendlyErrorMessage(error));
     } finally {
       setLoading(false);
     }
