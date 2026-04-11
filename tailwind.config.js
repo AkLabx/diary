@@ -1,8 +1,11 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
-    "./**/*.{js,ts,jsx,tsx}",
+    "./components/**/*.{js,ts,jsx,tsx}",
+    "./routes/**/*.{js,ts,jsx,tsx}",
+    "./DiaryLayout.tsx",
+    "./App.tsx",
   ],
   darkMode: 'class',
   theme: {
