@@ -5,11 +5,11 @@ def verify_app():
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         try:
-            print("Navigating to http://localhost:5174/diary/")
-            page.goto("http://localhost:5174/diary/")
+            print("Navigating to http://localhost:5173/diary/")
+            page.goto("http://localhost:5173/diary/")
             page.wait_for_timeout(2000)
             print("Title:", page.title())
-            page.screenshot(path="/home/jules/verification/landing_page_5174.png")
+            page.screenshot(path="/home/jules/verification/landing_page_5173.png")
             print("Screenshot taken.")
 
             # Check for specific elements of Landing Page to confirm it loaded

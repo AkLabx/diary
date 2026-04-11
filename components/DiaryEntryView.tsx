@@ -8,16 +8,45 @@ import { useCrypto } from '../contexts/CryptoContext';
 import Lightbox from './Lightbox';
 
 interface DiaryEntryViewProps {
+  onNext?: () => void;
+  onPrev?: () => void;
+  hasNext?: boolean;
+  hasPrev?: boolean;
+  animationClass?: string;
   entry: DiaryEntry;
   onEdit: () => void;
   onDelete: () => void;
   onBack: () => void;
 }
 
-const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete, onBack }) => {
+const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete, onBack, onNext, onPrev, hasNext, hasPrev, animationClass = 'animate-fade-in' }) => {
   const fullDate = formatFullTimestamp(entry.created_at);
   const relativeTime = formatRelativeTime(entry.created_at);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  const [touchStartX, setTouchStartX] = useState<number | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    setTouchStartX(e.touches[0].clientX);
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX === null) return;
+    const touchEndX = e.changedTouches[0].clientX;
+    const deltaX = touchStartX - touchEndX;
+
+    if (Math.abs(deltaX) > 50) { // Minimum swipe distance
+      if (deltaX > 0 && onNext && hasNext) {
+        // Swiped left
+        onNext();
+      } else if (deltaX < 0 && onPrev && hasPrev) {
+        // Swiped right
+        onPrev();
+      }
+    }
+    setTouchStartX(null);
+  };
+
   const { key, decryptBinary } = useCrypto();
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
 
@@ -112,7 +141,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
 
   if (!entry.isDecrypted) {
       return (
-         <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in flex items-center justify-center min-h-[300px]">
+         <div className={`bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 ${animationClass} flex items-center justify-center min-h-[300px]`}>
             <div className="flex flex-col items-center gap-4">
                 <svg className="animate-spin h-10 w-10 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -165,7 +194,11 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
 
   return (
     <>
-        <div className="bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 animate-fade-in">
+        <div
+        className={`bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 ${animationClass} mb-20`}
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+        >
         <button
             onClick={onBack}
             className="mb-6 flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 dark:text-slate-400 dark:hover:text-indigo-400 transition-colors group"
@@ -242,6 +275,39 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         </div>
 
         {/* Lightbox Component */}
+
+        {/* Navigation Footer */}
+        <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex justify-between items-center z-10 transition-colors">
+            <button
+                onClick={onPrev}
+                disabled={!hasPrev}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    hasPrev
+                    ? 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700'
+                    : 'text-slate-400 cursor-not-allowed dark:text-slate-600'
+                }`}
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Previous
+            </button>
+            <button
+                onClick={onNext}
+                disabled={!hasNext}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    hasNext
+                    ? 'text-slate-700 hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-700'
+                    : 'text-slate-400 cursor-not-allowed dark:text-slate-600'
+                }`}
+            >
+                Next
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                </svg>
+            </button>
+        </div>
+
         <Lightbox
             src={selectedImageSrc}
             onClose={() => setSelectedImageSrc(null)}

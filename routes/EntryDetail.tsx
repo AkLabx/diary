@@ -12,6 +12,7 @@ const EntryDetail: React.FC = () => {
   const [entry, setEntry] = useState<DiaryEntry | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [animationClass, setAnimationClass] = useState('animate-fade-in');
 
   useEffect(() => {
     if (id && entries.length > 0) {
@@ -24,6 +25,35 @@ const EntryDetail: React.FC = () => {
         }
     }
   }, [id, entries, loadEntryContent]);
+
+  const currentIndex = entries.findIndex(e => e.id === id);
+
+  // Next means moving forward in time (newer). Since entries are sorted newest first, newer is index - 1.
+  const hasNext = currentIndex > 0;
+  const hasPrev = currentIndex !== -1 && currentIndex < entries.length - 1;
+
+  const nextEntryId = hasNext ? entries[currentIndex - 1].id : null;
+  const prevEntryId = hasPrev ? entries[currentIndex + 1].id : null;
+
+  const handleNext = () => {
+    if (nextEntryId) {
+      setAnimationClass('animate-slide-out-left');
+      setTimeout(() => {
+        setAnimationClass('animate-slide-in-right');
+        navigate(`/app/entry/${nextEntryId}`);
+      }, 200);
+    }
+  };
+
+  const handlePrev = () => {
+    if (prevEntryId) {
+      setAnimationClass('animate-slide-out-right');
+      setTimeout(() => {
+        setAnimationClass('animate-slide-in-left');
+        navigate(`/app/entry/${prevEntryId}`);
+      }, 200);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
       if (!entry) return;
@@ -46,6 +76,11 @@ const EntryDetail: React.FC = () => {
             onEdit={() => navigate(`/app/edit/${entry.id}`)}
             onDelete={() => setIsDeleteModalOpen(true)}
             onBack={() => navigate('/app')}
+            onNext={handleNext}
+            onPrev={handlePrev}
+            hasNext={hasNext}
+            hasPrev={hasPrev}
+            animationClass={animationClass}
         />
         <ConfirmationModal
             isOpen={isDeleteModalOpen}
