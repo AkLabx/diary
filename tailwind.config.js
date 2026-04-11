@@ -31,6 +31,18 @@ export default {
         'slide-in-right': {
             'from': { transform: 'translateX(100%)' },
             'to': { transform: 'translateX(0)' },
+        },
+        'slide-in-left': {
+            'from': { transform: 'translateX(-100%)' },
+            'to': { transform: 'translateX(0)' },
+        },
+        'slide-out-right': {
+            'from': { transform: 'translateX(0)' },
+            'to': { transform: 'translateX(100%)' },
+        },
+        'slide-out-left': {
+            'from': { transform: 'translateX(0)' },
+            'to': { transform: 'translateX(-100%)' },
         }
       },
       animation: {
@@ -38,6 +50,9 @@ export default {
         'toast-in': 'toast-in 0.3s ease-out forwards',
         'toast-out': 'toast-out 0.3s ease-in forwards',
         'slide-in-right': 'slide-in-right 0.2s ease-out forwards',
+        'slide-in-left': 'slide-in-left 0.2s ease-out forwards',
+        'slide-out-right': 'slide-out-right 0.2s ease-out forwards',
+        'slide-out-left': 'slide-out-left 0.2s ease-out forwards',
       },
     },
   },

@@ -7,8 +7,8 @@ def verify_install_button():
         page = browser.new_page()
 
         try:
-            print("Navigating to http://localhost:5174/diary/")
-            page.goto("http://localhost:5174/diary/")
+            print("Navigating to http://localhost:5173/diary/")
+            page.goto("http://localhost:5173/diary/")
             page.wait_for_timeout(2000)
 
             # Since we can't easily simulate 'beforeinstallprompt' in headless mode without
