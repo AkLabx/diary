@@ -70,6 +70,31 @@ const MyStuffAudio: React.FC = () => {
         });
 
         try {
+            const { data: diaryData, error: diaryError } = await supabase
+                .from('diaries')
+                .select('encrypted_entry, iv')
+                .eq('id', audios[index].entry_id)
+                .single();
+
+            if (diaryError) throw diaryError;
+
+            const { decrypt, decryptBinary } = await import('../../lib/crypto');
+            const decryptedEntry = await decrypt(key, diaryData.encrypted_entry, diaryData.iv);
+            const { audio: audioMeta } = JSON.parse(decryptedEntry);
+
+            let matchedAudio = null;
+            if (audioMeta) {
+                if (Array.isArray(audioMeta)) {
+                    matchedAudio = audioMeta.find(a => a.path === path);
+                } else if (audioMeta.path === path) {
+                    matchedAudio = audioMeta;
+                }
+            }
+
+            if (!matchedAudio || !matchedAudio.iv) {
+                throw new Error("Could not find IV for audio");
+            }
+
             const { data: signedData, error: signedError } = await supabase.storage
                 .from('diary-audio')
                 .createSignedUrl(path, 60);
@@ -79,24 +104,10 @@ const MyStuffAudio: React.FC = () => {
             const response = await fetch(signedData.signedUrl);
             if (!response.ok) throw new Error("Failed to fetch audio blob");
 
-            const arrayBuffer = await response.arrayBuffer();
-            const view = new DataView(arrayBuffer);
+            const encryptedBuffer = await response.arrayBuffer();
+            const decryptedBuffer = await decryptBinary(key, encryptedBuffer, matchedAudio.iv);
 
-            // Format logic matched from existing layout (metadata length header)
-            const metadataLen = view.getUint32(0, true);
-            const metadataStr = new TextDecoder().decode(new Uint8Array(arrayBuffer, 4, metadataLen));
-            const meta = JSON.parse(metadataStr);
-
-            const iv = Uint8Array.from(atob(meta.iv), c => c.charCodeAt(0));
-            const encryptedBytes = arrayBuffer.slice(4 + metadataLen);
-
-            const decryptedBuffer = await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv },
-                key,
-                encryptedBytes
-            );
-
-            const blob = new Blob([decryptedBuffer], { type: meta.type || 'audio/webm' });
+            const blob = new Blob([decryptedBuffer], { type: matchedAudio.type || 'audio/webm' });
             const url = URL.createObjectURL(blob);
 
             setAudios(prev => {
