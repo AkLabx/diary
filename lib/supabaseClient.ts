@@ -180,7 +180,45 @@ import { createClient } from '@supabase/supabase-js';
 // The application now handles creating the user profile on their first login,
 // which is a more robust method.
 //
+//
+// 8. (Required for "My Stuff" Media Tracking) Set up the media_files table
+/*
+  CREATE TABLE IF NOT EXISTS public.media_files (
+    id uuid NOT NULL DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL,
+    entry_id uuid NOT NULL,
+    file_path text NOT NULL,
+    file_type text NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT media_files_pkey PRIMARY KEY (id),
+    CONSTRAINT user_id FOREIGN KEY (user_id) REFERENCES auth.users (id) ON DELETE CASCADE,
+    CONSTRAINT entry_id FOREIGN KEY (entry_id) REFERENCES public.diaries (id) ON DELETE CASCADE,
+    CONSTRAINT unique_entry_file UNIQUE (entry_id, file_path)
+  );
+
+  ALTER TABLE public.media_files ENABLE ROW LEVEL SECURITY;
+
+  DROP POLICY IF EXISTS "Users can view their own media files" ON public.media_files;
+  CREATE POLICY "Users can view their own media files"
+  ON public.media_files FOR SELECT
+  TO authenticated
+  USING (auth.uid() = user_id);
+
+  DROP POLICY IF EXISTS "Users can insert their own media files" ON public.media_files;
+  CREATE POLICY "Users can insert their own media files"
+  ON public.media_files FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+
+  DROP POLICY IF EXISTS "Users can delete their own media files" ON public.media_files;
+  CREATE POLICY "Users can delete their own media files"
+  ON public.media_files FOR DELETE
+  TO authenticated
+  USING (auth.uid() = user_id);
+*/
+//
 // =================================================================================
+
 
 
 // IMPORTANT: Replace with your own Supabase project's URL and Anon Key
