@@ -59,3 +59,12 @@ export interface BiometricData {
   encryptedKey: string; // The Master Key encrypted with the PRF output
   iv: string; // IV for the Master Key encryption
 }
+
+export interface MediaFile {
+  id: string;
+  user_id: string;
+  entry_id: string;
+  file_path: string;
+  file_type: 'image' | 'audio';
+  created_at: string;
+}

@@ -18,6 +18,9 @@ import Search from './routes/Search';
 import Profile from './routes/Profile';
 import EntryDetail from './routes/EntryDetail';
 import Editor from './routes/Editor';
+import MyStuffHome from './routes/MyStuff/MyStuffHome';
+import MyStuffImages from './routes/MyStuff/MyStuffImages';
+import MyStuffAudio from './routes/MyStuff/MyStuffAudio';
 
 const ProtectedRoute = ({ children, session }: { children: React.ReactNode, session: Session | null }) => {
   // We can't use useLocation here if this component is rendered *outside* the provider context
@@ -122,6 +125,9 @@ const App: React.FC = () => {
                 { path: "calendar", element: <Calendar /> },
                 { path: "search", element: <Search /> },
                 { path: "profile", element: <Profile /> },
+                { path: "mystuff", element: <MyStuffHome /> },
+                { path: "mystuff/images", element: <MyStuffImages /> },
+                { path: "mystuff/audio", element: <MyStuffAudio /> },
                 { path: "entry/:id", element: <EntryDetail /> },
                 { path: "new", element: <Editor /> },
                 { path: "edit/:id", element: <Editor /> },

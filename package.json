@@ -12,7 +12,7 @@
     "deploy": "gh-pages -d dist"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.44.2",
+    "@supabase/supabase-js": "^2.103.0",
     "@zip.js/zip.js": "^2.8.11",
     "compromise": "^14.14.4",
     "date-fns": "^3.6.0",

@@ -216,6 +216,37 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
             isLoading: false
         } : e));
 
+        // --- OPTION A: MIGRATION ON VIEW ---
+        // Silently sync the decrypted media to the media_files table if it isn't already there.
+        try {
+            const imagePaths = extractImagePaths(content || '');
+            let audioPaths = [];
+
+            if (audio) {
+                if (Array.isArray(audio)) {
+                    audioPaths = audio.map(a => a.path);
+                } else if (audio.path) { // Legacy single object
+                    audioPaths = [audio.path];
+                }
+            }
+
+            if (imagePaths.length > 0 || audioPaths.length > 0) {
+                const mediaRecords = [
+                    ...imagePaths.map(path => ({ user_id: session.user.id, entry_id: id, file_path: path, file_type: 'image' })),
+                    ...audioPaths.map(path => ({ user_id: session.user.id, entry_id: id, file_path: path, file_type: 'audio' }))
+                ];
+
+                // Using ON CONFLICT entry_id, file_path DO NOTHING so we don't hammer the DB
+                // if they are already migrated.
+                await supabase.from('media_files').upsert(mediaRecords, { onConflict: 'entry_id,file_path' });
+            }
+        } catch (migrationErr) {
+             console.error("Silent media migration failed on view:", migrationErr);
+             // Ignore error to not break the view experience
+        }
+        // --- END MIGRATION ---
+
+
     } catch (error) {
         console.error(`Error decrypting entry ${id}:`, error);
         setEntries(prev => prev.map(e => e.id === id ? { ...e, isLoading: false } : e));
@@ -354,6 +385,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
          created_at: entryData.created_at
        };
 
+       let newEntryId: string | null = null;
        if (isUpdate) {
          const { error } = await supabase.from('diaries').update(record).eq('id', entryData.id);
          if (error) throw error;
@@ -372,6 +404,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
        } else {
          const { data, error } = await supabase.from('diaries').insert({ ...record, owner_id: session.user.id }).select('id, created_at, mood, tags, owner_id, journal').single();
+         if (data) newEntryId = data.id;
          if (error) throw error;
 
          const newEntry: DiaryEntry = {
@@ -388,6 +421,47 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
          addToast('Entry created!', 'success');
          navigate(`/app/entry/${data.id}`);
        }
+
+       // --- MEDIA SYNC START ---
+       // Now that the diary is saved, sync the media paths to the media_files table
+       try {
+           const entryIdToSync = isUpdate ? entryData.id : newEntryId;
+
+           // 1. Get current desired media for this entry
+           const imagePaths = extractImagePaths(entryData.content || '');
+           const audioPaths = finalAudioList.map(a => a.path);
+
+           const mediaRecords = [
+               ...imagePaths.map(path => ({ user_id: session.user.id, entry_id: entryIdToSync, file_path: path, file_type: 'image' })),
+               ...audioPaths.map(path => ({ user_id: session.user.id, entry_id: entryIdToSync, file_path: path, file_type: 'audio' }))
+           ];
+
+           // 2. Fetch existing media for this entry
+           const { data: existingMedia } = await supabase
+               .from('media_files')
+               .select('id, file_path')
+               .eq('entry_id', entryIdToSync);
+
+           const existingPaths = new Set(existingMedia?.map(m => m.file_path) || []);
+           const newPaths = new Set(mediaRecords.map(m => m.file_path));
+
+           // 3. Delete removed media
+           const pathsToDelete = Array.from(existingPaths).filter(path => !newPaths.has(path));
+           if (pathsToDelete.length > 0) {
+               await supabase.from('media_files').delete().eq('entry_id', entryIdToSync).in('file_path', pathsToDelete);
+           }
+
+           // 4. Insert new media (using ON CONFLICT to avoid duplicates safely)
+           const recordsToInsert = mediaRecords.filter(m => !existingPaths.has(m.file_path));
+           if (recordsToInsert.length > 0) {
+               await supabase.from('media_files').upsert(recordsToInsert, { onConflict: 'entry_id,file_path' });
+           }
+       } catch (syncError) {
+           console.error("Failed to sync media files:", syncError);
+           // We don't throw here to avoid breaking the main save flow.
+       }
+       // --- MEDIA SYNC END ---
+
 
        setSaveStatus('synced');
        setIsSmartTagsModalOpen(false);
