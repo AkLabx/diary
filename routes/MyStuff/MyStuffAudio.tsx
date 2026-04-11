@@ -70,10 +70,16 @@ const MyStuffAudio: React.FC = () => {
         });
 
         try {
-            const { data: fileData, error } = await supabase.storage.from('diary-audio').download(path);
-            if (error) throw error;
+            const { data: signedData, error: signedError } = await supabase.storage
+                .from('diary-audio')
+                .createSignedUrl(path, 60);
 
-            const arrayBuffer = await fileData.arrayBuffer();
+            if (signedError) throw signedError;
+
+            const response = await fetch(signedData.signedUrl);
+            if (!response.ok) throw new Error("Failed to fetch audio blob");
+
+            const arrayBuffer = await response.arrayBuffer();
             const view = new DataView(arrayBuffer);
 
             // Format logic matched from existing layout (metadata length header)

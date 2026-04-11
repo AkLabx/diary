@@ -76,31 +76,58 @@ const MyStuffImages: React.FC = () => {
         });
 
         try {
-            const { data: fileData, error } = await supabase.storage.from('diary-images').download(path);
-            if (error) throw error;
+            // Re-fetch the entry to get the exact IV from the securely-stored html content.
+            // Since we extracted only paths to 'media_files' previously, we must find the IV.
+            // This requires scanning the decrypted entries, or fetching from DB if needed.
+            // Wait, we don't have the IV in media_files. We MUST add IV to media_files or extract it.
+            // Since the user is stuck NOW, let's parse it from the entry's decrypted content.
 
-            const textBuffer = await fileData.text();
+            const { data: diaryData, error: diaryError } = await supabase
+                .from('diaries')
+                .select('encrypted_entry, iv')
+                .eq('id', images[index].entry_id)
+                .single();
 
-            // Expected format: base64IV:base64Data
-            const [ivBase64, dataBase64] = textBuffer.split(':');
-            if (!ivBase64 || !dataBase64) throw new Error("Invalid encrypted format");
+            if (diaryError) throw diaryError;
 
-            const iv = Uint8Array.from(atob(ivBase64), c => c.charCodeAt(0));
-            const encryptedBytes = Uint8Array.from(atob(dataBase64), c => c.charCodeAt(0));
+            const { decrypt, decryptBinary } = await import('../../lib/crypto');
+            const decryptedEntry = await decrypt(key, diaryData.encrypted_entry, diaryData.iv);
+            const { content } = JSON.parse(decryptedEntry);
 
-            const decryptedBuffer = await window.crypto.subtle.decrypt(
-                { name: "AES-GCM", iv },
-                key,
-                encryptedBytes
-            );
+            // find the metadata for this path
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, 'text/html');
+            const imgElements = doc.querySelectorAll('img.secure-diary-image');
 
-            // Reconstruct blob
-            // We don't store mime-type in media_files currently, but we can assume standard images
-            // or infer from magic bytes. For now, fallback to a generic blob and let browser decide,
-            // or just use application/octet-stream if URL.createObjectURL accepts it.
-            // Actually, the original implementation creates a Blob with the original type, but we didn't store it.
-            // Let's try creating a blob without explicit type.
-            const blob = new Blob([decryptedBuffer]);
+            let matchedIv = '';
+            imgElements.forEach(img => {
+                const element = img as HTMLImageElement;
+                const metaStr = element.getAttribute('data-secure-metadata') || element.getAttribute('alt');
+                if (metaStr) {
+                    try {
+                        const meta = JSON.parse(metaStr);
+                        if (meta.path === path) {
+                            matchedIv = meta.iv;
+                        }
+                    } catch (e) {}
+                }
+            });
+
+            if (!matchedIv) throw new Error("Could not find IV for image");
+
+            const { data: signedData, error: signedError } = await supabase.storage
+                .from('diary-images')
+                .createSignedUrl(path, 60);
+
+            if (signedError) throw signedError;
+
+            const response = await fetch(signedData.signedUrl);
+            if (!response.ok) throw new Error("Failed to fetch image blob");
+
+            const encryptedBuffer = await response.arrayBuffer();
+            const decryptedBuffer = await decryptBinary(key, encryptedBuffer, matchedIv);
+
+            const blob = new Blob([decryptedBuffer], { type: 'image/webp' });
             const url = URL.createObjectURL(blob);
 
             setImages(prev => {
