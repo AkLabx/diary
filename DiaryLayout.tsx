@@ -1,3 +1,4 @@
+import BottomNavigation from './components/BottomNavigation';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Outlet, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
@@ -649,6 +650,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
   // Derived state for UI components
   // We need to map the current route to "activeView" string for LeftSidebar highlight
+    const isEditing = location.pathname.includes('/edit') || location.pathname.includes('/new');
   let activeView = 'timeline';
   if (location.pathname.includes('/calendar')) activeView = 'calendar';
   else if (location.pathname.includes('/search')) activeView = 'search';
@@ -696,7 +698,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   return (
     <div className="h-screen w-screen flex flex-col font-sans bg-[#FBF8F3] dark:bg-slate-900">
        <TopBar
-        isEditing={location.pathname.includes('/edit') || location.pathname.includes('/new')}
+        isEditing={isEditing}
         onSave={() => {
             if (currentSaveHandler.current) {
                 currentSaveHandler.current();
@@ -734,10 +736,12 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           onSelectJournal={handleJournalSelect}
         />
 
-        <main className="flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto min-w-0 w-full relative">
+        <main className={`flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto min-w-0 w-full relative ${!isEditing ? 'pb-28' : ''}`}>
             <Outlet context={contextValue} />
         </main>
       </div>
+
+            <BottomNavigation isVisible={!isEditing} />
 
       <SmartTagsModal
         isOpen={isSmartTagsModalOpen}
