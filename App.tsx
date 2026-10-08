@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { RouterProvider, createHashRouter, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
+import PWAUpdateManager from './components/PWAUpdateManager';
 import LandingPage from './components/LandingPage';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfUse from './components/TermsOfUse';
@@ -151,6 +152,7 @@ const App: React.FC = () => {
   return (
     <ToastProvider>
       <CryptoProvider>
+        <PWAUpdateManager />
         <RouterProvider router={router} />
       </CryptoProvider>
     </ToastProvider>
