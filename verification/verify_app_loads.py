@@ -4,9 +4,9 @@ def run():
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
-        print("Navigating to http://localhost:5173/diary/...")
+        print("Navigating to http://localhost:5173/...")
         try:
-            page.goto("http://localhost:5173/diary/", wait_until="domcontentloaded", timeout=60000)
+            page.goto("http://localhost:5173/", wait_until="domcontentloaded", timeout=60000)
         except Exception as e:
             print(f"Navigation error (continuing anyway to check content): {e}")
 

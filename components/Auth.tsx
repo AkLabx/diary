@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { Capacitor } from '@capacitor/core';
+import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
 import { useNavigate } from 'react-router-dom';
 import { supabase, supabaseUrl, supabaseKey } from '../lib/supabaseClient';
 import { useToast } from '../contexts/ToastContext';
@@ -101,13 +103,30 @@ const Auth: React.FC<AuthProps> = () => {
     setLoading(true);
     setError(null);
     try {
-      const { error } = await (supabase.auth as any).signInWithOAuth({
-        provider: 'google',
-        options: {
-            redirectTo: 'https://aklabx.github.io/diary/'
+      if (Capacitor.isNativePlatform()) {
+        await GoogleAuth.initialize();
+        const googleUser = await GoogleAuth.signIn();
+
+        if (googleUser?.authentication?.idToken) {
+          const { data, error } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: googleUser.authentication.idToken,
+          });
+
+          if (error) throw error;
+          console.log("Logged in natively:", data);
+        } else {
+          throw new Error("Failed to retrieve ID token from Google.");
         }
-      });
-      if (error) throw error;
+      } else {
+        const { error } = await (supabase.auth as any).signInWithOAuth({
+          provider: 'google',
+          options: {
+              redirectTo: 'https://aklabx.github.io/diary/'
+          }
+        });
+        if (error) throw error;
+      }
     } catch (error: any) {
       setError(error.error_description || error.message);
       setLoading(false);
