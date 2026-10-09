@@ -4,4 +4,5 @@
     <string name="title_activity_main">Diary</string>
     <string name="package_name">com.diary.app</string>
     <string name="custom_url_scheme">com.diary.app</string>
+    <string name="server_client_id">876926327353-jcn65s0e39fa5c79tsh98f6fe77e6e72.apps.googleusercontent.com</string>
 </resources>
