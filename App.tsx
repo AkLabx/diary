@@ -11,6 +11,7 @@ import DiaryLayout from './DiaryLayout';
 import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Session } from '@supabase/supabase-js';
+import { Capacitor } from '@capacitor/core';
 
 // Route Components
 import Timeline from './routes/Timeline';
@@ -81,9 +82,15 @@ const App: React.FC = () => {
   }, [theme]);
 
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
+    // Only register service worker on the web, not in native app
+    if ('serviceWorker' in navigator && Capacitor.getPlatform() === 'web') {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/diary/sw.js', { scope: '/diary/' }).then(registration => {
+        // Automatically determine correct path based on whether we are in dev or prod (gh-pages)
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const swPath = isLocalhost ? '/sw.js' : '/diary/sw.js';
+        const swScope = isLocalhost ? '/' : '/diary/';
+
+        navigator.serviceWorker.register(swPath, { scope: swScope }).then(registration => {
           console.log('ServiceWorker registration successful with scope: ', registration.scope);
         }).catch(err => {
           console.log('ServiceWorker registration failed: ', err);
