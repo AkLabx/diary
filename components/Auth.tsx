@@ -107,10 +107,11 @@ const Auth: React.FC<AuthProps> = () => {
         await SocialLogin.initialize({ google: { webClientId: '876926327353-jcn65s0e39fa5c79tsh98f6fe77e6e72.apps.googleusercontent.com' } });
         const googleUser = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
 
-        if (googleUser.result.idToken) {
+        const idToken = 'idToken' in googleUser.result ? (googleUser.result as any).idToken : undefined;
+        if (idToken) {
           const { data, error } = await supabase.auth.signInWithIdToken({
             provider: 'google',
-            token: googleUser.result.idToken,
+            token: idToken,
           });
 
           if (error) throw error;
