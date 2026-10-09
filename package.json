@@ -15,7 +15,7 @@
   "dependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
-    "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
+    "@capgo/capacitor-social-login": "^8.5.15",
     "@supabase/supabase-js": "^2.103.0",
     "@zip.js/zip.js": "^2.8.11",
     "compromise": "^14.14.4",

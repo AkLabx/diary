@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth';
+import { SocialLogin } from '@capgo/capacitor-social-login';
 import { useNavigate } from 'react-router-dom';
 import { supabase, supabaseUrl, supabaseKey } from '../lib/supabaseClient';
 import { useToast } from '../contexts/ToastContext';
@@ -104,13 +104,13 @@ const Auth: React.FC<AuthProps> = () => {
     setError(null);
     try {
       if (Capacitor.isNativePlatform()) {
-        await GoogleAuth.initialize();
-        const googleUser = await GoogleAuth.signIn();
+        await SocialLogin.initialize({ google: { webClientId: '876926327353-jcn65s0e39fa5c79tsh98f6fe77e6e72.apps.googleusercontent.com' } });
+        const googleUser = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } });
 
-        if (googleUser?.authentication?.idToken) {
+        if (googleUser.result.idToken) {
           const { data, error } = await supabase.auth.signInWithIdToken({
             provider: 'google',
-            token: googleUser.authentication.idToken,
+            token: googleUser.result.idToken,
           });
 
           if (error) throw error;
