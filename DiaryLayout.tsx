@@ -19,8 +19,7 @@ import PasswordPrompt from './components/PasswordPrompt';
 import HamburgerMenu from './components/HamburgerMenu';
 import SmartTagsModal from './components/SmartTagsModal';
 
-import { Capacitor, PluginListenerHandle } from '@capacitor/core';
-import { App as CapacitorApp } from '@capacitor/app';
+import { Capacitor } from '@capacitor/core';
 
 
 type Session = any;
@@ -131,8 +130,6 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
   // Auto-Lock Logic
   useEffect(() => {
-      let capListener: any = null;
-
       const checkLock = () => {
           const lastActive = localStorage.getItem('diary_last_active');
           if (lastActive) {
@@ -147,15 +144,23 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           }
       };
 
+      let cleanupNativeListener: (() => void) | null = null;
+      let cleanupWebListener: (() => void) | null = null;
+
       if (Capacitor.isNativePlatform()) {
-          CapacitorApp.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
-              if (!isActive) {
-                  localStorage.setItem('diary_last_active', Date.now().toString());
-              } else {
-                  checkLock();
-              }
-          }).then((listener: PluginListenerHandle) => {
-              capListener = listener;
+          import('./lib/native/appLifecycle').then(({ registerAppStateChangeListener }) => {
+              registerAppStateChangeListener(
+                  () => {
+                      checkLock();
+                  },
+                  () => {
+                      localStorage.setItem('diary_last_active', Date.now().toString());
+                  }
+              ).then((listener) => {
+                  if (listener) {
+                      cleanupNativeListener = () => { listener.remove(); };
+                  }
+              });
           });
       } else {
           const handleVisibilityChange = () => {
@@ -167,11 +172,12 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           };
 
           document.addEventListener('visibilitychange', handleVisibilityChange);
-          return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+          cleanupWebListener = () => document.removeEventListener('visibilitychange', handleVisibilityChange);
       }
 
       return () => {
-          if (capListener) capListener.remove();
+          if (cleanupNativeListener) cleanupNativeListener();
+          if (cleanupWebListener) cleanupWebListener();
       };
   }, [key, lock, addToast]);
 
