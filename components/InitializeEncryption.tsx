@@ -1,5 +1,3 @@
-import { App } from '@capacitor/app';
-import { useBackHandler, PRIORITIES } from '../hooks/useHardwareBackButton';
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
@@ -23,8 +21,6 @@ interface RecoveryData {
 }
 
 const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, session }) => {
-  useBackHandler(PRIORITIES.LOCK, async () => { await App.minimizeApp(); return true; });
-
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);

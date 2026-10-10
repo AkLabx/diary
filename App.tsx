@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { RouterProvider, createHashRouter, Navigate, useLocation, Outlet } from 'react-router-dom';
+import { RouterProvider, createHashRouter, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import Auth from './components/Auth';
 import PWAUpdateManager from './components/PWAUpdateManager';
@@ -13,7 +13,6 @@ import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
-import { useHardwareBackButton } from './hooks/useHardwareBackButton';
 
 // Route Components
 import Timeline from './routes/Timeline';
@@ -36,22 +35,6 @@ const ProtectedRoute = ({ children, session }: { children: React.ReactNode, sess
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;
-};
-
-
-const GlobalBackHandler = () => {
-  useHardwareBackButton();
-  return null;
-};
-
-
-const RootLayout = () => {
-  return (
-    <>
-      <GlobalBackHandler />
-      <Outlet />
-    </>
-  );
 };
 
 const App: React.FC = () => {
@@ -124,9 +107,6 @@ const App: React.FC = () => {
   const router = useMemo(() => {
      return createHashRouter([
         {
-            element: <RootLayout />,
-            children: [
-                {
             path: "/",
             element: session ? <Navigate to="/app" /> : <LandingPage />,
         },
@@ -166,8 +146,6 @@ const App: React.FC = () => {
         {
             path: "*",
             element: <NotFound />,
-                }
-            ]
         }
      ]);
   }, [session, theme]); // Dependencies ensure router updates if these change
