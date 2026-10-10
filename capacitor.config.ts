@@ -5,10 +5,13 @@ const config: CapacitorConfig = {
   appName: 'Diary',
   webDir: 'dist',
   plugins: {
-    GoogleAuth: {
-      scopes: ["profile", "email"],
-      serverClientId: "876926327353-jcn65s0e39fa5c79tsh98f6fe77e6e72.apps.googleusercontent.com",
-      forceCodeForRefreshToken: true
+    SocialLogin: {
+      providers: {
+        google: true,
+        facebook: false,
+        apple: false,
+        twitter: false,
+      }
     }
   }
 };
