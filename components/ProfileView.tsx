@@ -7,6 +7,8 @@ import { generateRecoveryKit } from '../lib/recoveryKit';
 import { isBiometricSupported, registerBiometric } from '../lib/webauthn';
 import { useToast } from '../contexts/ToastContext';
 import { supabase } from '../lib/supabaseClient';
+import { Capacitor } from '@capacitor/core';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import Cropper from 'react-easy-crop';
 import getCroppedImg from '../lib/cropUtils';
 
@@ -235,6 +237,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({
       if (isBioEnabled) {
           // Disable
           localStorage.removeItem(`diary_bio_${session.user.id}`);
+
+          if (Capacitor.isNativePlatform()) {
+             try {
+               await NativeBiometric.deleteData({ key: `diary_master_key_${session.user.id}` });
+             } catch(err) {
+               console.error("Failed to delete native biometric data", err);
+             }
+          }
+
           setIsBioEnabled(false);
           addToast("Biometric unlock disabled.", "info");
       } else {
