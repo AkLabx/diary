@@ -1,3 +1,4 @@
+import { useBackHandler, PRIORITIES } from '../hooks/useHardwareBackButton';
 import React from 'react';
 
 interface ConfirmationModalProps {
@@ -25,6 +26,12 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   type = 'warning',
   isProcessing = false
 }) => {
+  useBackHandler(PRIORITIES.OVERLAY, () => {
+      if (!isOpen) return false;
+      if (handleCancel) handleCancel();
+      return true;
+  }, isOpen);
+
   if (!isOpen) return null;
 
   const handleCancel = onCancel || onClose || (() => {});
