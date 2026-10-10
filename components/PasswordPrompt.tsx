@@ -64,7 +64,7 @@ const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSuccess, session }) =
           if (!rawData) throw new Error("No biometric data found.");
           
           const bioData: BiometricData = JSON.parse(rawData);
-          const key = await unlockBiometric(bioData);
+          const key = await unlockBiometric(bioData, session.user.id);
           onSuccess(key);
       } catch (err: any) {
           console.error("Biometric unlock failed:", err);

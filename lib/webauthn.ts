@@ -1,16 +1,30 @@
 import { encodeBase64, decodeBase64, importKey, exportKey, encrypt, decrypt } from './crypto';
 import { BiometricData } from '../types';
+import { Capacitor } from '@capacitor/core';
+import { NativeBiometric, AccessControl } from '@capgo/capacitor-native-biometric';
 
 /**
  * This library handles the WebAuthn PRF (Pseudo-Random Function) extension.
  * It allows us to securely "wrap" the encryption key using the device's authenticator
  * (TouchID/FaceID) without the key ever leaving the device or being stored in plaintext.
+ *
+ * For Capacitor (Native Android/iOS apps), it uses NativeBiometric with Keystore binding.
  */
 
-const IS_SUPPORTED = typeof PublicKeyCredential !== 'undefined' && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function';
+const IS_WEB_SUPPORTED = typeof PublicKeyCredential !== 'undefined' && typeof PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable === 'function';
 
 export const isBiometricSupported = async (): Promise<boolean> => {
-    if (!IS_SUPPORTED) return false;
+    if (Capacitor.isNativePlatform()) {
+        try {
+            const result = await NativeBiometric.isAvailable();
+            return result.isAvailable;
+        } catch (err) {
+            console.error("NativeBiometric isAvailable error:", err);
+            return false;
+        }
+    }
+
+    if (!IS_WEB_SUPPORTED) return false;
     try {
         const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
         return available;
@@ -23,10 +37,40 @@ export const isBiometricSupported = async (): Promise<boolean> => {
 const strToBin = (str: string) => Uint8Array.from(str, c => c.charCodeAt(0));
 
 /**
- * Registers a new WebAuthn credential with the PRF extension enabled.
+ * Registers a new WebAuthn credential with the PRF extension enabled, OR
+ * Stores the master key securely in native keystore.
  */
 export const registerBiometric = async (masterKey: CryptoKey, userId: string): Promise<BiometricData> => {
-    if (!IS_SUPPORTED) throw new Error("WebAuthn not supported");
+    // 5. Export Master Key to string
+    const masterKeyString = await exportKey(masterKey); // Base64 string
+
+    if (Capacitor.isNativePlatform()) {
+        const supported = await isBiometricSupported();
+        if (!supported) throw new Error("Native biometrics not available on this device.");
+
+        try {
+            // We use setSecureData to securely store the master key tied to biometrics.
+            await NativeBiometric.setSecureData({
+                key: `diary_master_key_${userId}`,
+                value: masterKeyString,
+                accessControl: AccessControl.BIOMETRY_ANY,
+                title: 'Protect Master Key',
+                description: 'Authenticate to protect your diary key.',
+            });
+            // Return a mock BiometricData object that signifies it's a native biometric registration
+            return {
+                credentialId: 'native-biometric',
+                salt: 'native-biometric',
+                encryptedKey: 'native-biometric',
+                iv: 'native-biometric',
+            };
+        } catch (err) {
+            console.error("Failed to setup native biometrics:", err);
+            throw err;
+        }
+    }
+
+    if (!IS_WEB_SUPPORTED) throw new Error("WebAuthn not supported");
 
     // 1. Generate Salt and Challenge
     const saltBuffer = window.crypto.getRandomValues(new Uint8Array(32));
@@ -36,9 +80,6 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
     const id = strToBin(userId); // User ID handle
 
     // 2. Step A: Create Credential
-    // We strictly require a Resident Key (Passkey) for PRF to work reliably.
-    // We also pass the evaluation input ('eval') during creation. 
-    // Some authenticators require this to initialize the PRF capability correctly.
     const creationOptions: any = {
         publicKey: {
             challenge,
@@ -73,16 +114,11 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
     
     let prfKeyMaterial: Uint8Array | null = null;
     
-    // Check if the creation result already contains the PRF output.
-    // Some browsers/authenticators return it immediately.
     const createResults = credential.getClientExtensionResults();
     if (createResults?.prf?.results?.first) {
-         // Explicit cast to any to handle potential ArrayBufferLike mismatch
          prfKeyMaterial = new Uint8Array(createResults.prf.results.first as any);
     } else {
         // 3. Step B: Assert (Login) to get the PRF Key
-        // If creation didn't return the value, we perform an immediate assertion to retrieve it.
-        // This is often necessary because creation just *enables* the extension.
         const assertionOptions: any = {
             publicKey: {
                 challenge: window.crypto.getRandomValues(new Uint8Array(32)),
@@ -106,7 +142,6 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
         const getResults = assertion?.getClientExtensionResults();
 
         if (getResults?.prf?.results?.first) {
-            // Cast to any to avoid strict TS ArrayBuffer/SharedArrayBuffer mismatches
             prfKeyMaterial = new Uint8Array(getResults.prf.results.first as any);
         }
     }
@@ -116,8 +151,6 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
     }
     
     // 4. Derive Wrapping Key
-    // We cast prfKeyMaterial to any because TypeScript's lib.dom.d.ts definitions for BufferSource
-    // can conflict with Uint8Array<ArrayBufferLike> returned by WebAuthn API types.
     const wrappingKey = await window.crypto.subtle.importKey(
         'raw',
         prfKeyMaterial as any,
@@ -125,9 +158,6 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
         false,
         ['encrypt', 'decrypt']
     );
-
-    // 5. Export Master Key to string
-    const masterKeyString = await exportKey(masterKey); // Base64 string
 
     // 6. Wrap (Encrypt) the Master Key using the Wrapping Key
     const { iv, data: encryptedKey } = await encrypt(wrappingKey, masterKeyString);
@@ -141,9 +171,27 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
 };
 
 /**
- * Unlocks the Master Key using the stored Biometric Data.
+ * Unlocks the Master Key using the stored Biometric Data or NativeBiometric.
  */
-export const unlockBiometric = async (data: BiometricData): Promise<CryptoKey> => {
+export const unlockBiometric = async (data: BiometricData, userId: string): Promise<CryptoKey> => {
+    if (Capacitor.isNativePlatform() && data.credentialId === 'native-biometric') {
+        try {
+            const result = await NativeBiometric.getSecureData({
+                key: `diary_master_key_${userId}`,
+                title: 'Unlock Diary',
+                description: 'Authenticate to decrypt your diary.',
+                negativeButtonText: 'Use Password'
+            });
+            return importKey(result.value);
+        } catch (err: any) {
+            console.error("NativeBiometric getSecureData failed:", err);
+            if (err.code === "21") {
+                throw new Error("No biometric key found. Please re-enroll biometrics.");
+            }
+            throw new Error("Biometric authentication failed.");
+        }
+    }
+
     const saltBuffer = decodeBase64(data.salt);
     const credentialIdBuffer = decodeBase64(data.credentialId);
 
@@ -176,7 +224,6 @@ export const unlockBiometric = async (data: BiometricData): Promise<CryptoKey> =
     }
 
     // 2. Re-derive Wrapping Key
-    // Cast to any to avoid strict TS ArrayBuffer/SharedArrayBuffer mismatches
     const prfKeyMaterial = new Uint8Array(prfResults.results.first as any);
     const wrappingKey = await window.crypto.subtle.importKey(
         'raw',
