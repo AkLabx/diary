@@ -16,8 +16,13 @@ const IS_WEB_SUPPORTED = typeof PublicKeyCredential !== 'undefined' && typeof Pu
 export const isBiometricSupported = async (): Promise<boolean> => {
     if (Capacitor.isNativePlatform()) {
         try {
-            const result = await NativeBiometric.isAvailable();
-            return result.isAvailable;
+            let result = null;
+            try {
+                result = await NativeBiometric.isAvailable();
+            } catch (availErr) {
+                console.error("NativeBiometric isAvailable threw:", availErr);
+            }
+            return result ? result.isAvailable : false;
         } catch (err) {
             console.error("NativeBiometric isAvailable error:", err);
             return false;

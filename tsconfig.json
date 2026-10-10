@@ -25,6 +25,7 @@
     "*.ts",
     "*.tsx",
     "components",
+    "routes",
     "contexts",
     "lib"
   ],
