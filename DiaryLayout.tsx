@@ -127,24 +127,48 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
   // Auto-Lock Logic
   useEffect(() => {
-      const handleVisibilityChange = () => {
-          if (document.visibilityState === 'hidden') {
-              localStorage.setItem('diary_last_active', Date.now().toString());
-          } else if (document.visibilityState === 'visible') {
-              const lastActive = localStorage.getItem('diary_last_active');
-              if (lastActive) {
-                  const inactiveTime = Date.now() - parseInt(lastActive, 10);
-                  if (inactiveTime > 120000 && key) {
-                      lock();
-                      addToast("Diary locked for security.", "info");
-                  }
-                  localStorage.removeItem('diary_last_active');
+      let capListener: any = null;
+
+      const checkLock = () => {
+          const lastActive = localStorage.getItem('diary_last_active');
+          if (lastActive) {
+              const inactiveTime = Date.now() - parseInt(lastActive, 10);
+              // Auto-lock after 1 minute (60000ms) like WhatsApp option, or immediately if you prefer
+              // We'll use 60000ms as a reasonable default for now
+              if (inactiveTime > 60000 && key) {
+                  lock();
+                  addToast("Diary locked for security.", "info");
               }
+              localStorage.removeItem('diary_last_active');
           }
       };
 
-      document.addEventListener('visibilitychange', handleVisibilityChange);
-      return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (Capacitor.isNativePlatform()) {
+          CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+              if (!isActive) {
+                  localStorage.setItem('diary_last_active', Date.now().toString());
+              } else {
+                  checkLock();
+              }
+          }).then(listener => {
+              capListener = listener;
+          });
+      } else {
+          const handleVisibilityChange = () => {
+              if (document.visibilityState === 'hidden') {
+                  localStorage.setItem('diary_last_active', Date.now().toString());
+              } else if (document.visibilityState === 'visible') {
+                  checkLock();
+              }
+          };
+
+          document.addEventListener('visibilitychange', handleVisibilityChange);
+          return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+
+      return () => {
+          if (capListener) capListener.remove();
+      };
   }, [key, lock, addToast]);
 
   const fetchProfile = useCallback(async () => {
