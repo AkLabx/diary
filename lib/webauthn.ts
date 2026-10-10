@@ -50,12 +50,12 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
 
         try {
             // We use setSecureData to securely store the master key tied to biometrics.
-            await NativeBiometric.setSecureData({
+            await NativeBiometric.setData({
                 key: `diary_master_key_${userId}`,
                 value: masterKeyString,
                 accessControl: AccessControl.BIOMETRY_ANY,
                 title: 'Protect Master Key',
-                description: 'Authenticate to protect your diary key.',
+
             });
             // Return a mock BiometricData object that signifies it's a native biometric registration
             return {
@@ -179,7 +179,7 @@ export const unlockBiometric = async (data: BiometricData, userId: string): Prom
             const result = await NativeBiometric.getSecureData({
                 key: `diary_master_key_${userId}`,
                 title: 'Unlock Diary',
-                description: 'Authenticate to decrypt your diary.',
+
                 negativeButtonText: 'Use Password'
             });
             return importKey(result.value);

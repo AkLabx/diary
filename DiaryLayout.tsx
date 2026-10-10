@@ -19,6 +19,10 @@ import PasswordPrompt from './components/PasswordPrompt';
 import HamburgerMenu from './components/HamburgerMenu';
 import SmartTagsModal from './components/SmartTagsModal';
 
+import { Capacitor, PluginListenerHandle } from '@capacitor/core';
+import { App as CapacitorApp } from '@capacitor/app';
+
+
 type Session = any;
 
 interface DiaryLayoutProps {
@@ -144,13 +148,13 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       };
 
       if (Capacitor.isNativePlatform()) {
-          CapacitorApp.addListener('appStateChange', ({ isActive }) => {
+          CapacitorApp.addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
               if (!isActive) {
                   localStorage.setItem('diary_last_active', Date.now().toString());
               } else {
                   checkLock();
               }
-          }).then(listener => {
+          }).then((listener: PluginListenerHandle) => {
               capListener = listener;
           });
       } else {
