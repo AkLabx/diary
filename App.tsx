@@ -7,6 +7,7 @@ import LandingPage from './components/LandingPage';
 import PrivacyPolicy from './components/PrivacyPolicy';
 import TermsOfUse from './components/TermsOfUse';
 import NotFound from './components/NotFound';
+import ErrorBoundary from './components/ErrorBoundary';
 import DiaryLayout from './DiaryLayout';
 import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
@@ -128,6 +129,7 @@ const App: React.FC = () => {
                     <DiaryLayout session={session} theme={theme} onToggleTheme={toggleTheme} />
                 </ProtectedRoute>
             ),
+            errorElement: <ErrorBoundary />,
             children: [
                 { index: true, element: <Timeline /> },
                 { path: "calendar", element: <Calendar /> },

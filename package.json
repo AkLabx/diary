@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "build:android": "cross-env VITE_IS_CAPACITOR=true vite build",
+    "build:android": "tsc --noEmit && cross-env VITE_IS_CAPACITOR=true vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "deploy": "gh-pages -d dist"
@@ -40,6 +40,7 @@
     "@types/node": "^25.3.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
+    "@types/react-router-dom": "^5.3.3",
     "@types/serviceworker": "^0.0.203",
     "@typescript-eslint/eslint-plugin": "^7.13.1",
     "@typescript-eslint/parser": "^7.13.1",
