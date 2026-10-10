@@ -1,3 +1,5 @@
+import { App } from '@capacitor/app';
+import { useBackHandler, PRIORITIES } from '../hooks/useHardwareBackButton';
 import React, { useState, useMemo } from 'react';
 import { Capacitor } from '@capacitor/core';
 import { SocialLogin } from '@capgo/capacitor-social-login';
@@ -11,6 +13,8 @@ interface AuthProps {
 }
 
 const Auth: React.FC<AuthProps> = () => {
+  useBackHandler(PRIORITIES.LOCK, async () => { await App.minimizeApp(); return true; });
+
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');

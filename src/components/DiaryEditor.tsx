@@ -7,6 +7,8 @@ import { useCrypto } from '../contexts/CryptoContext';
 import { useBlocker } from 'react-router-dom';
 import * as autoSave from '../lib/autoSave';
 import ConfirmationModal from './ConfirmationModal';
+import { useBackHandler, PRIORITIES } from '../hooks/useHardwareBackButton';
+import { useNavigate } from 'react-router-dom';
 
 // --- Quill Customization ---
 const Quill = (ReactQuill as any).Quill; 
@@ -122,6 +124,35 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const { key, encryptBinary, decryptBinary } = useCrypto();
 
   // "The Guardian": Block internal navigation if dirty
+
+  const navigate = useNavigate();
+  useBackHandler(PRIORITIES.EDITOR, async () => {
+      if (showNavigationWarning || blocker.state === 'blocked') {
+          // Already showing a modal, let overlay handler deal with it or ignore
+          return false;
+      }
+
+      const isContentEmpty = !content || content.replace(/<(.|\n)*?>/g, '').trim().length === 0;
+
+      if (!isDirty || (entry === 'new' && title.trim() === '' && isContentEmpty)) {
+          // Silent discard or no changes
+          navigate('/app', { replace: true });
+          return true;
+      }
+
+      try {
+          await handleInternalSave();
+          addToast('Draft saved', 'success');
+          navigate('/app', { replace: true });
+          return true;
+      } catch (err) {
+          console.error("Save failed during back press:", err);
+          setShowNavigationWarning(true);
+          return true; // We handled it by showing the modal
+      }
+  }, true);
+
+
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       isDirty && currentLocation.pathname !== nextLocation.pathname
