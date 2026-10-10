@@ -16,7 +16,6 @@
     "@capacitor/android": "^8.5.3",
     "@capacitor/app": "^8.1.2",
     "@capacitor/core": "^8.5.3",
-    "@capacitor/keyboard": "^8.0.6",
     "@capgo/capacitor-native-biometric": "^8.8.1",
     "@capgo/capacitor-social-login": "^8.5.15",
     "@supabase/supabase-js": "^2.103.0",
@@ -38,7 +37,6 @@
     "@capacitor/cli": "^8.5.3",
     "@tailwindcss/typography": "^0.5.13",
     "@types/dompurify": "^3.0.5",
-    "@types/jest": "^30.0.0",
     "@types/node": "^25.3.5",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
@@ -54,12 +52,8 @@
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
     "gh-pages": "^6.1.1",
-    "jest": "^30.5.2",
-    "jest-environment-jsdom": "^30.5.2",
     "postcss": "^8.4.38",
     "tailwindcss": "^3.4.4",
-    "ts-jest": "^29.4.14",
-    "ts-node": "^10.9.2",
     "typescript": "^5.2.2",
     "vite": "^5.3.1"
   }

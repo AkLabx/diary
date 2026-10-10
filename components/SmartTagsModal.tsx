@@ -1,5 +1,4 @@
 
-import { useBackHandler, PRIORITIES } from '../hooks/useHardwareBackButton';
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
@@ -12,12 +11,6 @@ interface SmartTagsModalProps {
 }
 
 const SmartTagsModal: React.FC<SmartTagsModalProps> = ({ isOpen, existingTags, suggestedTags, onConfirm, onCancel }) => {
-  useBackHandler(PRIORITIES.OVERLAY, () => {
-      if (!isOpen) return false;
-      if (onCancel) onCancel();
-      return true;
-  }, isOpen);
-
   const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {

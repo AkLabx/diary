@@ -65,7 +65,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onCr
 
     const rows = [];
     let days = [];
-    const day = startDate;
+    let day = startDate;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);

@@ -53,7 +53,7 @@ const DatePickerPopup = ({ currentDate, onSelectDate, onClose, triggerRef }: Dat
     const startDate = new Date(monthStart);
     startDate.setDate(startDate.getDate() - monthStart.getDay());
     const cells = [];
-    const day = new Date(startDate);
+    let day = new Date(startDate);
     for (let i = 0; i < 42; i++) {
       const cloneDay = new Date(day);
       const isSelected = cloneDay.toDateString() === currentDate.toDateString();
