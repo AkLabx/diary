@@ -1,1 +1,0 @@
-import{C as n,A as s}from"./index-BmtVGUpo.js";const l=async(t,r)=>{if(n.isNativePlatform())try{return await s.addListener("appStateChange",({isActive:a})=>{a?t():r()})}catch(e){return console.error("Failed to register app state listener",e),null}return null};export{l as registerAppStateChangeListener};
