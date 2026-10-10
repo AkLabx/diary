@@ -1,3 +1,5 @@
+import { App } from '@capacitor/app';
+import { useBackHandler, PRIORITIES } from '../hooks/useHardwareBackButton';
 import React, { useState, useEffect } from 'react';
 import { useCrypto } from '../contexts/CryptoContext';
 type Session = any;
@@ -10,6 +12,8 @@ interface PasswordPromptProps {
 }
 
 const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSuccess, session }) => {
+  useBackHandler(PRIORITIES.LOCK, async () => { await App.minimizeApp(); return true; });
+
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
