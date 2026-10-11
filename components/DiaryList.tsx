@@ -17,7 +17,7 @@ interface DiaryListProps {
 }
 
 // Sub-component to handle individual item visibility logic
-import { getMonthColorClass, getMonthBorderClass, getMoodColorClass } from '../lib/colorUtils';
+import { getMonthColorClass, getMonthBorderClass } from '../lib/colorUtils';
 
 const DiaryListItem: React.FC<{ 
     entry: DiaryEntry; 
@@ -52,17 +52,17 @@ const DiaryListItem: React.FC<{
         return doc.body.textContent || "";
     };
 
-
-    const moodColor = getMoodColorClass(entry.mood);
-    const bgClass = moodColor ? moodColor.bg : (monthIndex !== undefined ? getMonthColorClass(monthIndex) : 'bg-white/70 dark:bg-slate-800/70');
-    const borderClass = moodColor ? moodColor.border : (monthIndex !== undefined ? getMonthBorderClass(monthIndex) : 'border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500');
-
     return (
-        <div className="relative group break-inside-avoid mb-4">
+        <div className="relative pl-8 sm:pl-12 py-4 group">
+            {/* Timeline Dot */}
+            <div className="absolute left-0 top-10 w-3 h-3 bg-indigo-400 dark:bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900 transform -translate-x-1/2 z-10 group-hover:scale-125 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-400 transition-transform duration-300 shadow-sm" />
+
+            {/* Connection Line to card - optional, can just rely on spacing */}
+
             <Link
                 ref={ref}
                 to={`/app/entry/${entry.id}`}
-                className={`block backdrop-blur-sm p-5 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border hover:-translate-y-1 ${bgClass} ${borderClass}`}
+                className={`block bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-5 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:-translate-y-1 ${monthIndex !== undefined ? getMonthColorClass(monthIndex) : ''} ${monthIndex !== undefined ? getMonthBorderClass(monthIndex) : 'hover:border-indigo-400 dark:hover:border-indigo-500'}`}
             >
                 <div className="flex justify-between items-start gap-4">
                     <div className="flex flex-col gap-1">
@@ -231,15 +231,16 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
       )}
       
       {/* TIMELINE CONTAINER */}
-      <div className="mt-8">
-
+      <div className="relative pl-2 sm:pl-4 mt-8">
+          {/* THE VERTICAL LINE */}
+          <div className="absolute top-0 bottom-0 left-[7.5px] sm:left-[15.5px] w-[3px] bg-gradient-to-b from-indigo-200 via-indigo-100 to-transparent dark:from-indigo-800 dark:via-indigo-900/50 rounded-full" />
 
           {Object.entries(groupedEntries).map(([monthYear, monthEntries]) => (
               <div key={monthYear} className="mb-10 relative">
                   {/* Timeline Milestone Header */}
                   <div className="relative flex items-center mb-6 group z-10">
-
-                      <div className="pl-2">
+                      <div className="absolute left-0 w-4 h-4 bg-white dark:bg-slate-900 rounded-full border-4 border-indigo-500 dark:border-indigo-400 transform -translate-x-[6.5px] sm:-translate-x-[2.5px] shadow-sm z-20" />
+                      <div className="pl-10 sm:pl-14">
                           <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full inline-block border border-indigo-100 dark:border-indigo-800/50">
                               {monthYear}
                           </h3>
@@ -247,7 +248,7 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
                   </div>
 
                   {/* Entries for this month */}
-                  <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4 sm:space-y-0">
+                  <div className="space-y-4">
                       {monthEntries.map(entry => (
                           <DiaryListItem
                              key={entry.id}
