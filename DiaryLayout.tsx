@@ -8,6 +8,7 @@ import { useToast } from './contexts/ToastContext';
 import { fetchWeather } from './lib/weather';
 import { generateSmartTags } from './lib/smartTags';
 import { extractImagePaths, diffImagePaths } from './lib/cleanupUtils';
+import { setIsAppSaving } from './lib/native/backButtonRegistry';
 
 // @ts-ignore
 import { ZipWriter, BlobWriter, TextReader } from '@zip.js/zip.js';
@@ -323,6 +324,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
   // Internal save function
   const executeSave = useCallback(async (entryData: Partial<DiaryEntry> & Pick<DiaryEntry, 'title' | 'content' | 'created_at'>) => {
+     setIsAppSaving(true);
+     const saveTimeout = setTimeout(() => setIsAppSaving(false), 10000); // 10s safety timeout
      if (!key) { addToast("Security session expired.", "error"); return; }
 
      setSaveStatus('encrypting');
@@ -501,11 +504,15 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
        setSaveStatus('synced');
        setIsSmartTagsModalOpen(false);
        setPendingEntrySave(null);
+       clearTimeout(saveTimeout);
+       setIsAppSaving(false);
 
      } catch (error) {
        console.error("Error saving entry:", error);
        addToast("Failed to save entry.", "error");
        setSaveStatus('error');
+       clearTimeout(saveTimeout);
+       setIsAppSaving(false);
      }
   }, [key, session.user.id, encrypt, encryptBinary, addToast, entries, navigate]);
 
