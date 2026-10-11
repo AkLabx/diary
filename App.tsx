@@ -13,6 +13,8 @@ import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Session } from '@supabase/supabase-js';
 import { Capacitor } from '@capacitor/core';
+import { NativeBackButtonHandler } from './lib/native/useAndroidBackButton';
+import { Outlet } from 'react-router-dom';
 
 // Route Components
 import Timeline from './routes/Timeline';
@@ -35,6 +37,15 @@ const ProtectedRoute = ({ children, session }: { children: React.ReactNode, sess
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
   return <>{children}</>;
+};
+
+const RootLayout: React.FC = () => {
+  return (
+    <>
+      <NativeBackButtonHandler />
+      <Outlet />
+    </>
+  );
 };
 
 const App: React.FC = () => {
@@ -106,6 +117,10 @@ const App: React.FC = () => {
 
   const router = useMemo(() => {
      return createHashRouter([
+       {
+           element: <RootLayout />,
+           errorElement: <ErrorBoundary />,
+           children: [
         {
             path: "/",
             element: session ? <Navigate to="/app" /> : <LandingPage />,
@@ -147,6 +162,8 @@ const App: React.FC = () => {
             path: "*",
             element: <NotFound />,
         }
+           ]
+       }
      ]);
   }, [session, theme]); // Dependencies ensure router updates if these change
 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 interface ConfirmationModalProps {
   isOpen: boolean;
@@ -28,6 +28,16 @@ const ConfirmationModal: React.FC<ConfirmationModalProps> = ({
   if (!isOpen) return null;
 
   const handleCancel = onCancel || onClose || (() => {});
+
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !isProcessing && isOpen) {
+        handleCancel();
+      }
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [isOpen, isProcessing, handleCancel]);
 
   // Determine styles based on type
   const typeStyles = {
