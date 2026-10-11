@@ -1,3 +1,8 @@
+export interface MoodColor {
+  bg: string;
+  border: string;
+}
+
 // Helper to get a subtle background color based on the month (0-11)
 export const getMonthColorClass = (monthIndex: number): string => {
   const colors = [
@@ -19,18 +24,58 @@ export const getMonthColorClass = (monthIndex: number): string => {
 
 export const getMonthBorderClass = (monthIndex: number): string => {
   const colors = [
-    'hover:border-blue-300 dark:hover:border-blue-700',
-    'hover:border-purple-300 dark:hover:border-purple-700',
-    'hover:border-emerald-300 dark:hover:border-emerald-700',
-    'hover:border-rose-300 dark:hover:border-rose-700',
-    'hover:border-amber-300 dark:hover:border-amber-700',
-    'hover:border-cyan-300 dark:hover:border-cyan-700',
-    'hover:border-fuchsia-300 dark:hover:border-fuchsia-700',
-    'hover:border-orange-300 dark:hover:border-orange-700',
-    'hover:border-teal-300 dark:hover:border-teal-700',
-    'hover:border-pink-300 dark:hover:border-pink-700',
-    'hover:border-indigo-300 dark:hover:border-indigo-700',
-    'hover:border-sky-300 dark:hover:border-sky-700'
+    'border-blue-200 dark:border-blue-800',
+    'border-purple-200 dark:border-purple-800',
+    'border-emerald-200 dark:border-emerald-800',
+    'border-rose-200 dark:border-rose-800',
+    'border-amber-200 dark:border-amber-800',
+    'border-cyan-200 dark:border-cyan-800',
+    'border-fuchsia-200 dark:border-fuchsia-800',
+    'border-orange-200 dark:border-orange-800',
+    'border-teal-200 dark:border-teal-800',
+    'border-pink-200 dark:border-pink-800',
+    'border-indigo-200 dark:border-indigo-800',
+    'border-sky-200 dark:border-sky-800'
   ];
   return colors[monthIndex % 12];
+};
+
+export const getMoodColorClass = (mood?: string | null, monthIndex?: number): MoodColor => {
+  if (mood) {
+    switch (mood) {
+      case '🤣':
+        return { bg: 'bg-orange-100 dark:bg-orange-900/40', border: 'border-orange-300 dark:border-orange-700' };
+      case '😊': // Warm Yellow
+        return { bg: 'bg-amber-100 dark:bg-amber-900/40', border: 'border-amber-300 dark:border-amber-700' };
+      case '😢': // Gentle Blue
+        return { bg: 'bg-blue-100 dark:bg-blue-900/40', border: 'border-blue-300 dark:border-blue-700' };
+      case '😠': // Soft Coral / Red
+        return { bg: 'bg-red-100 dark:bg-red-900/40', border: 'border-red-300 dark:border-red-700' };
+      case '😎': // Aqua / Cyan
+        return { bg: 'bg-cyan-100 dark:bg-cyan-900/40', border: 'border-cyan-300 dark:border-cyan-700' };
+      case '🤔': // Light Indigo
+        return { bg: 'bg-indigo-100 dark:bg-indigo-900/40', border: 'border-indigo-300 dark:border-indigo-700' };
+      case '😍': // Soft Pink
+        return { bg: 'bg-pink-100 dark:bg-pink-900/40', border: 'border-pink-300 dark:border-pink-700' };
+      case '😴': // Lavender
+        return { bg: 'bg-purple-100 dark:bg-purple-900/40', border: 'border-purple-300 dark:border-purple-700' };
+      case '🥳': // Bright Mint
+        return { bg: 'bg-emerald-100 dark:bg-emerald-900/40', border: 'border-emerald-300 dark:border-emerald-700' };
+      default:
+        break;
+    }
+  }
+
+  // Fallback to month color, or default card colors if monthIndex is completely missing
+  if (monthIndex !== undefined) {
+    return {
+      bg: getMonthColorClass(monthIndex),
+      border: getMonthBorderClass(monthIndex)
+    };
+  }
+
+  return {
+    bg: 'bg-white/70 dark:bg-slate-800/70',
+    border: 'border-slate-200 dark:border-slate-700'
+  };
 };
