@@ -2,10 +2,12 @@ import React, { useMemo, useEffect, useState } from 'react';
 import DiaryList from '../components/DiaryList';
 import { useDiary } from '../DiaryLayout';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 
 const Timeline: React.FC = () => {
   const { entries, loadEntryContent, profile } = useDiary();
   const [filteredDate, setFilteredDate] = useState<Date | null>(null);
+  const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
   const location = useLocation();
   const navigate = useNavigate();
   const queryParams = new URLSearchParams(location.search);
@@ -33,6 +35,7 @@ const Timeline: React.FC = () => {
     }).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [entries]);
 
+
   let entriesToShow = entries;
   if (activeJournal) {
       entriesToShow = entriesToShow.filter(e => (e.journal || 'Personal') === activeJournal);
@@ -40,16 +43,23 @@ const Timeline: React.FC = () => {
 
   if (filteredDate) {
       // Filter by date (ignoring time)
-      // Note: We need to match local date string
       const filterStr = filteredDate.toISOString().split("T")[0];
       entriesToShow = entriesToShow.filter(e => {
           const eDate = new Date(e.created_at);
-          // Adjust for timezone offset to compare local dates
           const offset = eDate.getTimezoneOffset();
           const localEDate = new Date(eDate.getTime() - (offset * 60 * 1000));
           return localEDate.toISOString().split("T")[0] === filterStr;
       });
+  } else if (timeFilter !== 'all') {
+      entriesToShow = entriesToShow.filter(e => {
+          const eDate = new Date(e.created_at);
+          if (timeFilter === 'week') return isThisWeek(eDate, { weekStartsOn: 1 });
+          if (timeFilter === 'month') return isThisMonth(eDate);
+          if (timeFilter === 'year') return isThisYear(eDate);
+          return true;
+      });
   }
+
 
   const handleClearFilter = () => {
       setFilteredDate(null);
@@ -65,6 +75,8 @@ const Timeline: React.FC = () => {
         profile={profile}
         filteredDate={filteredDate}
         onClearFilter={handleClearFilter}
+        timeFilter={timeFilter}
+        onTimeFilterChange={setTimeFilter}
     />
   );
 };

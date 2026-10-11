@@ -12,13 +12,18 @@ interface DiaryListProps {
   profile: Profile | null;
   filteredDate: Date | null;
   onClearFilter: () => void;
+  timeFilter?: 'all' | 'week' | 'month' | 'year';
+  onTimeFilterChange?: (filter: 'all' | 'week' | 'month' | 'year') => void;
 }
 
 // Sub-component to handle individual item visibility logic
+import { getMonthColorClass, getMonthBorderClass } from '../lib/colorUtils';
+
 const DiaryListItem: React.FC<{ 
     entry: DiaryEntry; 
     onLoadContent: (id: string) => void; 
-}> = ({ entry, onLoadContent }) => {
+    monthIndex?: number;
+}> = ({ entry, onLoadContent, monthIndex }) => {
     const ref = useRef<HTMLAnchorElement>(null);
 
     useEffect(() => {
@@ -57,7 +62,7 @@ const DiaryListItem: React.FC<{
             <Link
                 ref={ref}
                 to={`/app/entry/${entry.id}`}
-                className="block bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-5 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:border-indigo-400 dark:hover:border-indigo-500 hover:-translate-y-1"
+                className={`block bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-5 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:-translate-y-1 ${monthIndex !== undefined ? getMonthColorClass(monthIndex) : ''} ${monthIndex !== undefined ? getMonthBorderClass(monthIndex) : 'hover:border-indigo-400 dark:hover:border-indigo-500'}`}
             >
                 <div className="flex justify-between items-start gap-4">
                     <div className="flex flex-col gap-1">
@@ -113,7 +118,7 @@ const DiaryListItem: React.FC<{
     );
 };
 
-const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadContent, onThisDayEntries, profile, filteredDate, onClearFilter }) => {
+const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadContent, onThisDayEntries, profile, filteredDate, onClearFilter, timeFilter = 'all', onTimeFilterChange }) => {
 
   // Group entries by Month and Year
   const groupedEntries = useMemo(() => {
@@ -191,6 +196,7 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
           </button>
         </div>
       ) : (
+
         <>
             <OnThisDay entries={onThisDayEntries} onSelectEntry={onSelectEntry} />
             <div className="flex items-center gap-4 mb-2 mt-4">
@@ -201,7 +207,27 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
                 </div>
                 <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Your Timeline, {profile?.full_name?.split(' ')[0] || 'friend'}</h2>
             </div>
+
+            {/* Time Filter Pills */}
+            {onTimeFilterChange && (
+              <div className="flex flex-wrap gap-2 mt-4 mb-6">
+                {(['all', 'week', 'month', 'year'] as const).map(filter => (
+                  <button
+                    key={filter}
+                    onClick={() => onTimeFilterChange(filter)}
+                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all shadow-sm ${
+                      timeFilter === filter
+                        ? 'bg-indigo-600 text-white dark:bg-indigo-500 hover:bg-indigo-700'
+                        : 'bg-white text-slate-600 dark:bg-slate-800 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
+                    }`}
+                  >
+                    {filter === 'all' ? 'All Time' : `This ${filter.charAt(0).toUpperCase() + filter.slice(1)}`}
+                  </button>
+                ))}
+              </div>
+            )}
         </>
+
       )}
       
       {/* TIMELINE CONTAINER */}
@@ -228,6 +254,7 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
                              key={entry.id}
                              entry={entry}
                              onLoadContent={onLoadContent}
+                             monthIndex={new Date(entry.created_at).getMonth()}
                           />
                       ))}
                   </div>
