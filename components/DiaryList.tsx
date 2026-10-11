@@ -17,7 +17,7 @@ interface DiaryListProps {
 }
 
 // Sub-component to handle individual item visibility logic
-import { getMonthColorClass, getMonthBorderClass } from '../lib/colorUtils';
+import { getMoodColorClass } from '../lib/colorUtils';
 
 const DiaryListItem: React.FC<{ 
     entry: DiaryEntry; 
@@ -25,6 +25,7 @@ const DiaryListItem: React.FC<{
     monthIndex?: number;
 }> = ({ entry, onLoadContent, monthIndex }) => {
     const ref = useRef<HTMLAnchorElement>(null);
+    const colors = getMoodColorClass(entry.mood, monthIndex);
 
     useEffect(() => {
         // If already decrypted or currently loading, we don't need to observe
@@ -62,7 +63,7 @@ const DiaryListItem: React.FC<{
             <Link
                 ref={ref}
                 to={`/app/entry/${entry.id}`}
-                className={`block bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm p-5 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 hover:-translate-y-1 ${monthIndex !== undefined ? getMonthColorClass(monthIndex) : ''} ${monthIndex !== undefined ? getMonthBorderClass(monthIndex) : 'hover:border-indigo-400 dark:hover:border-indigo-500'}`}
+                className={`block backdrop-blur-sm p-5 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border hover:-translate-y-1 ${colors.bg} ${colors.border}`}
             >
                 <div className="flex justify-between items-start gap-4">
                     <div className="flex flex-col gap-1">
