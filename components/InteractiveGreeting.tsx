@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Profile, Weather } from '../types';
+import { FestiveDiya } from './FestiveDiya';
+import { createFestiveBurst } from '../lib/festiveFx';
 
 interface InteractiveGreetingProps {
   profile: Profile | null;
@@ -32,6 +34,14 @@ const QUICK_MOODS = [
   { emoji: '🥳', label: 'Excited', bg: 'hover:bg-emerald-100/70 dark:hover:bg-emerald-950/40 hover:border-emerald-300 dark:hover:border-emerald-700 text-emerald-900 dark:text-emerald-200' },
   { emoji: '😢', label: 'Down', bg: 'hover:bg-blue-100/70 dark:hover:bg-blue-950/40 hover:border-blue-300 dark:hover:border-blue-700 text-blue-900 dark:text-blue-200' },
 ];
+
+const MOOD_PARTICLE_COLORS: Record<string, string[]> = {
+  '😊': ['#F59E0B', '#FBBF24', '#FCD34D', '#FFFBEB'],
+  '😌': ['#A855F7', '#C084FC', '#E9D5FF', '#F3E8FF'],
+  '🤔': ['#6366F1', '#818CF8', '#C7D2FE', '#EEF2FF'],
+  '🥳': ['#10B981', '#34D399', '#A7F3D0', '#EC4899', '#F59E0B'],
+  '😢': ['#3B82F6', '#60A5FA', '#93C5FD', '#BFDBFE'],
+};
 
 export const InteractiveGreeting: React.FC<InteractiveGreetingProps> = ({ profile, weather }) => {
   const navigate = useNavigate();
@@ -68,21 +78,51 @@ export const InteractiveGreeting: React.FC<InteractiveGreetingProps> = ({ profil
   const { greeting, icon } = getGreeting();
   const currentPrompt = REFLECTION_PROMPTS[promptIndex];
 
-  const handleMoodSelect = (moodEmoji: string) => {
-    navigate(`/app/new?mood=${encodeURIComponent(moodEmoji)}`);
+  const handleMoodSelect = (moodEmoji: string, e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height / 2;
+    const colors = MOOD_PARTICLE_COLORS[moodEmoji] || ['#6366F1', '#F59E0B'];
+    
+    // Tactile mood spark pop
+    createFestiveBurst(originX, originY, { count: 26, colors, sound: 'pop' });
+    
+    setTimeout(() => {
+      navigate(`/app/new?mood=${encodeURIComponent(moodEmoji)}`);
+    }, 120);
   };
 
-  const handlePromptSelect = () => {
-    navigate(`/app/new?prompt=${encodeURIComponent(currentPrompt)}`);
+  const handlePromptSelect = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const originX = rect.left + rect.width / 2;
+    const originY = rect.top + rect.height / 2;
+    
+    createFestiveBurst(originX, originY, {
+      count: 32,
+      colors: ['#6366F1', '#8B5CF6', '#F59E0B', '#FFFFFF'],
+      sound: 'sparkle'
+    });
+
+    setTimeout(() => {
+      navigate(`/app/new?prompt=${encodeURIComponent(currentPrompt)}`);
+    }, 140);
   };
 
-  const handleShufflePrompt = (e: React.MouseEvent) => {
+  const handleShufflePrompt = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    
+    createFestiveBurst(rect.left + rect.width / 2, rect.top + rect.height / 2, {
+      count: 18,
+      colors: ['#6366F1', '#EC4899', '#F59E0B', '#10B981'],
+      sound: 'pop'
+    });
+
     setIsShuffling(true);
     setTimeout(() => {
       setPromptIndex((prev) => (prev + 1) % REFLECTION_PROMPTS.length);
       setIsShuffling(false);
-    }, 150);
+    }, 180);
   };
 
   const handleToggleDismiss = (e: React.MouseEvent) => {
@@ -94,25 +134,32 @@ export const InteractiveGreeting: React.FC<InteractiveGreetingProps> = ({ profil
 
   return (
     <div className="space-y-4 mb-6 animate-fade-in">
-      {/* 1. Dynamic Time-of-Day Greeting */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-2">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 sm:h-11 sm:w-11 bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-md flex-shrink-0 transform hover:scale-105 transition-transform">
-            <span>{icon}</span>
+      {/* 1. Dynamic Time-of-Day Greeting with Ambient Festive Diya */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
+        <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 sm:h-11 sm:w-11 bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-md flex-shrink-0 transform hover:scale-105 transition-transform">
+              <span>{icon}</span>
+            </div>
+            <div>
+              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+                <span>{greeting}</span>
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                {weather ? (
+                  <span>
+                    {Math.round(weather.temp)}°C in {weather.location} · Take a quiet moment to reflect.
+                  </span>
+                ) : (
+                  <span>Welcome back to your private sanctuary.</span>
+                )}
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
-              <span>{greeting}</span>
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              {weather ? (
-                <span>
-                  {Math.round(weather.temp)}°C in {weather.location} · Take a quiet moment to reflect.
-                </span>
-              ) : (
-                <span>Welcome back to your private sanctuary.</span>
-              )}
-            </p>
+
+          {/* Interactive Handcrafted Glowing Diya */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <FestiveDiya size="md" />
           </div>
         </div>
 
@@ -143,7 +190,7 @@ export const InteractiveGreeting: React.FC<InteractiveGreetingProps> = ({ profil
             <button
               key={m.label}
               type="button"
-              onClick={() => handleMoodSelect(m.emoji)}
+              onClick={(e) => handleMoodSelect(m.emoji, e)}
               title={`Feeling ${m.label}? Write a quick entry.`}
               className={`flex-1 min-w-[70px] sm:min-w-[85px] py-2 px-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-xs font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 shadow-xs hover:shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-200 ${m.bg}`}
             >
