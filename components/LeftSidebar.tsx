@@ -37,10 +37,10 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <aside className={`bg-[#F4EFE9] dark:bg-slate-900 border-r border-[#EAE1D6] dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out w-64 fixed md:absolute md:top-0 md:left-0 z-30 h-full ${isVisible ? 'translate-x-0' : '-translate-x-full'}`}>
-      <div className="flex items-center justify-between p-4 border-b border-[#EAE1D6] dark:border-slate-800">
+    <aside className={`bg-[#F4EFE9] dark:bg-slate-900 border-r border-[#EAE1D6] dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out w-72 max-w-[85vw] md:w-64 fixed inset-y-0 left-0 md:inset-y-auto md:top-0 md:left-0 md:absolute z-50 md:z-30 h-full shadow-2xl md:shadow-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] ${isVisible ? 'translate-x-0' : '-translate-x-full'}`}>
+      <div className="flex items-center justify-between px-4 border-b border-[#EAE1D6] dark:border-slate-800 h-14 sm:h-16">
         <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Diary</h1>
-        <button onClick={onClose} className="p-2 rounded-md hover:bg-slate-200/50 dark:hover:bg-slate-700/50">
+        <button onClick={onClose} aria-label="Close navigation menu" className="p-2 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>

@@ -23,3 +23,22 @@ dist-ssr
 *.sln
 *.sw?
 # Capacitor
+
+# Environment variables and credentials
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+!.env.example
+
+# Antigravity AI Agent workspace customizations and sensitive configs
+.agents/
+.agent/
+_agents/
+_agent/
+
+# Local scripts & runner helpers
+powershell.cmd
+scratch/
+
