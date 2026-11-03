@@ -26,6 +26,69 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.6] — 2026-11-04 01:00:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Real-World Pyrotechnic Firecracker Refinement:**
+  - Upgraded Diwali fireworks bursts from soft round bubbles to razor-sharp directional firework needle streaks, faithfully replicating real-world festival sparklers and sky-shots.
+  - Added sparkling diamond glints (`✦`) and secondary mid-air branching cracklers (Diwali "chatai" crackle pops).
+  - Anar flowerpots shoot ultra-fine golden needle sparks with genuine gravity waterfall cascading.
+* **Flawless Mobile Center (+) Action Button:**
+  - Ensured the center `+` New Entry button floats high above the bottom navigation bar with crisp drop-shadow and zero obstruction.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Sharp Needle Particle Pipeline (`lib/festiveFx.ts`):**
+  - Completely replaced `ctx.arc()` circular bubble rendering with velocity-aligned tangent streaks (`ctx.moveTo(tailX, tailY); ctx.lineTo(s.x, s.y); ctx.stroke();`) with width 1.0–1.8px and round caps.
+  - Added 4-point diamond sparkle glints (`ctx.fillRect` orthogonal crossbeams) at particle heads.
+  - Implemented mid-air branching crackle bursts (`hasCrackle: true`) where sparks splinter into micro white-hot pops at 40% decay.
+  - Verified in Playwright across ascending, exploding, and fallout phases (`verification/diwali_fireworks_fallout.png`).
+
+---
+
+### [v1.0.5] — 2026-11-04 00:46:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Authentic Diwali Firecracker Rockets & Anar Fountains:**
+  - Tapping the Diya now triggers a full festive fireworks show right on your dashboard!
+  - Recognizable Diwali sky-rockets (with wooden guide sticks, paper canister wraps, and burning fuse tails) shoot up from the bottom of your screen with an authentic rising whistle sound.
+  - At their apex, rockets burst into giant, colorful chrysanthemum fireworks (emerald, ruby, saffron, and royal purple) with an explosion boom and sparkling crackle fallout.
+  - Clay Anar (flowerpot) cones erupt at the bottom corners, shooting continuous golden fountains of sparkling light.
+* **100% Free & Zero-Lag:**
+  - Built completely using hardware-accelerated Canvas vector mathematics and Web Audio API synthesis—no external video/GIF downloads or paid Lottie packages needed.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Diwali Sky-Rocket & Anar Physics Engine (`lib/festiveFx.ts`):**
+  - Designed ascending `Rocket` entities with angle calculation, trailing exhaust spark emissions, apex detection, and multi-palette chrysanthemum bursts.
+  - Added bottom-ground clay Anar cones with vertical fountain velocity and gravity arc.
+* **Audio Synthesis (`playRocketWhistleSound`, `playFirecrackerDetonationSound`):**
+  - Generated rising sawtooth frequency sweeps through bandpass filters (rocket whistle) and low-frequency sine booms combined with high-pass randomized crackle buffers.
+* **Playwright Automated Verification:**
+  - Verified ascending rocket flight (`verification/diwali_rockets_ascending.png`), mid-air detonation (`verification/diwali_rockets_exploding.png`), and sparkling fallout (`verification/diwali_fireworks_fallout.png`).
+
+---
+
+### [v1.0.4] — 2026-11-04 00:36:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Festive Ambient Celebrations & Interactive Sparklers:**
+  - A handcrafted, glowing Diwali Diya now graces your dashboard header with an authentic flickering flame and warm golden light halo.
+  - Tap the Diya to light up your screen with celebratory golden sparklers, accompanied by a soothing, delicate wind-chime melody.
+  - Emotional micro-interactions: Tapping any mood pill in the Quick Mood Check-in shoots out playful color-matched particles right from the button, bringing tactile warmth and delight to every reflection.
+* **100% Free, Lightweight & Private:**
+  - Zero heavy video/GIF files and zero remote audio downloads. All sparks and chimes are synthesized directly on your device with 120 FPS hardware acceleration.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Zero-Dependency Canvas Particle Engine (`lib/festiveFx.ts`):**
+  - Implemented `createFestiveBurst(x, y, options)` rendering glowing particles via `requestAnimationFrame` and device-pixel-ratio scaling with auto canvas DOM cleanup.
+* **Web Audio API Harmonic Synthesizer (`playFestiveChime`):**
+  - Created mathematical chime and bubble-pop synthesizers using native browser `AudioContext` with exponential volume decay.
+* **Handcrafted Vector Diya Component (`components/FestiveDiya.tsx`):**
+  - Designed pure SVG clay diya with multi-stop linear gradients, radial halo blur, and GPU-composited `@keyframes flame-flicker` animation in `index.css`.
+* **Verified with Playwright:**
+  - Captured test screenshots in `verification/dashboard_with_festive_diya.png` and `verification/diya_sparklers_active.png`.
+
+---
+
 ### [v1.0.3] — 2026-11-03 22:48:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)
