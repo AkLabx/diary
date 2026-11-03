@@ -5,7 +5,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { isThisWeek, isThisMonth, isThisYear } from 'date-fns';
 
 const Timeline: React.FC = () => {
-  const { entries, loadEntryContent, profile } = useDiary();
+  const { entries, loadEntryContent, profile, weather } = useDiary();
   const [filteredDate, setFilteredDate] = useState<Date | null>(null);
   const [timeFilter, setTimeFilter] = useState<'all' | 'week' | 'month' | 'year'>('all');
   const location = useLocation();
@@ -77,6 +77,7 @@ const Timeline: React.FC = () => {
         onClearFilter={handleClearFilter}
         timeFilter={timeFilter}
         onTimeFilterChange={setTimeFilter}
+        weather={weather}
     />
   );
 };

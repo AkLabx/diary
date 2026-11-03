@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useMemo } from 'react';
-import { DiaryEntry, Profile } from '../types';
+import { DiaryEntry, Profile, Weather } from '../types';
+import InteractiveGreeting from './InteractiveGreeting';
 import OnThisDay from './OnThisDay';
 import { formatTimestamp } from '../lib/dateUtils';
 import { Link } from 'react-router-dom';
@@ -14,6 +15,7 @@ interface DiaryListProps {
   onClearFilter: () => void;
   timeFilter?: 'all' | 'week' | 'month' | 'year';
   onTimeFilterChange?: (filter: 'all' | 'week' | 'month' | 'year') => void;
+  weather?: Weather | null;
 }
 
 // Sub-component to handle individual item visibility logic
@@ -119,7 +121,7 @@ const DiaryListItem: React.FC<{
     );
 };
 
-const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadContent, onThisDayEntries, profile, filteredDate, onClearFilter, timeFilter = 'all', onTimeFilterChange }) => {
+const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadContent, onThisDayEntries, profile, filteredDate, onClearFilter, timeFilter = 'all', onTimeFilterChange, weather }) => {
 
   // Group entries by Month and Year
   const groupedEntries = useMemo(() => {
@@ -200,14 +202,7 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
 
         <>
             <OnThisDay entries={onThisDayEntries} onSelectEntry={onSelectEntry} />
-            <div className="flex items-center gap-4 mb-2 mt-4">
-                <div className="h-10 w-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white shadow-md">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                </div>
-                <h2 className="text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">Your Timeline, {profile?.full_name?.split(' ')[0] || 'friend'}</h2>
-            </div>
+            <InteractiveGreeting profile={profile} weather={weather || null} />
 
             {/* Time Filter Pills */}
             {onTimeFilterChange && (

@@ -49,16 +49,18 @@ const Editor: React.FC = () => {
           const queryParams = new URLSearchParams(location.search);
           const dateParam = queryParams.get('date');
 
-          if (dateParam) {
-              // Create a temporary entry object for the past date
+          const moodParam = queryParams.get('mood');
+          const promptParam = queryParams.get('prompt');
+
+          if (dateParam || moodParam || promptParam) {
               setEntry({
                   id: '',
                   owner_id: '',
-                  title: '',
-                  content: '',
-                  created_at: new Date(dateParam).toISOString(),
+                  title: promptParam ? promptParam : '',
+                  content: promptParam ? `<p><em>${promptParam}</em></p><p><br></p>` : '',
+                  created_at: dateParam ? new Date(dateParam).toISOString() : new Date().toISOString(),
                   tags: [],
-                  mood: undefined,
+                  mood: moodParam || undefined,
                   isDecrypted: true,
                   isLoading: false,
                   journal: 'Personal'
@@ -75,7 +77,7 @@ const Editor: React.FC = () => {
               }
           }
       }
-  }, [id, entries, loadEntryContent]);
+  }, [id, entries, loadEntryContent, location.search]);
 
   // Image Handling Logic (Ported from DiaryApp)
   useEffect(() => {
@@ -204,7 +206,7 @@ const Editor: React.FC = () => {
          <div className="flex-1 h-full overflow-hidden flex flex-col">
             <DiaryEditor
               ref={editorRef}
-              key={id || 'new'}
+              key={id || (location.search ? `new-${location.search}` : 'new')}
               entry={entry === 'new' ? undefined : entry}
               onSave={saveEntry}
               onWordCountChange={setWordCount}
