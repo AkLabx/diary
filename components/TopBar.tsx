@@ -18,6 +18,7 @@ interface TopBarProps {
   isToolsPanelVisible: boolean;
   onToggleToolsPanel: () => void;
   isLeftSidebarVisible: boolean;
+  onOpenSidebar?: () => void;
 }
 
 const SaveStatusIndicator: React.FC<{ status: TopBarProps['saveStatus'] }> = ({ status }) => {
@@ -27,14 +28,28 @@ const SaveStatusIndicator: React.FC<{ status: TopBarProps['saveStatus'] }> = ({ 
         error: { text: 'Error', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-red-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg> },
     };
     const { text, icon } = statusMap[status];
-    return <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+    return <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
         {icon}
         <span className="hidden sm:inline">{text}</span>
     </div>;
 };
 
-
-const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDate, weather, theme, onToggleTheme, saveStatus, profile, onShowProfile, isToolsPanelVisible, onToggleToolsPanel, isLeftSidebarVisible }) => {
+const TopBar: React.FC<TopBarProps> = ({ 
+  isEditing, 
+  onSave, 
+  onCancel, 
+  currentDate, 
+  weather, 
+  theme, 
+  onToggleTheme, 
+  saveStatus, 
+  profile, 
+  onShowProfile, 
+  isToolsPanelVisible, 
+  onToggleToolsPanel, 
+  isLeftSidebarVisible, 
+  onOpenSidebar 
+}) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const { lock } = useCrypto();
@@ -81,71 +96,104 @@ const TopBar: React.FC<TopBarProps> = ({ isEditing, onSave, onCancel, currentDat
   }, [profile?.avatar_url]);
 
   return (
-    <header className="bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm border-b border-[#EAE1D6] dark:border-slate-800 min-h-[4rem] flex-shrink-0 relative z-20 transition-all duration-200">
-      <div className="min-h-[4rem] flex flex-wrap items-center justify-between px-4 sm:px-6 py-2 gap-y-2">
+    <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-[#EAE1D6] dark:border-slate-800 pt-[env(safe-area-inset-top,0px)] flex-shrink-0 relative z-20 transition-all duration-200">
+      <div className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 gap-2">
         
-        {/* 
-           Left Section: Date/Time/Weather
-           On mobile editing: Hidden to save space for action buttons.
-           Padding logic: 'pl-12' provides space for the fixed hamburger menu on mobile.
-        */}
-        <div className={`flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-slate-600 dark:text-slate-300 transition-all duration-300 ${!isLeftSidebarVisible ? 'pl-12 md:pl-16' : ''} ${isEditing ? 'hidden md:flex' : 'flex'}`}>
-          <span className="font-semibold">{format(currentTime, 'p')}</span>
-          <span className="font-semibold">{format(currentDate, 'MMMM d, yyyy')}</span>
-          {weather && (
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 bg-orange-500 rounded-full"></span>
-              <span>{weather.location}, {Math.round(weather.temp)}°C</span>
-            </div>
+        {/* Left Section: Hamburger Button + Date/Time/Weather */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {!isLeftSidebarVisible && onOpenSidebar && (
+            <button
+              onClick={onOpenSidebar}
+              aria-label="Open navigation menu"
+              className="p-2 -ml-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 flex-shrink-0"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           )}
+
+          {/* Date & Time: concise on mobile to avoid overflow */}
+          <div className={`items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 min-w-0 ${isEditing ? 'hidden md:flex' : 'flex'}`}>
+            <span className="font-semibold whitespace-nowrap">{format(currentTime, 'p')}</span>
+            <span className="font-medium whitespace-nowrap hidden sm:inline">{format(currentDate, 'MMMM d, yyyy')}</span>
+            <span className="font-medium whitespace-nowrap sm:hidden">{format(currentDate, 'MMM d')}</span>
+            {weather && (
+              <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <span className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0"></span>
+                <span className="truncate">{weather.location}, {Math.round(weather.temp)}°C</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* 
-           Center/Action Section: Save/Cancel 
-           On mobile editing: This becomes the primary left-aligned content.
-           We add 'pl-12' spacer conditionally on mobile if editing to avoid hamburger overlap.
-        */}
-        <div className={`flex items-center gap-3 ${isEditing && !isLeftSidebarVisible ? 'pl-12 md:pl-0' : ''}`}>
-            {isEditing ? (
-                 <>
-                    <SaveStatusIndicator status={saveStatus} />
-                    <button onClick={onCancel} className="px-3 py-1.5 text-sm font-semibold rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">Cancel</button>
-                    <button onClick={onSave} className="px-4 py-1.5 text-sm font-semibold text-white bg-indigo-500 rounded-md hover:bg-indigo-600 transition-colors shadow-sm">Save</button>
-                 </>
-            ) : (
-                <div className="hidden md:block h-9"></div> // Placeholder to maintain height on desktop
-            )}
-        </div>
+        {/* Center/Action Section: Save/Cancel when editing */}
+        {isEditing && (
+          <div className="flex items-center gap-2 sm:gap-3">
+            <SaveStatusIndicator status={saveStatus} />
+            <button 
+              onClick={onCancel} 
+              className="px-3 py-1.5 text-xs sm:text-sm font-semibold rounded-lg text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            >
+              Cancel
+            </button>
+            <button 
+              onClick={onSave} 
+              className="px-4 py-1.5 text-xs sm:text-sm font-semibold text-white bg-indigo-500 rounded-lg hover:bg-indigo-600 transition-colors shadow-sm"
+            >
+              Save
+            </button>
+          </div>
+        )}
 
         {/* Right Section: Tools/Theme/Profile */}
-        <div className="flex items-center gap-2 sm:gap-4 ml-auto md:ml-0">
-           {isEditing && (
-             <button onClick={onToggleToolsPanel} title="Toggle Tools Panel" className={`p-2 rounded-full transition-colors ${isToolsPanelVisible ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'hover:bg-slate-200/50 dark:hover:bg-slate-700/50 text-slate-500'}`}>
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" /></svg>
-             </button>
-           )}
-           
-           <button onClick={lock} title="Lock Diary" className="p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                </svg>
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          {isEditing && (
+            <button 
+              onClick={onToggleToolsPanel} 
+              title="Toggle Tools Panel" 
+              className={`p-2 rounded-lg transition-colors ${isToolsPanelVisible ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+              </svg>
             </button>
+          )}
+          
+          <button 
+            onClick={lock} 
+            title="Lock Diary" 
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+          </button>
 
-           <button onClick={onToggleTheme} title="Toggle Theme" className="p-2 rounded-full hover:bg-slate-200/50 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400">
-             {theme === 'dark' ? 
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg> :
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.464A1 1 0 106.465 13.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm-1.414-2.12a1 1 0 011.414 0l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 010-1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clipRule="evenodd" /></svg>
-             }
-           </button>
-           <button onClick={onShowProfile} title="Profile & Settings" className="w-9 h-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center hover:ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all">
-                {avatarSrc ? (
-                    <img src={avatarSrc} alt="User avatar" className="w-full h-full object-cover" />
-                ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                )}
-            </button>
+          <button 
+            onClick={onToggleTheme} 
+            title="Toggle Theme" 
+            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+          >
+            {theme === 'dark' ? 
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg> :
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 14.464A1 1 0 106.465 13.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zm-1.414-2.12a1 1 0 011.414 0l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 010-1.414zM4 11a1 1 0 100-2H3a1 1 0 100 2h1z" clipRule="evenodd" /></svg>
+            }
+          </button>
+          
+          <button 
+            onClick={onShowProfile} 
+            title="Profile & Settings" 
+            className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden flex items-center justify-center hover:ring-2 ring-indigo-500 ring-offset-2 ring-offset-white dark:ring-offset-slate-900 transition-all flex-shrink-0"
+          >
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="User avatar" className="w-full h-full object-cover" />
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
         </div>
       </div>
     </header>

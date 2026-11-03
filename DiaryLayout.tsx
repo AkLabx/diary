@@ -17,7 +17,7 @@ import LeftSidebar from './components/LeftSidebar';
 import TopBar from './components/TopBar';
 import InitializeEncryption from './components/InitializeEncryption';
 import PasswordPrompt from './components/PasswordPrompt';
-import HamburgerMenu from './components/HamburgerMenu';
+
 import SmartTagsModal from './components/SmartTagsModal';
 
 import { Capacitor } from '@capacitor/core';
@@ -758,11 +758,12 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         isToolsPanelVisible={isToolsPanelVisible}
         onToggleToolsPanel={() => setToolsPanelVisible(prev => !prev)}
         isLeftSidebarVisible={isLeftSidebarVisible}
+        onOpenSidebar={() => setLeftSidebarVisible(true)}
       />
-      {!isLeftSidebarVisible && <HamburgerMenu onClick={() => setLeftSidebarVisible(true)} />}
+
 
       {isLeftSidebarVisible && (
-          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 md:hidden" onClick={() => setLeftSidebarVisible(false)} aria-hidden="true" />
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden" onClick={() => setLeftSidebarVisible(false)} aria-hidden="true" />
       )}
 
       <div className={`flex flex-1 overflow-hidden transition-all duration-300 ${isLeftSidebarVisible ? 'md:pl-64' : 'pl-0'} relative`}>
