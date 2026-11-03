@@ -26,6 +26,41 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.3] — 2026-11-03 22:48:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Warm Ambient Welcome:**
+  - Opening your diary now greets you warmly with a dynamic time-of-day greeting (morning, afternoon, evening, quiet night) paired with ambient local temperature and conditions.
+  - Never face an intimidating blank screen—your diary opens as an inviting sanctuary tailored to your moment.
+* **1-Tap Quick Mood Check-In:**
+  - Record how your heart feels with tactile, pastel mood pills (`😊 Joyful`, `😌 Calm`, `🤔 Reflective`, `🥳 Excited`, `😢 Down`).
+  - Tapping a mood immediately launches a new entry with your selected emotional state already pre-filled.
+* **Daily Reflection Thought Starter:**
+  - Discover gentle, thought-provoking questions to spark your journaling flow (*“What was the quietest moment of your day?”*, *“What small win are you grateful for?”*).
+  - Tap `✍️ Write about this` to start writing immediately, or tap `🔄 Shuffle` to explore over 15+ curated prompts. You can also hide it anytime for a minimal look.
+* **🔒 100% Client-Side Privacy:**
+  - All greetings, prompts, and mood associations are evaluated entirely within your browser and encrypted via client-side AES-GCM before syncing. Zero tracking, zero third-party telemetry.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Interactive Greeting Component (`<InteractiveGreeting>`):**
+  - Created `components/InteractiveGreeting.tsx` with dynamic `getHours()` greeting logic, ambient weather subtitle, and tactile feedback.
+  - Added 15+ curated reflective prompts with deterministic daily rotation and manual shuffle support.
+  - Added dismissible state persisted in `localStorage` (`diary_hide_prompt_card`).
+* **Deep-Linked Editor Prefill via Navigation Parameters:**
+  - Updated `routes/Editor.tsx` and `components/InteractiveGreeting.tsx` to support `mood` and `prompt` query parameters on `/app/new`.
+  - Automatically initializes entry title and content quote block when launched from reflection prompts.
+* **Delightful Micro-Interactions:**
+  - Added tactile scale animations (`active:scale-95`), smooth hover elevations, and responsive card gradients for both light and dark themes.
+* **Mobile Bottom Navigation FAB Layering & Stacking Context Fix:**
+  - Resolved an issue in components/BottomNavigation.tsx where the central Floating Action Button (+ New Entry FAB) was positioned before <nav> in the DOM and shared z-30, causing the translucent navigation bar and backdrop-blur to render on top of the button and obscure its lower half.
+  - Re-ordered JSX elements so FAB renders after <nav> with explicit elevated stacking z-[35] and safe-area padding.
+  - Added a crisp 4px border matching the page canvas (border-[#FBF8F3] dark:border-slate-900) and elevated shadow (shadow-xl shadow-indigo-500/40), creating an elegant docked cutout appearance.
+  - Added pointer-events-none on the FAB wrapper and pointer-events-auto on the button itself to prevent accidental click blocking.
+* **End-to-End Verification:**
+  - Verified bundle creation with `npm run build` and ran Playwright test suites in `verification/verify_interactive_greeting.py` across mobile and desktop viewport profiles.
+
+---
+
 ### [v1.0.2] — 2026-11-03 22:12:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

@@ -58,21 +58,8 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
 
   return (
     <>
-      {/* Floating Action Button (FAB) */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
-        <button
-          onClick={() => navigate('/app/new')}
-          className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-full p-4 shadow-lg shadow-indigo-500/30 transform transition-transform active:scale-95 flex items-center justify-center"
-          aria-label="New Entry"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-        </button>
-      </div>
-
       {/* Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-[#EAE1D6] dark:border-slate-800 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-[#EAE1D6] dark:border-slate-800 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-around h-16 px-2">
           {navItems.map((item, index) => {
             if (item.isSpacer) {
@@ -90,19 +77,30 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
                 }`}
               >
                 {({ isActive }) => (
-                  <>
-                    <div className={`relative flex items-center justify-center ${isActive ? 'mb-1' : 'mb-0'} transition-all duration-200`}>
-                       {item.icon}
-                       {/* Active Indicator dot */}
-                       <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-200 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
-                    </div>
-                  </>
+                  <div className={`relative flex items-center justify-center ${isActive ? 'mb-1' : 'mb-0'} transition-all duration-200`}>
+                    {item.icon}
+                    {/* Active Indicator dot */}
+                    <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-200 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
+                  </div>
                 )}
               </NavLink>
             );
           })}
         </div>
       </nav>
+
+      {/* Floating Action Button (FAB) - Elevated and Layered Above Nav */}
+      <div className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[35] pb-[env(safe-area-inset-bottom,0px)] pointer-events-none">
+        <button
+          onClick={() => navigate('/app/new')}
+          className="pointer-events-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-14 h-14 shadow-xl shadow-indigo-500/40 transform transition-all active:scale-90 hover:scale-105 flex items-center justify-center border-4 border-[#FBF8F3] dark:border-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          aria-label="New Entry"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 4v16m8-8H4" />
+          </svg>
+        </button>
+      </div>
     </>
   );
 };
