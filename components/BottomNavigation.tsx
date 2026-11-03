@@ -59,7 +59,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
   return (
     <>
       {/* Floating Action Button (FAB) */}
-      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+      <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-30">
         <button
           onClick={() => navigate('/app/new')}
           className="bg-indigo-500 hover:bg-indigo-600 text-white rounded-full p-4 shadow-lg shadow-indigo-500/30 transform transition-transform active:scale-95 flex items-center justify-center"
@@ -72,7 +72,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
       </div>
 
       {/* Bottom Navigation Bar */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-[#EAE1D6] dark:border-slate-800 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-[#EAE1D6] dark:border-slate-800 pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.2)]">
         <div className="flex items-center justify-around h-16 px-2">
           {navItems.map((item, index) => {
             if (item.isSpacer) {

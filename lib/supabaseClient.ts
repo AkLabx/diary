@@ -224,8 +224,8 @@ import { createClient } from '@supabase/supabase-js';
 // IMPORTANT: Replace with your own Supabase project's URL and Anon Key
 // You can find these in your Supabase project's dashboard under Project Settings > API.
 // Fix: Explicitly type as string to allow comparison with placeholder values in Auth.tsx.
-export const supabaseUrl: string = 'https://ccgiozknvlknbrkzfcdx.supabase.co';
-export const supabaseKey: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZ2lvemtudmxrbmJya3pmY2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTY3NTMsImV4cCI6MjA3ODQzMjc1M30.lmmuGnynbY_n_4UlsrGw5ofRd6p9QLKCcrfHf7itEg8';
+export const supabaseUrl: string = import.meta.env.VITE_SUPABASE_URL || 'https://ccgiozknvlknbrkzfcdx.supabase.co';
+export const supabaseKey: string = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZ2lvemtudmxrbmJya3pmY2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTY3NTMsImV4cCI6MjA3ODQzMjc1M30.lmmuGnynbY_n_4UlsrGw5ofRd6p9QLKCcrfHf7itEg8';
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
