@@ -40,7 +40,7 @@ const PrivacyPolicy: React.FC = () => {
             <h2>Third-Party Services</h2>
             <ul>
                 <li><strong>Supabase:</strong> We use Supabase for our backend, which includes database storage and authentication. All data stored in the database is subject to the security principles described above.</li>
-                <li><strong>OpenWeatherMap:</strong> If you grant location access, we use your coordinates to fetch weather data from OpenWeatherMap. Your precise location is not stored by us.</li>
+                <li><strong>Weather Services (OpenWeatherMap & Open-Meteo):</strong> If you grant location access, we use your coordinates to fetch weather data. Your precise location is not stored by us.</li>
             </ul>
 
             <h2>Your Rights</h2>
