@@ -26,6 +26,24 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.7] — 2026-11-04 01:20:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Uninterrupted Weather & Mood Tracking:**
+  - Your journal's weather and location badges now work seamlessly at all times, even during peak global network traffic.
+  - Automatic zero-friction fallback ensures your daily reflection temperature, condition icons, and custom city searches never fail or get interrupted.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Dual-Tier Resilient Weather Provider Integration (`lib/weather.ts`):**
+  - Integrated Open-Meteo API as an automatic zero-key fallback provider with 10,000 calls/day capacity.
+  - Implemented WMO weather interpretation code decoder (`decodeWmoWeatherCode`) mapping all WMO standard codes into weather descriptions and day/night icon codes fully compatible with `getWeatherConditionEmoji`.
+  - Added free reverse geocoding pipeline (`reverseGeocodeCoordinates`) using BigDataCloud Client API with OpenStreetMap Nominatim fallback to identify friendly city names from device GPS coordinates.
+  - Implemented Open-Meteo city search geocoding (`geocoding-api.open-meteo.com`) to allow manual city lookups when primary provider limits are exceeded.
+  - Updated `components/PrivacyPolicy.tsx` to reflect OpenWeatherMap and Open-Meteo weather services.
+  - Verified with Playwright simulating HTTP 429 rate limit errors on OpenWeatherMap and ensuring seamless automatic switch to Open-Meteo (`verification/weather_fallback_badge.png`, `verification/weather_fallback_modal.png`, `verification/weather_fallback_custom_city.png`).
+
+---
+
 ### [v1.0.6] — 2026-11-04 01:00:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

@@ -1,7 +1,7 @@
 import { Weather } from '../types';
 
 // =================================================================================
-// OpenWeatherMap API & Weather Service
+// Weather Service: OpenWeatherMap (Primary) + Open-Meteo (Automatic Resilient Fallback)
 // =================================================================================
 const API_KEY: string = '227b57dcb9e272db9e362fee3a14b924';
 const CACHE_KEY = 'diary_cached_weather';
@@ -51,10 +51,184 @@ export function setCustomCity(city: string | null): void {
   }
 }
 
-export async function fetchWeather(lat: number, lon: number, source: 'gps' | 'ip' = 'gps'): Promise<Weather | null> {
-  if (API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
-    console.warn("Weather feature is disabled. Please provide an OpenWeatherMap API key in `lib/weather.ts`.");
+/**
+ * Decode WMO Weather Codes (used by Open-Meteo) into human-readable description
+ * and standard weather icon codes compatible with getWeatherConditionEmoji.
+ */
+export function decodeWmoWeatherCode(wmoCode: number, isDay: number = 1): { description: string; icon: string } {
+  const daySuffix = isDay ? 'd' : 'n';
+  switch (wmoCode) {
+    case 0:
+      return { description: 'Clear sky', icon: `01${daySuffix}` };
+    case 1:
+      return { description: 'Mainly clear', icon: `01${daySuffix}` };
+    case 2:
+      return { description: 'Partly cloudy', icon: `02${daySuffix}` };
+    case 3:
+      return { description: 'Overcast', icon: `04${daySuffix}` };
+    case 45:
+    case 48:
+      return { description: 'Foggy', icon: `50${daySuffix}` };
+    case 51:
+    case 53:
+    case 55:
+      return { description: 'Drizzle', icon: `09${daySuffix}` };
+    case 56:
+    case 57:
+      return { description: 'Freezing drizzle', icon: `09${daySuffix}` };
+    case 61:
+      return { description: 'Light rain', icon: `10${daySuffix}` };
+    case 63:
+      return { description: 'Moderate rain', icon: `10${daySuffix}` };
+    case 65:
+      return { description: 'Heavy rain', icon: `10${daySuffix}` };
+    case 66:
+    case 67:
+      return { description: 'Freezing rain', icon: `13${daySuffix}` };
+    case 71:
+    case 73:
+    case 75:
+    case 77:
+      return { description: 'Snow', icon: `13${daySuffix}` };
+    case 80:
+    case 81:
+    case 82:
+      return { description: 'Rain showers', icon: `09${daySuffix}` };
+    case 85:
+    case 86:
+      return { description: 'Snow showers', icon: `13${daySuffix}` };
+    case 95:
+      return { description: 'Thunderstorm', icon: `11${daySuffix}` };
+    case 96:
+    case 99:
+      return { description: 'Thunderstorm with hail', icon: `11${daySuffix}` };
+    default:
+      return { description: 'Partly cloudy', icon: `02${daySuffix}` };
+  }
+}
+
+/**
+ * Reverse geocodes coordinates to a friendly city or locality name.
+ * Uses BigDataCloud client API, falling back to OpenStreetMap Nominatim.
+ */
+export async function reverseGeocodeCoordinates(lat: number, lon: number): Promise<string | null> {
+  try {
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const city = data.city || data.locality || data.principalSubdivision;
+      if (city && typeof city === 'string') {
+        return city;
+      }
+    }
+  } catch (e) {
+    console.warn("Reverse geocode via BigDataCloud failed:", e);
+  }
+
+  try {
+    const nomUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`;
+    const res = await fetch(nomUrl, {
+      headers: { 'Accept': 'application/json' }
+    });
+    if (res.ok) {
+      const data = await res.json();
+      const name = data.address?.city || data.address?.town || data.address?.village || data.address?.suburb || data.name;
+      if (name) return name;
+    }
+  } catch (e) {
+    console.warn("Reverse geocode via Nominatim failed:", e);
+  }
+
+  return null;
+}
+
+/**
+ * Open-Meteo Forecast fetcher (Free, zero API key, 10k calls/day non-commercial)
+ */
+export async function fetchOpenMeteoWeather(
+  lat: number,
+  lon: number,
+  source: 'gps' | 'ip' | 'manual' = 'gps',
+  locationNameHint?: string
+): Promise<Weather | null> {
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Open-Meteo request failed with status ${response.status}`);
+    }
+    const data = await response.json();
+    if (!data.current_weather) {
+      throw new Error("Invalid Open-Meteo response structure");
+    }
+
+    let resolvedLocation = locationNameHint?.trim();
+    if (!resolvedLocation) {
+      const geoCity = await reverseGeocodeCoordinates(lat, lon);
+      resolvedLocation = geoCity || `Nearby (${lat.toFixed(1)}, ${lon.toFixed(1)})`;
+    }
+
+    const { description, icon } = decodeWmoWeatherCode(
+      data.current_weather.weathercode,
+      data.current_weather.is_day
+    );
+
+    const result: Weather = {
+      temp: data.current_weather.temperature,
+      description,
+      icon,
+      location: resolvedLocation,
+      source,
+      updatedAt: Date.now()
+    };
+    setCachedWeather(result);
+    return result;
+  } catch (err) {
+    console.error("Open-Meteo fallback request failed:", err);
     return null;
+  }
+}
+
+/**
+ * Open-Meteo Geocoding + Weather by City Name
+ */
+export async function fetchOpenMeteoWeatherByCity(cityName: string): Promise<Weather | null> {
+  if (!cityName || !cityName.trim()) return null;
+
+  try {
+    const geoUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(cityName.trim())}&count=1&language=en&format=json`;
+    const geoRes = await fetch(geoUrl);
+    if (!geoRes.ok) {
+      throw new Error(`Open-Meteo geocoding failed with status ${geoRes.status}`);
+    }
+    const geoData = await geoRes.json();
+    if (!geoData.results || !geoData.results.length) {
+      console.warn(`No Open-Meteo geocoding results for "${cityName}"`);
+      return null;
+    }
+
+    const match = geoData.results[0];
+    const lat = match.latitude;
+    const lon = match.longitude;
+    const resolvedName = match.name || cityName.trim();
+
+    return await fetchOpenMeteoWeather(lat, lon, 'manual', resolvedName);
+  } catch (err) {
+    console.error("Open-Meteo city search failed:", err);
+    return null;
+  }
+}
+
+export async function fetchWeather(
+  lat: number,
+  lon: number,
+  source: 'gps' | 'ip' | 'manual' = 'gps',
+  locationNameHint?: string
+): Promise<Weather | null> {
+  if (!API_KEY || API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
+    return fetchOpenMeteoWeather(lat, lon, source, locationNameHint);
   }
 
   const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
@@ -70,21 +244,25 @@ export async function fetchWeather(lat: number, lon: number, source: 'gps' | 'ip
       temp: data.main.temp,
       description: data.weather[0]?.description || '',
       icon: data.weather[0]?.icon || '',
-      location: data.name,
+      location: data.name || locationNameHint || `Nearby (${lat.toFixed(1)}, ${lon.toFixed(1)})`,
       source,
       updatedAt: Date.now()
     };
     setCachedWeather(result);
     return result;
   } catch (error) {
-    console.error("Could not fetch weather data:", error);
-    return null;
+    console.warn("Primary weather provider failed, switching to Open-Meteo fallback...", error);
+    return fetchOpenMeteoWeather(lat, lon, source, locationNameHint);
   }
 }
 
 export async function fetchWeatherByCity(cityName: string): Promise<Weather | null> {
-  if (!cityName || !cityName.trim() || API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
+  if (!cityName || !cityName.trim()) {
     return null;
+  }
+
+  if (!API_KEY || API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
+    return fetchOpenMeteoWeatherByCity(cityName);
   }
 
   const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityName.trim())}&appid=${API_KEY}&units=metric`;
@@ -107,8 +285,8 @@ export async function fetchWeatherByCity(cityName: string): Promise<Weather | nu
     setCachedWeather(result);
     return result;
   } catch (error) {
-    console.error("Could not fetch weather data by city:", error);
-    return null;
+    console.warn(`OpenWeatherMap failed for city "${cityName}", switching to Open-Meteo fallback...`, error);
+    return fetchOpenMeteoWeatherByCity(cityName);
   }
 }
 
@@ -192,7 +370,7 @@ export async function loadWeather(options?: { forceRefresh?: boolean }): Promise
   // 4. Try network IP fallback
   const ipLocation = await fetchLocationByIP();
   if (ipLocation) {
-    const ipWeather = await fetchWeather(ipLocation.lat, ipLocation.lon, 'ip');
+    const ipWeather = await fetchWeather(ipLocation.lat, ipLocation.lon, 'ip', ipLocation.city);
     if (ipWeather) return ipWeather;
   }
 
