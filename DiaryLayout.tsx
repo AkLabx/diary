@@ -5,7 +5,7 @@ import { supabase } from './lib/supabaseClient';
 import { DiaryEntry, Profile, Weather, AudioMetadata } from './types';
 import { useCrypto } from './contexts/CryptoContext';
 import { useToast } from './contexts/ToastContext';
-import { fetchWeather } from './lib/weather';
+import { loadWeather, fetchWeatherByCity, fetchWeather, setCustomCity, getCoordinatesFromGPS } from './lib/weather';
 import { generateSmartTags } from './lib/smartTags';
 import { extractImagePaths, diffImagePaths } from './lib/cleanupUtils';
 import { setIsAppSaving } from './lib/native/backButtonRegistry';
@@ -75,6 +75,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   const [isToolsPanelVisible, setToolsPanelVisible] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'synced' | 'encrypting' | 'error'>('synced');
   const [weather, setWeather] = useState<Weather | null>(null);
+  const [isWeatherLoading, setIsWeatherLoading] = useState<boolean>(false);
 
   // Smart Tags State (Global to layout as it wraps the save process)
   const [isSmartTagsModalOpen, setIsSmartTagsModalOpen] = useState(false);
@@ -92,21 +93,74 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       currentSaveHandler.current = handler;
   }, []);
 
+  const handleRefreshWeather = useCallback(async () => {
+    setIsWeatherLoading(true);
+    try {
+      const weatherData = await loadWeather({ forceRefresh: true });
+      setWeather(weatherData);
+    } catch (error) {
+      console.error("Failed to refresh weather:", error);
+    } finally {
+      setIsWeatherLoading(false);
+    }
+  }, []);
+
+  const handleSetCustomCity = useCallback(async (cityName: string): Promise<boolean> => {
+    setIsWeatherLoading(true);
+    try {
+      const weatherData = await fetchWeatherByCity(cityName);
+      if (weatherData) {
+        setCustomCity(cityName);
+        setWeather(weatherData);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Failed to set custom city:", error);
+      return false;
+    } finally {
+      setIsWeatherLoading(false);
+    }
+  }, []);
+
+  const handleUseGPSLocation = useCallback(async () => {
+    setCustomCity(null);
+    setIsWeatherLoading(true);
+    try {
+      const coords = await getCoordinatesFromGPS(8000);
+      const weatherData = await fetchWeather(coords.lat, coords.lon, 'gps');
+      if (weatherData) {
+        setWeather(weatherData);
+        setIsWeatherLoading(false);
+        return;
+      }
+    } catch (error) {
+      console.warn("GPS failed, trying fallback:", error);
+    }
+    const fallbackData = await loadWeather({ forceRefresh: true });
+    setWeather(fallbackData);
+    setIsWeatherLoading(false);
+  }, []);
+
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        try {
-          const weatherData = await fetchWeather(position.coords.latitude, position.coords.longitude);
+    let isMounted = true;
+    const initWeather = async () => {
+      setIsWeatherLoading(true);
+      try {
+        const weatherData = await loadWeather();
+        if (isMounted) {
           setWeather(weatherData);
-        } catch (error) {
-          console.error("Failed to fetch weather:", error);
         }
-      },
-      (error) => {
-        console.warn("Geolocation permission denied. Weather feature disabled.", error.message);
-      },
-      { enableHighAccuracy: false, timeout: 10000, maximumAge: 1000 * 60 * 60 }
-    );
+      } catch (error) {
+        console.error("Weather init error:", error);
+      } finally {
+        if (isMounted) {
+          setIsWeatherLoading(false);
+        }
+      }
+    };
+    initWeather();
+    return () => { isMounted = false; };
   }, []);
 
   useEffect(() => {
@@ -750,6 +804,10 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         onCancel={() => navigate(-1)}
         currentDate={new Date()} // Placeholder
         weather={weather}
+        isWeatherLoading={isWeatherLoading}
+        onRefreshWeather={handleRefreshWeather}
+        onSetCustomCity={handleSetCustomCity}
+        onUseGPSLocation={handleUseGPSLocation}
         theme={theme}
         onToggleTheme={onToggleTheme}
         saveStatus={saveStatus}

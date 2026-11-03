@@ -26,6 +26,34 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.2] — 2026-11-03 22:12:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Ambient Weather & Location Everywhere:**
+  - Your diary now gracefully presents real-time local weather and conditions directly in the global header on mobile smartphones and desktop screens alike.
+  - On phones, weather appears as a compact, non-intrusive pill (displaying current temperature and day/night condition emoji) that preserves clean whitespace and never overflows into navigation buttons.
+* **Interactive Weather & Location Hub:**
+  - Tapping the weather pill opens an elegant modal with detailed weather information, location source, and a single-tap refresh button.
+  - If device location access is unavailable or denied, you can effortlessly set your custom city manually or switch back to GPS at any time with persistent local storage.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Responsive Header Weather Display:**
+  - Removed restrictive `hidden lg:flex` breakpoint in `<TopBar>` and replaced with an adaptive, interactive button badge that gracefully scales across all viewport widths.
+* **Weather & Location Modal (`<WeatherModal>`):**
+  - Implemented an accessible modal using `ReactDOM.createPortal` mounted to `#portal-root` with backdrop blur, keyboard ESC dismissal, and outdoor-click handling.
+* **Multi-Tiered Weather Resolution & Fallback Architecture:**
+  - Enhanced `lib/weather.ts` with a 4-tier retrieval pipeline:
+    1. Persistent custom city override stored in `localStorage` (`diary_custom_city`).
+    2. Instant cached weather (`diary_cached_weather`) with 30-minute validity for zero layout shift.
+    3. Browser GPS geolocation with timeout safety.
+    4. Automatic network IP geolocation fallback via CORS-friendly `ipwho.is` when device GPS permission is not granted.
+* **Emoji Condition Mapping:**
+  - Added `getWeatherConditionEmoji` handling day/night codes (moon/sun, clouds, rain, snow, mist).
+* **Comprehensive Verification:**
+  - Verified compilation with `npm run build` and ran automated mobile & desktop Playwright suites in `verification/verify_weather_header.py`.
+
+---
+
 ### [v1.0.1] — 2026-11-03 14:23:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

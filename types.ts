@@ -51,6 +51,8 @@ export interface Weather {
   description: string;
   icon: string;
   location: string;
+  source?: 'gps' | 'ip' | 'manual' | 'cache';
+  updatedAt?: number;
 }
 
 export interface BiometricData {

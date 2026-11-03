@@ -3,6 +3,8 @@ import { Weather, Profile } from '../types';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
+import { WeatherModal } from './WeatherModal';
+import { getWeatherConditionEmoji } from '../lib/weather';
 
 interface TopBarProps {
   isEditing: boolean;
@@ -19,6 +21,10 @@ interface TopBarProps {
   onToggleToolsPanel: () => void;
   isLeftSidebarVisible: boolean;
   onOpenSidebar?: () => void;
+  isWeatherLoading?: boolean;
+  onRefreshWeather?: () => Promise<void> | void;
+  onSetCustomCity?: (city: string) => Promise<boolean>;
+  onUseGPSLocation?: () => Promise<void> | void;
 }
 
 const SaveStatusIndicator: React.FC<{ status: TopBarProps['saveStatus'] }> = ({ status }) => {
@@ -48,10 +54,15 @@ const TopBar: React.FC<TopBarProps> = ({
   isToolsPanelVisible, 
   onToggleToolsPanel, 
   isLeftSidebarVisible, 
-  onOpenSidebar 
+  onOpenSidebar,
+  isWeatherLoading = false,
+  onRefreshWeather,
+  onSetCustomCity,
+  onUseGPSLocation
 }) => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
+  const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
   const { lock } = useCrypto();
 
   useEffect(() => {
@@ -113,16 +124,48 @@ const TopBar: React.FC<TopBarProps> = ({
             </button>
           )}
 
-          {/* Date & Time: concise on mobile to avoid overflow */}
-          <div className={`items-center gap-2 sm:gap-3 text-xs sm:text-sm text-slate-600 dark:text-slate-300 min-w-0 ${isEditing ? 'hidden md:flex' : 'flex'}`}>
+          {/* Date, Time & Weather: responsive and elegant on all viewports */}
+          <div className={`items-center gap-1.5 sm:gap-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 min-w-0 ${isEditing ? 'hidden md:flex' : 'flex'}`}>
             <span className="font-semibold whitespace-nowrap">{format(currentTime, 'p')}</span>
             <span className="font-medium whitespace-nowrap hidden sm:inline">{format(currentDate, 'MMMM d, yyyy')}</span>
             <span className="font-medium whitespace-nowrap sm:hidden">{format(currentDate, 'MMM d')}</span>
-            {weather && (
-              <div className="hidden lg:flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <span className="w-2 h-2 bg-orange-500 rounded-full flex-shrink-0"></span>
-                <span className="truncate">{weather.location}, {Math.round(weather.temp)}°C</span>
+
+            {/* Weather / Location Badge - Clickable & visible on both mobile and desktop */}
+            {weather ? (
+              <button
+                type="button"
+                onClick={() => setIsWeatherModalOpen(true)}
+                title={`${weather.location}: ${Math.round(weather.temp)}°C, ${weather.description || 'Clear'}. Click for details or to change city.`}
+                className="flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-400/10 dark:hover:bg-amber-400/20 text-amber-900 dark:text-amber-200 transition-all text-xs border border-amber-500/20 active:scale-95 max-w-[130px] sm:max-w-[200px]"
+              >
+                <span className="text-xs select-none" role="img" aria-label="weather-icon">
+                  {getWeatherConditionEmoji(weather.icon, weather.description)}
+                </span>
+                <span className="truncate font-medium text-[11px] sm:text-xs">
+                  <span className="hidden xs:inline sm:inline">{weather.location}, </span>
+                  {Math.round(weather.temp)}°C
+                </span>
+              </button>
+            ) : isWeatherLoading ? (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/70 dark:bg-slate-800/70 text-slate-400 text-xs animate-pulse border border-slate-200/50 dark:border-slate-700/50">
+                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-ping"></span>
+                <span className="text-[11px] hidden sm:inline">Weather...</span>
               </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsWeatherModalOpen(true)}
+                title="Click to enable location or set your city"
+                className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-xs font-medium transition-all border border-indigo-200/60 dark:border-indigo-800/60 active:scale-95"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span className="text-[11px] sm:text-xs">
+                  <span className="hidden sm:inline">Set </span>Location
+                </span>
+              </button>
             )}
           </div>
         </div>
@@ -196,6 +239,17 @@ const TopBar: React.FC<TopBarProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Interactive Weather & Location Management Modal */}
+      <WeatherModal
+        isOpen={isWeatherModalOpen}
+        onClose={() => setIsWeatherModalOpen(false)}
+        weather={weather}
+        isLoading={Boolean(isWeatherLoading)}
+        onRefresh={onRefreshWeather || (() => {})}
+        onSetCustomCity={onSetCustomCity || (async () => false)}
+        onUseGPSLocation={onUseGPSLocation || (() => {})}
+      />
     </header>
   );
 };
