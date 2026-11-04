@@ -26,6 +26,38 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.9] — 2026-11-04 09:05:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **App Version Transparency Across All Views:**
+  - You can now quickly verify your installed app version directly inside your diary.
+  - The version is cleanly displayed in the bottom footer of the Left Navigation drawer and at the bottom of your Profile & Settings page alongside end-to-end encryption confirmation.
+  - Public visitors can also see the current build and encryption status right on the landing page footer.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Dynamic Build-Time Version Injection & UI Placement:**
+  - Configured Vite `define` in `vite.config.ts` to automatically expose `import.meta.env.VITE_APP_VERSION` bound to `package.json` (`process.env.npm_package_version`).
+  - Added TypeScript declarations in `vite-env.d.ts` for `ImportMetaEnv`.
+  - Added pinned sidebar footer in `components/LeftSidebar.tsx` displaying `Diary` and `v${import.meta.env.VITE_APP_VERSION}`.
+  - Added app information footer in `components/ProfileView.tsx` with version badge and `End-to-End Encrypted (AES-GCM)` confirmation.
+  - Added modern responsive footer to `components/LandingPage.tsx` matching the indigo sanctuary aesthetic.
+  - Automated verification with Playwright capturing `version_sidebar_desktop.png`, `version_profile_page.png`, `version_landing_page.png`, and `version_landing_mobile.png`.
+
+---
+
+### [v1.0.8] — 2026-11-04 08:35:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Seamless Web App Loading & Zero-Downtime Deployments:**
+  - Enhanced deployment pipelines ensure the web application always loads smoothly on GitHub Pages without encountering 404 route errors.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Modernized GitHub Pages Deployment Workflow (`.github/workflows/main.yml`):**
+  - Updated action configuration to use official `actions/upload-pages-artifact` and `actions/deploy-pages`.
+  - Configured SPA 404 redirection handling and GitHub Pages permissions.
+
+---
+
 ### [v1.0.7] — 2026-11-04 01:20:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

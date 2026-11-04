@@ -4,7 +4,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
-  process.env.VITE_APP_VERSION = JSON.stringify(process.env.npm_package_version);
+  const appVersion = process.env.npm_package_version || '1.0.8';
+  process.env.VITE_APP_VERSION = JSON.stringify(appVersion);
   loadEnv(mode, process.cwd(), '');
 
   const isProduction = mode === 'production';
@@ -104,6 +105,9 @@ export default defineConfig(({ mode }) => {
         }
       })
     ],
+    define: {
+      'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    },
     // Base path conditionally set for Capacitor or GitHub Pages deployment
     base: baseFolder
   }

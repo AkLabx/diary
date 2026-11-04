@@ -406,6 +406,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             </button>
         </div>
 
+        {/* App Info Footer */}
+        <div className="mt-12 pt-6 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-400 dark:text-slate-500 gap-2">
+            <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-600 dark:text-slate-400">Diary</span>
+                <span className="font-mono bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded text-[11px] text-slate-600 dark:text-slate-300">
+                    v{import.meta.env.VITE_APP_VERSION || '1.0.8'}
+                </span>
+            </div>
+            <p className="text-[11px] text-slate-400 dark:text-slate-500">
+                End-to-End Encrypted (AES-GCM)
+            </p>
+        </div>
+
         {/* CROPPER MODAL */}
         {cropImage && (
             <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4 animate-fade-in">

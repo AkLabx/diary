@@ -114,6 +114,12 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
             </div>
         </div>
       </nav>
+      <div className="p-3 px-4 border-t border-[#EAE1D6] dark:border-slate-800 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500 bg-[#F4EFE9] dark:bg-slate-900 select-none">
+        <span className="font-medium text-slate-600 dark:text-slate-400">Diary</span>
+        <span className="font-mono bg-stone-200/60 dark:bg-slate-800 px-1.5 py-0.5 rounded text-[11px] text-slate-500 dark:text-slate-400">
+          v{import.meta.env.VITE_APP_VERSION || '1.0.8'}
+        </span>
+      </div>
     </aside>
   );
 };
