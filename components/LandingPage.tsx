@@ -425,6 +425,21 @@ const LandingPage: React.FC = () => {
             </div>
         </section>
 
+        {/* --- FOOTER --- */}
+        <footer className="w-full bg-indigo-950 text-indigo-300 py-8 border-t border-indigo-900/60">
+          <div className="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-indigo-300/80">
+            <div className="flex items-center gap-3">
+              <span className="font-semibold text-white">Diary</span>
+              <span className="font-mono bg-indigo-900/80 border border-indigo-700/50 px-2 py-0.5 rounded text-[11px] text-indigo-200">
+                v{import.meta.env.VITE_APP_VERSION || '1.0.8'}
+              </span>
+            </div>
+            <p className="text-center sm:text-right">
+              Zero-Knowledge End-to-End Encrypted Sanctuary • All rights reserved
+            </p>
+          </div>
+        </footer>
+
       </main>
     </div>
   );
