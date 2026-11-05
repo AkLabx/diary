@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { DiaryEntry, Profile, Weather } from '../types';
 import InteractiveGreeting from './InteractiveGreeting';
 import OnThisDay from './OnThisDay';
+import TodayTasksWidget from './TodayTasksWidget';
 import { formatTimestamp } from '../lib/dateUtils';
 import { Link } from 'react-router-dom';
 
@@ -203,6 +204,7 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
         <>
             <OnThisDay entries={onThisDayEntries} onSelectEntry={onSelectEntry} />
             <InteractiveGreeting profile={profile} weather={weather || null} />
+            <TodayTasksWidget />
 
             {/* Time Filter Pills */}
             {onTimeFilterChange && (
