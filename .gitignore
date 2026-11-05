@@ -40,5 +40,6 @@ _agent/
 
 # Local scripts & runner helpers
 powershell.cmd
+powershell.bat
 scratch/
 

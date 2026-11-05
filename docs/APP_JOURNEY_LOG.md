@@ -26,6 +26,24 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.10] — 2026-11-06 01:07:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Uninterrupted Autonomous Pair Programming & Developer Environment Reliability:**
+  - Standardized local developer tooling and terminal runner resilience on Windows environments.
+  - Ensures continuous, friction-free updates and automated background testing without environment interruptions.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Antigravity Process Runner (`exebox`) & Windows Shell Resolution Protocol:**
+  - Solved Windows `exebox` path-resolution quirk where shell executions were looked up relative to the workspace root rather than system PATH.
+  - Implemented root `powershell.bat` forwarder bridge with execution policy bypass (`-ExecutionPolicy Bypass`) to reliably invoke `powershell.exe`, `npm.ps1`, `npx.ps1`, and Node.js.
+  - Added explicit system PATH restoration (`C:\Windows\System32`, `C:\Windows\System32\WindowsPowerShell\v1.0`, `C:\Program Files\Git\cmd`, `C:\Program Files\GitHub CLI`) and dynamic NVM Node detection (`D:\DevTools\nvm\v22.16.0`).
+  - Added `powershell.bat` and `powershell.cmd` to `.gitignore` to prevent committing local runner shims.
+  - Documented complete architectural guide, symptoms, root cause, and recovery protocol in `AGENTS.md` (Section 2) and `docs/ai/workflow.md` (Section 0).
+  - Verified clean compilation with `npm run build` (`tsc && vite build`).
+
+---
+
 ### [v1.0.9] — 2026-11-04 09:05:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)
