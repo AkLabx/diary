@@ -26,6 +26,27 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.11] — 2026-11-06 01:51:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Introducing Personal Intentions & Commitments (Phase 1):**
+  - Your diary is now a private life companion! Safely capture intimate, personal commitments—from medication reminders and doctor appointments to family surprises—directly alongside your daily reflections.
+  - Zero-stress sanctuary design: No aggressive red overdue badges or guilt-inducing alerts. Unfinished intentions gently roll over into a calm "Carried Forward" list.
+  - Complete emotional peace of mind: All task titles, intimate notes, and checklists are encrypted on your device using military-grade AES-GCM-256 before leaving your phone or computer.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **End-to-End Encrypted Personal Tasks Architecture (Phase 1):**
+  - Deployed production PostgreSQL schema on Supabase (`ccgiozknvlknbrkzfcdx`) for `public.personal_tasks`, `public.task_templates`, `public.task_history`, and `public.task_attachments` with strict Row-Level Security (`auth.uid() = owner_id`).
+  - Added WebCrypto cryptographic serialization in `lib/taskCrypto.ts` with AES-GCM 256-bit encryption, Authenticated Additional Data (AAD) tamper binding, and SHA-256 payload integrity checksums.
+  - Implemented anonymized category mapping (`category_code SMALLINT`) ensuring zero plaintext metadata leakage on database servers.
+  - Added two-dimensional anxiety-free priority system (`energy_level` 1–3 and `importance_level` 1–3).
+  - Built reactive state and optimistic updates in `contexts/TaskContext.tsx` with monotonic versioning (`version BIGINT`) and soft-delete support (`deleted_at`).
+  - Designed accessible sanctuary UI components: `components/tasks/TaskCard.tsx` (44×44px touch targets), `components/tasks/TaskEditorModal.tsx`, and `routes/Tasks/TasksHub.tsx` (`/app/tasks`).
+  - Added Intentions view navigation link to `components/LeftSidebar.tsx` and registered router in `App.tsx`.
+  - Verified with automated Playwright suite capturing `verification/tasks_hub_active.png`, `verification/tasks_hub_completed.png`, and `verification/tasks_editor_modal.png`.
+
+---
+
 ### [v1.0.10] — 2026-11-06 01:07:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

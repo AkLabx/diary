@@ -26,6 +26,8 @@ import Editor from './routes/Editor';
 import MyStuffHome from './routes/MyStuff/MyStuffHome';
 import MyStuffImages from './routes/MyStuff/MyStuffImages';
 import MyStuffAudio from './routes/MyStuff/MyStuffAudio';
+import TasksHub from './routes/Tasks/TasksHub';
+import { TaskProvider } from './contexts/TaskContext';
 
 const ProtectedRoute = ({ children, session }: { children: React.ReactNode, session: Session | null }) => {
   // We can't use useLocation here if this component is rendered *outside* the provider context
@@ -141,12 +143,15 @@ const App: React.FC = () => {
             path: "/app",
             element: (
                 <ProtectedRoute session={session}>
-                    <DiaryLayout session={session} theme={theme} onToggleTheme={toggleTheme} />
+                    <TaskProvider userId={session?.user?.id}>
+                        <DiaryLayout session={session} theme={theme} onToggleTheme={toggleTheme} />
+                    </TaskProvider>
                 </ProtectedRoute>
             ),
             errorElement: <ErrorBoundary />,
             children: [
                 { index: true, element: <Timeline /> },
+                { path: "tasks", element: <TasksHub /> },
                 { path: "calendar", element: <Calendar /> },
                 { path: "search", element: <Search /> },
                 { path: "profile", element: <Profile /> },
