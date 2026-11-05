@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { usePersonalTasks } from '../../contexts/TaskContext';
 import { TaskCard } from '../../components/tasks/TaskCard';
 import { TaskEditorModal } from '../../components/tasks/TaskEditorModal';
 import { PersonalTask, DecryptedTaskPayload } from '../../types';
+import { parseNaturalDate } from '../../lib/smartDateParser';
 
 export const TasksHub: React.FC = () => {
   const {
@@ -22,18 +23,30 @@ export const TasksHub: React.FC = () => {
   const [quickInput, setQuickInput] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<PersonalTask | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Zero-Knowledge In-Memory Client Search
+  const searchFilteredTasks = useMemo(() => {
+    if (!searchQuery.trim()) return null;
+    const q = searchQuery.toLowerCase();
+    return tasks.filter(t =>
+      t.decrypted?.title?.toLowerCase().includes(q) ||
+      t.decrypted?.notes?.toLowerCase().includes(q)
+    );
+  }, [tasks, searchQuery]);
 
   const handleQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickInput.trim()) return;
 
+    const parsed = parseNaturalDate(quickInput);
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
     await createTask(
-      { title: quickInput.trim() },
+      { title: parsed.title || quickInput.trim() },
       {
-        due_date: todayStr,
+        due_date: parsed.dueDate || todayStr,
         category_code: 0,
         energy_level: 1,
         importance_level: 2,
@@ -97,11 +110,11 @@ export const TasksHub: React.FC = () => {
         </button>
       </div>
 
-      {/* Quick Add Bar */}
+      {/* Quick Add Bar with Natural Language Support */}
       <form onSubmit={handleQuickAdd} className="relative">
         <input
           type="text"
-          placeholder="Add a gentle intention for today... (Press Enter to save)"
+          placeholder="Add a gentle intention... (e.g. 'Call sister tomorrow' or 'Doctor on Friday')"
           value={quickInput}
           onChange={e => setQuickInput(e.target.value)}
           className="w-full pl-11 pr-24 py-3 rounded-2xl border border-stone-200 dark:border-zinc-800 bg-white/90 dark:bg-zinc-900/90 text-stone-900 dark:text-zinc-100 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-sm backdrop-blur-sm transition-all"
@@ -119,6 +132,20 @@ export const TasksHub: React.FC = () => {
           Save
         </button>
       </form>
+
+      {/* In-Memory Zero-Knowledge Search Bar */}
+      <div className="relative">
+        <input
+          type="text"
+          placeholder="Search encrypted intentions by keyword..."
+          value={searchQuery}
+          onChange={e => setSearchQuery(e.target.value)}
+          className="w-full pl-9 pr-4 py-2 rounded-xl border border-stone-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/70 text-xs text-stone-800 dark:text-zinc-200 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
+        />
+        <svg className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+        </svg>
+      </div>
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-1.5 p-1 bg-stone-100/80 dark:bg-zinc-800/60 rounded-xl overflow-x-auto text-xs font-medium">
@@ -189,7 +216,44 @@ export const TasksHub: React.FC = () => {
           <div className="w-6 h-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-xs">Decrypting private intentions...</p>
         </div>
+      ) : searchFilteredTasks !== null ? (
+        /* Search Results View */
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <p className="text-xs text-stone-500 dark:text-zinc-400 font-medium">
+              Found {searchFilteredTasks.length} search results for &ldquo;{searchQuery}&rdquo;:
+            </p>
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
+            >
+              Clear Search
+            </button>
+          </div>
+          {searchFilteredTasks.length > 0 ? (
+            <div className="space-y-2">
+              {searchFilteredTasks.map(task => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onToggle={toggleTask}
+                  onEdit={handleOpenEdit}
+                  onDelete={deleteTask}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="py-12 text-center p-6 rounded-3xl bg-stone-50/50 dark:bg-zinc-900/40 border border-dashed border-stone-200 dark:border-zinc-800">
+              <p className="text-3xl mb-2">🔍</p>
+              <p className="text-xs text-stone-500 dark:text-zinc-400">
+                No intentions match &ldquo;{searchQuery}&rdquo;. Try another keyword.
+              </p>
+            </div>
+          )}
+        </div>
       ) : (
+        /* Regular Tabbed Views */
         <div className="space-y-6">
           {/* Today View */}
           {activeTab === 'today' && (

@@ -26,6 +26,28 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.12] — 2026-11-06 02:15:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Personal Intentions Meets Your Daily Journal (Phase 2):**
+  - **Today's Sanctuary Glance on Timeline**: A calming, collapsible summary right atop your daily reflections showing today's intentions. Check off commitments with a single tap or quick-capture an intention without leaving your journal feed.
+  - **Intention & Journal Binding**: Seamlessly connect personal tasks to specific diary entries. When writing about a health checkup, anniversary preparation, or project milestone, add related commitments directly within the entry view.
+  - **Smart Date Quick-Input**: Type naturally! Mention *"tomorrow"*, *"tonight"*, *"next Monday"*, or *"in 3 days"* in the quick add box, and the app automatically schedules it for the exact date.
+  - **Dual Calendar Visuals**: The interactive calendar now marks your days with soothing dual indicators—an indigo dot for diary reflections and an emerald dot for personal intentions.
+  - **Zero-Knowledge Private Search**: Quickly search through all your decrypted personal tasks and notes with instant local keyword matching that never sends plaintext queries to any server.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Timeline, Diary Entry & Calendar Task Integration (Phase 2):**
+  - Built `components/TodayTasksWidget.tsx` integrating live context tasks onto `components/DiaryList.tsx` with collapsible progress tracking and responsive quick-capture.
+  - Implemented bi-directional entry binding in `components/DiaryEntryView.tsx` (`entry_id: entry.id`) rendering interactive intention checklists and inline creation bound to the active entry.
+  - Built client-side natural language date parser in `lib/smartDateParser.ts` supporting relative offsets, weekdays, and ISO date generation without heavyweight external NLP libraries.
+  - Enhanced `components/CalendarView.tsx` with `taskDates` tracking to render dual dot indicators (indigo for entries, emerald for tasks).
+  - Added in-memory zero-knowledge search in `routes/Tasks/TasksHub.tsx` querying decrypted memory state with real-time text matching.
+  - Verified with automated Playwright suite in `verification/verify_personal_tasks_phase2.py` generating visual verification artifacts for widget, linked entry tasks, calendar markers, and search.
+
+---
+
+
 ### [v1.0.11] — 2026-11-06 01:51:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

@@ -6,6 +6,7 @@ import SecureAudioPlayer from './SecureAudioPlayer';
 import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
 import Lightbox from './Lightbox';
+import { usePersonalTasks } from '../contexts/TaskContext';
 
 interface DiaryEntryViewProps {
   onNext?: () => void;
@@ -23,6 +24,29 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   const fullDate = formatFullTimestamp(entry.created_at);
   const relativeTime = formatRelativeTime(entry.created_at);
   const contentRef = useRef<HTMLDivElement>(null);
+  const { tasks, toggleTask, createTask } = usePersonalTasks();
+  const [isAddingLinkedTask, setIsAddingLinkedTask] = useState(false);
+  const [linkedTaskTitle, setLinkedTaskTitle] = useState('');
+  const linkedTasks = tasks.filter(t => t.entry_id === entry.id);
+
+  const handleAddLinkedTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!linkedTaskTitle.trim()) return;
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    await createTask(
+      { title: linkedTaskTitle.trim() },
+      {
+        due_date: todayStr,
+        category_code: 0,
+        energy_level: 1,
+        importance_level: 2,
+        entry_id: entry.id,
+      }
+    );
+    setLinkedTaskTitle('');
+    setIsAddingLinkedTask(false);
+  };
 
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
 
@@ -250,6 +274,94 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
             className="prose prose-slate dark:prose-invert max-w-none my-6 diary-content"
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
+
+        {/* Linked Intentions & Action Items */}
+        <div className="my-6 p-4 rounded-2xl bg-indigo-50/50 dark:bg-slate-800/50 border border-indigo-100 dark:border-indigo-900/40">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-base">🌿</span>
+              <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
+                Linked Intentions
+              </h4>
+              {linkedTasks.length > 0 && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-medium">
+                  {linkedTasks.filter(t => t.is_completed).length}/{linkedTasks.length} accomplished
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsAddingLinkedTask(!isAddingLinkedTask)}
+              className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
+            >
+              {isAddingLinkedTask ? 'Cancel' : '+ Add Intention'}
+            </button>
+          </div>
+
+          {isAddingLinkedTask && (
+            <form onSubmit={handleAddLinkedTask} className="mb-3 flex gap-2">
+              <input
+                type="text"
+                autoFocus
+                placeholder="What intention did this reflection inspire?"
+                value={linkedTaskTitle}
+                onChange={e => setLinkedTaskTitle(e.target.value)}
+                className="flex-1 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              />
+              <button
+                type="submit"
+                disabled={!linkedTaskTitle.trim()}
+                className="px-3 py-1.5 rounded-xl bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
+              >
+                Save
+              </button>
+            </form>
+          )}
+
+          {linkedTasks.length > 0 ? (
+            <div className="space-y-2">
+              {linkedTasks.map(task => (
+                <div
+                  key={task.id}
+                  className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white/80 dark:bg-slate-900/80 border border-slate-200/60 dark:border-slate-700/60"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleTask(task.id)}
+                      className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
+                        task.is_completed
+                          ? 'bg-emerald-600 border-emerald-600 text-white'
+                          : 'border-slate-300 dark:border-slate-600 hover:border-indigo-500'
+                      }`}
+                    >
+                      {task.is_completed && (
+                        <svg className="w-3 h-3" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      )}
+                    </button>
+                    <span
+                      className={`text-xs font-medium truncate ${
+                        task.is_completed
+                          ? 'line-through text-slate-400 dark:text-slate-500'
+                          : 'text-slate-800 dark:text-slate-200'
+                      }`}
+                    >
+                      {task.decrypted?.title || '🔒 Encrypted Intention'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            !isAddingLinkedTask && (
+              <p className="text-xs text-slate-400 dark:text-slate-500 italic">
+                No intentions linked to this entry yet.
+              </p>
+            )
+          )}
+        </div>
 
         <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-6 flex justify-end gap-3">
             <button

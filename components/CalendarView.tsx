@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { DiaryEntry } from '../types';
+import { usePersonalTasks } from '../contexts/TaskContext';
 import DateInteractionMenu from './DateInteractionMenu';
 
 interface CalendarViewProps {
@@ -27,6 +28,17 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onCr
     });
     return dates;
   }, [entries]);
+
+  const { tasks } = usePersonalTasks();
+  const taskDates = useMemo(() => {
+    const dates = new Set<string>();
+    tasks.forEach(t => {
+      if (!t.is_completed && t.due_date) {
+        dates.add(t.due_date);
+      }
+    });
+    return dates;
+  }, [tasks]);
 
   const changeMonth = (amount: number) => {
     setCurrentDate(prev => {
@@ -65,7 +77,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onCr
 
     const rows = [];
     let days = [];
-    let day = startDate;
+    const day = startDate;
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -75,6 +87,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onCr
         const cloneDay = new Date(day);
         const dayKey = toLocalDateString(cloneDay);
         const hasEntry = entryDates.has(dayKey);
+        const hasTask = taskDates.has(dayKey);
         const isFuture = cloneDay > today;
         const isCurrentMonth = cloneDay.getMonth() === currentDate.getMonth();
         
@@ -99,7 +112,10 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onCr
               {cloneDay.getDate()}
             </span>
             {hasEntry && (
-              <div className="w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full mt-1"></div>
+              <div className="w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full mt-1" title="Journal Entry"></div>
+            )}
+            {hasTask && (
+              <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full mt-1" title="Personal Intention"></div>
             )}
           </div>
         );
