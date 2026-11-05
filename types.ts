@@ -70,3 +70,90 @@ export interface MediaFile {
   file_type: 'image' | 'audio';
   created_at: string;
 }
+
+
+// --- Personal Task Management Types ---
+
+export interface SubTaskItem {
+  id: string;
+  text: string;
+  done: boolean;
+}
+
+export interface DecryptedTaskPayload {
+  title: string;
+  notes?: string;
+  subtasks?: SubTaskItem[];
+  tags?: string[];
+  reminderTime?: string; // e.g. "17:30"
+}
+
+export interface PersonalTask {
+  id: string;
+  owner_id: string;
+  entry_id?: string | null;
+  recurrence_template_id?: string | null;
+  
+  // Cryptographic payload & verification
+  encrypted_task: string;
+  iv: string;
+  checksum: string;
+  key_version: number;
+  schema_version: number;
+  version: number;
+  
+  // Minimal queryable metadata
+  is_completed: boolean;
+  due_date?: string | null; // "YYYY-MM-DD"
+  category_code: number; // 0=General, 1=Personal, 2=Health, 3=Family, 4=Career, 5=Finance
+  energy_level: 1 | 2 | 3; // 1=Low, 2=Medium, 3=High
+  importance_level: 1 | 2 | 3; // 1=Optional, 2=Important, 3=Essential
+  
+  // Lifecycle & soft deletes
+  completed_at?: string | null;
+  deleted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+  
+  // Client-side decrypted state
+  decrypted?: DecryptedTaskPayload;
+  isDecrypted?: boolean;
+  isLoading?: boolean;
+}
+
+export interface TaskTemplate {
+  id: string;
+  owner_id: string;
+  encrypted_template: string;
+  iv: string;
+  checksum: string;
+  key_version: number;
+  schema_version: number;
+  rrule: string;
+  active_from: string;
+  active_until?: string | null;
+  deleted_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskHistory {
+  id: string;
+  task_id: string;
+  owner_id: string;
+  action: 'created' | 'edited' | 'completed' | 'reopened' | 'soft_deleted' | 'restored';
+  encrypted_diff: string;
+  iv: string;
+  created_at: string;
+}
+
+export interface TaskAttachment {
+  id: string;
+  task_id: string;
+  owner_id: string;
+  file_path: string;
+  file_type: string;
+  encrypted_metadata: string;
+  iv: string;
+  created_at: string;
+}
