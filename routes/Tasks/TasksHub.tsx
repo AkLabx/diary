@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { usePersonalTasks } from '../../contexts/TaskContext';
 import { TaskCard } from '../../components/tasks/TaskCard';
 import { TaskEditorModal } from '../../components/tasks/TaskEditorModal';
+import { TaskExportModal } from '../../components/tasks/TaskExportModal';
+import { TaskNotificationPrivacyModal } from '../../components/tasks/TaskNotificationPrivacyModal';
 import { PersonalTask, DecryptedTaskPayload } from '../../types';
 import { parseNaturalDate } from '../../lib/smartDateParser';
 
@@ -24,6 +26,8 @@ export const TasksHub: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<PersonalTask | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false);
 
   // Zero-Knowledge In-Memory Client Search
   const searchFilteredTasks = useMemo(() => {
@@ -95,19 +99,44 @@ export const TasksHub: React.FC = () => {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setEditingTask(null);
-            setIsModalOpen(true);
-          }}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm transition-all self-start sm:self-auto cursor-pointer"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <span>New Intention</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+          {/* Export Intentions Button */}
+          <button
+            type="button"
+            onClick={() => setIsExportModalOpen(true)}
+            title="Export intentions as Markdown, CSV, or JSON"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-200 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+          >
+            <span>📤</span>
+            <span>Export</span>
+          </button>
+
+          {/* Privacy & Discretion Settings */}
+          <button
+            type="button"
+            onClick={() => setIsPrivacyModalOpen(true)}
+            title="Notification privacy settings"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-stone-200 dark:border-zinc-800 bg-white dark:bg-zinc-800/80 hover:bg-stone-50 dark:hover:bg-zinc-800 text-stone-700 dark:text-zinc-200 text-xs font-semibold shadow-xs transition-all cursor-pointer"
+          >
+            <span>🛡️</span>
+            <span>Privacy</span>
+          </button>
+
+          {/* New Intention */}
+          <button
+            type="button"
+            onClick={() => {
+              setEditingTask(null);
+              setIsModalOpen(true);
+            }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium shadow-sm transition-all cursor-pointer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
+            </svg>
+            <span>New Intention</span>
+          </button>
+        </div>
       </div>
 
       {/* Quick Add Bar with Natural Language Support */}
@@ -399,6 +428,19 @@ export const TasksHub: React.FC = () => {
           setEditingTask(null);
         }}
         onSave={handleSaveModal}
+      />
+
+      {/* Multi-Format Export Modal */}
+      <TaskExportModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        tasks={tasks}
+      />
+
+      {/* 3-Tier Notification Privacy Modal */}
+      <TaskNotificationPrivacyModal
+        isOpen={isPrivacyModalOpen}
+        onClose={() => setIsPrivacyModalOpen(false)}
       />
     </div>
   );

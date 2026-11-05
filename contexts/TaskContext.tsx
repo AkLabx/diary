@@ -4,6 +4,7 @@ import { taskService } from '../lib/taskService';
 import { encryptTaskPayload, decryptTaskPayload } from '../lib/taskCrypto';
 import { useCrypto } from './CryptoContext';
 import { useToast } from './ToastContext';
+import { computeNextDueDate } from '../lib/recurrenceEngine';
 
 interface TaskContextType {
   tasks: PersonalTask[];
@@ -175,6 +176,27 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
 
       try {
         await taskService.toggleTaskCompletion(id, nextStatus, target.version);
+
+        // If completed and recurring, schedule the next occurrence
+        if (nextStatus && target.decrypted?.recurrence && target.decrypted.recurrence !== 'none') {
+          const nextDate = computeNextDueDate(target.decrypted.recurrence, target.due_date);
+          if (nextDate) {
+            await createTask(
+              {
+                ...target.decrypted,
+                subtasks: target.decrypted.subtasks?.map(s => ({ ...s, done: false })),
+              },
+              {
+                due_date: nextDate,
+                category_code: target.category_code,
+                energy_level: target.energy_level,
+                importance_level: target.importance_level,
+                entry_id: target.entry_id,
+              }
+            );
+            addToast(`Intention accomplished! Next recurrence scheduled for ${nextDate}`, 'success');
+          }
+        }
       } catch (err: any) {
         console.error('Failed to toggle task:', err);
         // Rollback

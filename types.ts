@@ -86,6 +86,8 @@ export interface DecryptedTaskPayload {
   subtasks?: SubTaskItem[];
   tags?: string[];
   reminderTime?: string; // e.g. "17:30"
+  recurrence?: 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly';
+  attachments?: Array<{ id: string; name: string; size: number; type: string; filePath: string; iv: string }>;
 }
 
 export interface PersonalTask {

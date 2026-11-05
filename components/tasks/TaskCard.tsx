@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PersonalTask } from '../../types';
 import { getCategoryMeta, formatTaskDueDate, ENERGY_LEVELS, IMPORTANCE_LEVELS } from '../../lib/taskUtils';
+import { formatRecurrenceLabel } from '../../lib/recurrenceEngine';
 
 interface TaskCardProps {
   task: PersonalTask;
@@ -15,6 +16,9 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onEdit, onDe
   const due = formatTaskDueDate(task.due_date);
   const energy = ENERGY_LEVELS.find(e => e.value === task.energy_level);
   const importance = IMPORTANCE_LEVELS.find(i => i.value === task.importance_level);
+  const recurrenceLabel = task.decrypted?.recurrence && task.decrypted.recurrence !== 'none'
+    ? formatRecurrenceLabel(task.decrypted.recurrence)
+    : null;
 
   return (
     <div
@@ -73,7 +77,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onEdit, onDe
               type="button"
               onClick={() => onEdit(task)}
               aria-label="Edit intention"
-              className="p-1.5 text-stone-400 hover:text-stone-700 dark:text-zinc-500 dark:hover:text-zinc-300 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
+              className="p-1.5 text-stone-400 hover:text-stone-700 dark:text-zinc-500 dark:hover:text-zinc-300 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
@@ -83,7 +87,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onEdit, onDe
               type="button"
               onClick={() => onDelete(task.id)}
               aria-label="Archive intention"
-              className="p-1.5 text-stone-400 hover:text-rose-600 dark:text-zinc-500 dark:hover:text-rose-400 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
+              className="p-1.5 text-stone-400 hover:text-rose-600 dark:text-zinc-500 dark:hover:text-rose-400 rounded-lg hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -122,6 +126,21 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onToggle, onEdit, onDe
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               <span>{due.text}</span>
+            </span>
+          )}
+
+          {/* Recurrence Pill */}
+          {recurrenceLabel && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/40">
+              <span>{recurrenceLabel}</span>
+            </span>
+          )}
+
+          {/* Reminder Time */}
+          {task.decrypted?.reminderTime && (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/40">
+              <span>⏰</span>
+              <span>{task.decrypted.reminderTime}</span>
             </span>
           )}
 

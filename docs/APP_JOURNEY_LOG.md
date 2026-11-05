@@ -26,6 +26,31 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.13] — 2026-11-06 02:48:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Advanced Sanctuary Features: Recurrence, Encrypted Attachments, Multi-Format Exports & Privacy (Phase 3):**
+  - **Recurring Intentions**: Gently schedule daily habits, weekly self-care rituals, or monthly commitments (e.g., medication refills, gratitude check-ins) with recurrence patterns (Daily, Weekdays, Weekly, Monthly) that naturally roll into future dates.
+  - **Encrypted Task Attachments**: Securely attach prescription photos, medical receipts, or confidential documents directly to your intentions. Every file is client-side encrypted before uploading to private storage.
+  - **Multi-Format Export Engine**: Download your entire decrypted intentions sanctuary at any moment with zero server tracking. Choose between Markdown (`.md` with checkboxes for Obsidian/Notion), CSV spreadsheet (`.csv` for Excel/Sheets), or full JSON vault backup.
+  - **3-Tier Notification Privacy**: Tailor reminder discretion to your comfort level:
+    - *Normal*: Shows intention title.
+    - *Private Sanctuary (Default)*: "You have a personal intention scheduled."
+    - *Ultra-Private*: "Diary • A gentle reflection awaits." (Indistinguishable from a journal notification).
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Advanced Sanctuary Engine (Phase 3):**
+  - Implemented `lib/recurrenceEngine.ts` supporting `none`, `daily`, `weekdays`, `weekly`, and `monthly` recurrence cycles with automated occurrence computation upon completion in `contexts/TaskContext.tsx`.
+  - Built `lib/taskAttachmentService.ts` utilizing AES-GCM client-side binary encryption (`encryptBinary` / `decryptBinary`) backed by private Supabase storage bucket (`diary-images`) and `public.task_attachments` RLS table.
+  - Built `lib/taskExport.ts` supporting Markdown (`- [ ]` and `- [x]`), RFC 4180 CSV, and full JSON export formats with browser Blob download.
+  - Implemented `lib/notificationService.ts` providing 3-tier privacy masking, Web Notifications API permission handling, and test notification dispatch.
+  - Updated `components/tasks/TaskEditorModal.tsx` with recurrence selectors, reminder time picker, and dynamic encrypted file attachment management.
+  - Enhanced `components/tasks/TaskCard.tsx` rendering recurrence and reminder pills.
+  - Added Export and Privacy modals (`TaskExportModal.tsx`, `TaskNotificationPrivacyModal.tsx`) to `routes/Tasks/TasksHub.tsx`.
+  - Automated visual Playwright verification in `verification/verify_personal_tasks_phase3.py` capturing all 4 modal and card states.
+
+---
+
 ### [v1.0.12] — 2026-11-06 02:15:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)
