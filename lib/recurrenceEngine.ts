@@ -1,6 +1,6 @@
 /**
  * Sanctuary Recurrence Engine
- * Computes next occurrence dates for recurring personal intentions
+ * Computes next occurrence dates for recurring personal tasks
  * without aggressive spamming or unneeded database clutter.
  */
 

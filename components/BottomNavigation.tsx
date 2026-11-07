@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { usePersonalTasks } from '../contexts/TaskContext';
 
 interface BottomNavigationProps {
   isVisible: boolean;
@@ -7,6 +8,8 @@ interface BottomNavigationProps {
 
 const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
   const navigate = useNavigate();
+  const { todayTasks, carriedForwardTasks } = usePersonalTasks();
+  const activeCount = todayTasks.length + carriedForwardTasks.length;
 
   if (!isVisible) return null;
 
@@ -37,11 +40,12 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
       label: ''
     },
     {
-      path: '/app/search',
-      label: 'Search',
+      path: '/app/tasks',
+      label: 'Tasks',
+      badge: activeCount > 0 ? activeCount : null,
       icon: (
         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
         </svg>
       )
     },
@@ -69,8 +73,10 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
               <NavLink
                 key={item.path}
                 to={item.path!}
+                aria-label={item.label}
+                title={item.label}
                 end={item.end}
-                className={({ isActive }) => `flex flex-col items-center justify-center w-16 h-full transition-colors duration-200 ${
+                className={({ isActive }) => `flex flex-col items-center justify-center w-16 h-full transition-colors duration-200 relative ${
                   isActive
                     ? 'text-indigo-600 dark:text-indigo-400'
                     : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200'
@@ -79,6 +85,11 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
                 {({ isActive }) => (
                   <div className={`relative flex items-center justify-center ${isActive ? 'mb-1' : 'mb-0'} transition-all duration-200`}>
                     {item.icon}
+                    {item.badge != null && item.badge > 0 && (
+                      <span className="absolute -top-1 -right-2 px-1.5 min-w-[16px] h-4 text-[10px] font-bold rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                        {item.badge > 99 ? '99+' : item.badge}
+                      </span>
+                    )}
                     {/* Active Indicator dot */}
                     <span className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-indigo-600 dark:bg-indigo-400 rounded-full transition-all duration-200 ${isActive ? 'scale-100 opacity-100' : 'scale-0 opacity-0'}`} />
                   </div>
@@ -93,7 +104,7 @@ const BottomNavigation: React.FC<BottomNavigationProps> = ({ isVisible }) => {
       <div className="md:hidden fixed bottom-5 left-1/2 -translate-x-1/2 z-[35] pb-[env(safe-area-inset-bottom,0px)] pointer-events-none">
         <button
           onClick={() => navigate('/app/new')}
-          className="pointer-events-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-14 h-14 shadow-xl shadow-indigo-500/40 transform transition-all active:scale-90 hover:scale-105 flex items-center justify-center border-4 border-[#FBF8F3] dark:border-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+          className="pointer-events-auto bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-14 h-14 shadow-xl shadow-indigo-500/40 transform transition-all active:scale-90 hover:scale-105 flex items-center justify-center border-4 border-[#FBF8F3] dark:border-slate-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 cursor-pointer"
           aria-label="New Entry"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">

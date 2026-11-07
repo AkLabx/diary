@@ -75,7 +75,7 @@ export const TaskNotificationPrivacyModal: React.FC<TaskNotificationPrivacyModal
         </div>
 
         <p className="text-xs text-stone-500 dark:text-zinc-400 mt-3">
-          Configure how intention reminders appear on lock screens and desktop banners to prevent bystanders from viewing sensitive reminders.
+          Configure how task reminders appear on lock screens and desktop banners to prevent bystanders from viewing sensitive reminders.
         </p>
 
         {/* 3 Privacy Modes */}

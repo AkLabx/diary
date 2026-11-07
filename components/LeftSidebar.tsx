@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { usePersonalTasks } from '../contexts/TaskContext';
 
 interface LeftSidebarProps {
   isVisible: boolean;
@@ -15,16 +16,21 @@ interface LeftSidebarProps {
 const LeftSidebar: React.FC<LeftSidebarProps> = ({ 
     isVisible, 
     onClose, 
-    // activeView, // Replaced by Router NavLink active state
-    // onChangeView, // Handled by Router
-    // onNewEntry, // Handled by Link or function
     journals,
     activeJournal,
     onSelectJournal
 }) => {
+  const { todayTasks, carriedForwardTasks } = usePersonalTasks();
+  const activeCount = todayTasks.length + carriedForwardTasks.length;
+
   const navItems = [
     { path: '/app', end: true, label: 'Timeline', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg> },
-    { path: '/app/tasks', label: 'Intentions', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+    { 
+      path: '/app/tasks', 
+      label: 'Tasks', 
+      badge: activeCount > 0 ? activeCount : null,
+      icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg> 
+    },
     { path: '/app/calendar', label: 'Calendar', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg> },
     { path: '/app/search', label: 'Search', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> },
     { path: '/app/profile', label: 'Profile', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> },
@@ -64,14 +70,21 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
                     to={item.path}
                     end={item.end}
                     onClick={handleLinkClick}
-                    className={({ isActive }) => `w-full flex items-center gap-3 p-2.5 rounded-lg text-left text-sm font-medium transition-colors ${
+                    className={({ isActive }) => `w-full flex items-center justify-between p-2.5 rounded-lg text-left text-sm font-medium transition-colors ${
                         isActive
                         ? 'bg-white dark:bg-slate-800 text-indigo-600 dark:text-indigo-400 shadow-sm'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-slate-800'
                     }`}
                 >
-                    {item.icon}
-                    <span>{item.label}</span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {item.icon}
+                      <span className="truncate">{item.label}</span>
+                    </div>
+                    {item.badge != null && (
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 flex-shrink-0">
+                        {item.badge}
+                      </span>
+                    )}
                 </NavLink>
             ))}
         </div>

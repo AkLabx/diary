@@ -26,6 +26,29 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.14] — 2026-11-07 06:35:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Everyday Tasks & To-Dos UI/UX Overhaul:**
+  - **Crystal-Clear Language for Everyday Life**: All abstract, technical, or unfamiliar terminology has been replaced with obvious words anyone can understand: **Tasks**, **To-Dos**, **"2 of 4 done"**, and everyday categories (**Personal**, **Health**, **Family**, **Work & Study**, **Money & Bills**, and **Habits**).
+  - **Mobile Bottom Navigation with Live Badge**: Direct 1-tap access to your Tasks right in the main bottom navigation bar on mobile! Features a real-time counter badge showing pending tasks so you never lose track.
+  - **Sleek Timeline Focus Strip**: A compact "Today's Tasks" bar showing your daily progress at a glance (e.g. "2 of 4 done"), expandable in 1 tap so it never crowds your journal entries.
+  - **Mobile Bottom-Sheet Task Drawer**: Clean, modern bottom drawer on phones with quick schedule buttons (Today, Tomorrow, Pick Date, Someday) and collapsible details.
+  - **Real-Time Date Feedback**: Typing dates naturally (e.g. "Call mom tomorrow at 5pm") now displays instant confirmation chips `[📅 Tomorrow]` before you save.
+  - **Instant Attachments on New Tasks**: Attach photos, receipts, or documents immediately while creating a new task—no need to save first.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Tasks UI/UX Overhaul:**
+  - Updated `components/BottomNavigation.tsx` implementing approved Option B: `Timeline`, `Calendar`, `+ FAB`, `Tasks` (with real-time pending count badge), and `Profile`.
+  - Redesigned `components/TodayTasksWidget.tsx` into a compact focus bar displaying `{completedToday} of {totalToday} done` with smooth expansion.
+  - Overhauled `routes/Tasks/TasksHub.tsx` with progress fill bar, category filter pills, real-time date chips, and collapsible search.
+  - Enhanced `components/tasks/TaskCard.tsx` with 44px hit-targets, 1-click "Move to Today" for carried-over tasks, and bi-directional diary entry navigation links (`task.entry_id`).
+  - Enhanced `components/tasks/TaskEditorModal.tsx` with adaptive mobile bottom-sheet presentation and creation-time file staging (`stagedFiles`).
+  - Updated `lib/taskUtils.ts`, `lib/notificationService.ts`, `lib/recurrenceEngine.ts`, `lib/taskExport.ts`, `contexts/TaskContext.tsx`, `components/DiaryEntryView.tsx`, and `components/LeftSidebar.tsx` to everyday language.
+  - Verified with `npm run build` (0 TypeScript errors) and automated Playwright test suite capturing screenshots.
+
+---
+
 ### [v1.0.13] — 2026-11-06 02:48:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

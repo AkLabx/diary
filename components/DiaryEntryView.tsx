@@ -275,17 +275,17 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
             dangerouslySetInnerHTML={{ __html: sanitizedContent }}
         />
 
-        {/* Linked Intentions & Action Items */}
+        {/* Linked Tasks & Action Items */}
         <div className="my-6 p-4 rounded-2xl bg-indigo-50/50 dark:bg-slate-800/50 border border-indigo-100 dark:border-indigo-900/40">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <span className="text-base">🌿</span>
               <h4 className="text-xs font-bold text-slate-800 dark:text-slate-100 uppercase tracking-wider">
-                Linked Intentions
+                Linked Tasks
               </h4>
               {linkedTasks.length > 0 && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-medium">
-                  {linkedTasks.filter(t => t.is_completed).length}/{linkedTasks.length} accomplished
+                  {linkedTasks.filter(t => t.is_completed).length}/{linkedTasks.length} done
                 </span>
               )}
             </div>
@@ -294,7 +294,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
               onClick={() => setIsAddingLinkedTask(!isAddingLinkedTask)}
               className="text-xs text-indigo-600 dark:text-indigo-400 font-semibold hover:underline cursor-pointer"
             >
-              {isAddingLinkedTask ? 'Cancel' : '+ Add Intention'}
+              {isAddingLinkedTask ? 'Cancel' : '+ Add Task'}
             </button>
           </div>
 
@@ -303,7 +303,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
               <input
                 type="text"
                 autoFocus
-                placeholder="What intention did this reflection inspire?"
+                placeholder="Add a task related to this entry..."
                 value={linkedTaskTitle}
                 onChange={e => setLinkedTaskTitle(e.target.value)}
                 className="flex-1 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
@@ -348,7 +348,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
                           : 'text-slate-800 dark:text-slate-200'
                       }`}
                     >
-                      {task.decrypted?.title || '🔒 Encrypted Intention'}
+                      {task.decrypted?.title || '🔒 Private Task'}
                     </span>
                   </div>
                 </div>
@@ -357,7 +357,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
           ) : (
             !isAddingLinkedTask && (
               <p className="text-xs text-slate-400 dark:text-slate-500 italic">
-                No intentions linked to this entry yet.
+                No tasks linked to this entry yet.
               </p>
             )
           )}

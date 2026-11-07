@@ -5,12 +5,17 @@ import { parseNaturalDate } from '../lib/smartDateParser';
 import { getCategoryMeta } from '../lib/taskUtils';
 
 export const TodayTasksWidget: React.FC = () => {
-  const { todayTasks, carriedForwardTasks, toggleTask, createTask } = usePersonalTasks();
+  const { todayTasks, carriedForwardTasks, completedTasks, toggleTask, createTask } = usePersonalTasks();
   const [quickText, setQuickText] = useState('');
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
-  const activeIntentions = [...carriedForwardTasks, ...todayTasks];
-  const totalIntentions = activeIntentions.length;
+  const activeTasks = [...carriedForwardTasks, ...todayTasks];
+  const totalActive = activeTasks.length;
+  
+  // Tasks completed today
+  const todayStr = new Date().toDateString();
+  const completedToday = completedTasks.filter(t => t.completed_at && new Date(t.completed_at).toDateString() === todayStr);
+  const totalTodayTasks = totalActive + completedToday.length;
 
   const handleQuickAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,44 +31,64 @@ export const TodayTasksWidget: React.FC = () => {
         due_date: parsed.dueDate || defaultDate,
         category_code: 0,
         energy_level: 1,
-        importance_level: 2,
+        importance_level: 1,
       }
     );
     setQuickText('');
   };
 
   return (
-    <div className="mb-6 rounded-2xl border border-indigo-100/80 dark:border-indigo-900/40 bg-gradient-to-r from-indigo-50/60 via-purple-50/30 to-stone-50/50 dark:from-slate-800/80 dark:via-indigo-950/20 dark:to-slate-800/60 p-4 shadow-sm backdrop-blur-md transition-all">
-      {/* Header */}
-      <div className="flex items-center justify-between pb-2">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">🌿</span>
-          <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 font-serif">
-            Today's Intentions
-          </h3>
-          {totalIntentions > 0 && (
-            <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-100 dark:bg-indigo-950/80 text-indigo-700 dark:text-indigo-300">
-              {totalIntentions} active
-            </span>
-          )}
-        </div>
+    <div className="mb-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white/70 dark:bg-slate-900/60 p-3.5 sm:p-4 shadow-xs backdrop-blur-md transition-all">
+      {/* Compact Focus Strip Header */}
+      <div className="flex items-center justify-between gap-3">
+        <button
+          type="button"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="flex items-center gap-2.5 min-w-0 text-left cursor-pointer group"
+        >
+          <div className="w-7 h-7 rounded-lg bg-emerald-500/10 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M5 13l4 4L19 7" />
+            </svg>
+          </div>
 
-        <div className="flex items-center gap-3 text-xs">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 font-sans truncate">
+                Today's Tasks
+              </h3>
+              <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                {totalTodayTasks > 0 ? (
+                  totalActive === 0 ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">All done! 🎉</span>
+                  ) : (
+                    <span>{completedToday.length} of {totalTodayTasks} done</span>
+                  )
+                ) : (
+                  <span>No tasks scheduled</span>
+                )}
+              </span>
+            </div>
+          </div>
+        </button>
+
+        <div className="flex items-center gap-2">
           <Link
             to="/app/tasks"
-            className="text-indigo-600 dark:text-indigo-400 hover:underline font-semibold flex items-center gap-1"
+            className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 hidden sm:inline-flex items-center gap-1 transition-colors"
           >
-            <span>Tasks Hub</span>
+            <span>All Tasks</span>
             <span>&rarr;</span>
           </Link>
+
           <button
             type="button"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
-            aria-label={isCollapsed ? 'Expand intentions widget' : 'Collapse intentions widget'}
+            onClick={() => setIsExpanded(!isExpanded)}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all cursor-pointer"
+            aria-label={isExpanded ? 'Collapse tasks strip' : 'Expand tasks strip'}
           >
             <svg
-              className={`w-4 h-4 transform transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`}
+              className={`w-4 h-4 transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : 'rotate-0'}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -74,70 +99,79 @@ export const TodayTasksWidget: React.FC = () => {
         </div>
       </div>
 
-      {/* Collapsible Body */}
-      {!isCollapsed && (
-        <div className="mt-2 space-y-3">
-          {/* Active List */}
-          {activeIntentions.length > 0 ? (
+      {/* Expanded Task List & Quick Add */}
+      {isExpanded && (
+        <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800/80 space-y-3 animate-fade-in">
+          {/* Active Tasks List */}
+          {activeTasks.length > 0 ? (
             <div className="space-y-1.5">
-              {activeIntentions.slice(0, 3).map(task => {
+              {activeTasks.slice(0, 4).map(task => {
                 const category = getCategoryMeta(task.category_code);
                 return (
                   <div
                     key={task.id}
-                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white/80 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-700/60 shadow-xs"
+                    className="flex items-center justify-between gap-3 px-3 py-2 rounded-xl bg-white dark:bg-slate-800/80 border border-slate-200/60 dark:border-slate-700/60 shadow-2xs"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <button
                         type="button"
                         onClick={() => toggleTask(task.id)}
-                        className="w-4 h-4 rounded-full border border-stone-300 dark:border-zinc-600 hover:border-indigo-500 flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
-                        aria-label="Mark completed"
+                        className="w-5 h-5 rounded-md border border-slate-300 dark:border-slate-600 hover:border-emerald-500 hover:bg-emerald-50/50 flex items-center justify-center transition-all cursor-pointer flex-shrink-0"
+                        aria-label="Mark task done"
                       />
                       <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">
-                        {task.decrypted?.title || '🔒 Encrypted Intention'}
+                        {task.decrypted?.title || '🔒 Private Task'}
                       </span>
                     </div>
 
-                    <span className="text-[10px] px-2 py-0.5 rounded-full border flex-shrink-0 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700">
-                      {category.icon} {category.label.split(' ')[0]}
+                    <span className="text-[10px] px-2 py-0.5 rounded-md border flex-shrink-0 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700">
+                      {category.icon} {category.label}
                     </span>
                   </div>
                 );
               })}
 
-              {activeIntentions.length > 3 && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 pt-1">
-                  +{activeIntentions.length - 3} more intentions in{' '}
+              {activeTasks.length > 4 && (
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 px-1 pt-0.5">
+                  +{activeTasks.length - 4} more tasks in{' '}
                   <Link to="/app/tasks" className="text-indigo-600 dark:text-indigo-400 font-semibold underline">
-                    Tasks Hub
+                    Tasks
                   </Link>
                 </p>
               )}
             </div>
           ) : (
-            <p className="text-xs text-slate-500 dark:text-slate-400 italic">
-              Your day is clear and calm. Capture a gentle intention below:
+            <p className="text-xs text-slate-500 dark:text-slate-400 italic py-1">
+              You're all caught up for today! Add a task below if anything comes up:
             </p>
           )}
 
-          {/* Quick-Capture Input */}
-          <form onSubmit={handleQuickAdd} className="relative mt-2">
+          {/* Quick-Capture Form */}
+          <form onSubmit={handleQuickAdd} className="relative pt-1">
             <input
               type="text"
-              placeholder="e.g. Call sister tonight, walk in nature tomorrow..."
+              placeholder="Add a task for today... (e.g. 'Call doctor at 2pm')"
               value={quickText}
               onChange={e => setQuickText(e.target.value)}
-              className="w-full pl-3 pr-16 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/90 dark:bg-slate-900/90 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-xs"
+              className="w-full pl-3 pr-16 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all shadow-2xs"
             />
             <button
               type="submit"
               disabled={!quickText.trim()}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-semibold hover:bg-indigo-700 disabled:opacity-0 transition-all cursor-pointer"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 mt-0.5 px-2.5 py-1 rounded-lg bg-indigo-600 text-white text-[11px] font-semibold hover:bg-indigo-700 disabled:opacity-0 transition-all cursor-pointer"
             >
               Add
             </button>
           </form>
+
+          <div className="flex justify-end pt-1">
+            <Link
+              to="/app/tasks"
+              className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium"
+            >
+              Open Full Tasks View &rarr;
+            </Link>
+          </div>
         </div>
       )}
     </div>
