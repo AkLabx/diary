@@ -1,8 +1,8 @@
 /**
  * Sanctuary 3-Tier Notification Privacy Service
- * Controls discretion levels for task & intention reminders:
+ * Controls discretion levels for task reminders:
  * 1. Normal: Displays actual task title ("Pick up prescription")
- * 2. Private (Default): "You have a personal intention scheduled." (Zero leaks)
+ * 2. Private (Default): "You have a personal task scheduled." (Zero leaks)
  * 3. Ultra-Private: "Diary • A gentle reflection awaits." (Indistinguishable from journal)
  */
 
@@ -23,15 +23,15 @@ export const PRIVACY_MODE_OPTIONS: PrivacyModeOption[] = [
     value: 'normal',
     label: 'Normal (Clear)',
     icon: '🔔',
-    description: 'Displays the actual intention title in the reminder.',
+    description: 'Displays the actual task title in the reminder.',
     preview: '"Take medication at 8:00 PM"',
   },
   {
     value: 'private',
     label: 'Private Sanctuary (Recommended)',
     icon: '🛡️',
-    description: 'Masks intention text while reminding you of a commitment.',
-    preview: '"You have a personal intention scheduled."',
+    description: 'Masks task title while reminding you of a commitment.',
+    preview: '"You have a personal task scheduled."',
   },
   {
     value: 'ultra',
@@ -89,19 +89,19 @@ export const notificationService = {
   /**
    * Formats the notification text according to the selected discretion tier.
    */
-  formatNotification(intentionTitle: string, modeOverride?: NotificationPrivacyMode): { title: string; body: string } {
+  formatNotification(taskTitle: string, modeOverride?: NotificationPrivacyMode): { title: string; body: string } {
     const mode = modeOverride || this.getPrivacyMode();
 
     switch (mode) {
       case 'normal':
         return {
-          title: '🌿 Personal Intention',
-          body: intentionTitle,
+          title: '✅ Personal Task',
+          body: taskTitle,
         };
       case 'private':
         return {
           title: '🌿 Diary Sanctuary',
-          body: 'You have a personal intention scheduled.',
+          body: 'You have a personal task scheduled.',
         };
       case 'ultra':
       default:
@@ -115,13 +115,13 @@ export const notificationService = {
   /**
    * Dispatches a discreet browser notification if permission is granted.
    */
-  notify(intentionTitle: string, modeOverride?: NotificationPrivacyMode): boolean {
+  notify(taskTitle: string, modeOverride?: NotificationPrivacyMode): boolean {
     if (!('Notification' in window) || Notification.permission !== 'granted') {
       return false;
     }
 
     try {
-      const content = this.formatNotification(intentionTitle, modeOverride);
+      const content = this.formatNotification(taskTitle, modeOverride);
       new Notification(content.title, {
         body: content.body,
         icon: '/diary/pwa-icon.svg',

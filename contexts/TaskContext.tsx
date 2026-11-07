@@ -66,7 +66,7 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
       console.warn(`Could not decrypt task ${task.id}:`, err);
       return {
         ...task,
-        decrypted: { title: '🔒 Encrypted Intention' },
+        decrypted: { title: '🔒 Private Task' },
         isDecrypted: false,
       };
     }
@@ -142,11 +142,11 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
         };
 
         setTasks(prev => [fullTask, ...prev]);
-        addToast('Personal intention created', 'success');
+        addToast('Task created', 'success');
         return fullTask;
       } catch (err: any) {
         console.error('Failed to create task:', err);
-        addToast('Failed to save intention', 'error');
+        addToast('Failed to save task', 'error');
         return null;
       }
     },
@@ -194,7 +194,7 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
                 entry_id: target.entry_id,
               }
             );
-            addToast(`Intention accomplished! Next recurrence scheduled for ${nextDate}`, 'success');
+            addToast(`Task completed! Next recurrence scheduled for ${nextDate}`, 'success');
           }
         }
       } catch (err: any) {
@@ -265,10 +265,10 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
               : t
           )
         );
-        addToast('Intention updated', 'success');
+        addToast('Task updated', 'success');
       } catch (err: any) {
         console.error('Failed to update task:', err);
-        addToast('Failed to update intention', 'error');
+        addToast('Failed to update task', 'error');
       }
     },
     [tasks, key, userId, addToast]
@@ -284,12 +284,12 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
 
       try {
         await taskService.softDeleteTask(id, target.version);
-        addToast('Intention moved to archive', 'info');
+        addToast('Task deleted', 'info');
       } catch (err: any) {
         console.error('Failed to soft delete task:', err);
         // Rollback
         setTasks(prev => [target, ...prev]);
-        addToast('Failed to delete intention', 'error');
+        addToast('Failed to delete task', 'error');
       }
     },
     [tasks, addToast]

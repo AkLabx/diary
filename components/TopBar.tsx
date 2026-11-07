@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Weather, Profile } from '../types';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
+import { usePersonalTasks } from '../contexts/TaskContext';
 import { WeatherModal } from './WeatherModal';
 import { getWeatherConditionEmoji } from '../lib/weather';
 
@@ -60,6 +62,10 @@ const TopBar: React.FC<TopBarProps> = ({
   onSetCustomCity,
   onUseGPSLocation
 }) => {
+  const navigate = useNavigate();
+  const { todayTasks, carriedForwardTasks } = usePersonalTasks();
+  const activeTasksCount = todayTasks.length + carriedForwardTasks.length;
+
   const [currentTime, setCurrentTime] = useState(new Date());
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
@@ -81,15 +87,13 @@ const TopBar: React.FC<TopBarProps> = ({
               return;
           }
           
-          // If it is a legacy public URL (starts with http), use it directly.
           if (profile.avatar_url.startsWith('http')) {
               if (isMounted) setAvatarSrc(profile.avatar_url);
           } else {
-              // Otherwise, assume it is a storage path in the private 'avatars' bucket and sign it.
               try {
                   const { data, error } = await supabase.storage
                       .from('avatars')
-                      .createSignedUrl(profile.avatar_url, 3600); // 1 hour expiry
+                      .createSignedUrl(profile.avatar_url, 3600);
                   
                   if (error) throw error;
 
@@ -124,18 +128,18 @@ const TopBar: React.FC<TopBarProps> = ({
             </button>
           )}
 
-          {/* Date, Time & Weather: responsive and elegant on all viewports */}
+          {/* Date, Time & Weather */}
           <div className={`items-center gap-1.5 sm:gap-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 min-w-0 ${isEditing ? 'hidden md:flex' : 'flex'}`}>
             <span className="font-semibold whitespace-nowrap">{format(currentTime, 'p')}</span>
             <span className="font-medium whitespace-nowrap hidden sm:inline">{format(currentDate, 'MMMM d, yyyy')}</span>
             <span className="font-medium whitespace-nowrap sm:hidden">{format(currentDate, 'MMM d')}</span>
 
-            {/* Weather / Location Badge - Clickable & visible on both mobile and desktop */}
+            {/* Weather / Location Badge */}
             {weather ? (
               <button
                 type="button"
                 onClick={() => setIsWeatherModalOpen(true)}
-                title={`${weather.location}: ${Math.round(weather.temp)}°C, ${weather.description || 'Clear'}. Click for details or to change city.`}
+                title={`${weather.location}: ${Math.round(weather.temp)}°C, ${weather.description || 'Clear'}. Click for details.`}
                 className="flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-400/10 dark:hover:bg-amber-400/20 text-amber-900 dark:text-amber-200 transition-all text-xs border border-amber-500/20 active:scale-95 max-w-[130px] sm:max-w-[200px]"
               >
                 <span className="text-xs select-none" role="img" aria-label="weather-icon">
@@ -167,6 +171,19 @@ const TopBar: React.FC<TopBarProps> = ({
                 </span>
               </button>
             )}
+
+            {/* Quick Task Status Pill (Visible when not editing) */}
+            {!isEditing && (
+              <button
+                type="button"
+                onClick={() => navigate('/app/tasks')}
+                title="View Today's Tasks"
+                className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border transition-all cursor-pointer bg-white/70 hover:bg-white dark:bg-slate-800/70 dark:hover:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-2xs hover:border-indigo-300 dark:hover:border-indigo-700"
+              >
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold">✓</span>
+                <span>{activeTasksCount > 0 ? `${activeTasksCount} Pending` : 'All Done'}</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -189,8 +206,22 @@ const TopBar: React.FC<TopBarProps> = ({
           </div>
         )}
 
-        {/* Right Section: Tools/Theme/Profile */}
+        {/* Right Section: Search / Tools / Theme / Lock / Profile */}
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          {/* Quick Search Shortcut */}
+          {!isEditing && (
+            <button
+              type="button"
+              onClick={() => navigate('/app/search')}
+              title="Search Diary & Tasks"
+              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </button>
+          )}
+
           {isEditing && (
             <button 
               onClick={onToggleToolsPanel} 

@@ -4,7 +4,7 @@ import { formatRecurrenceLabel } from './recurrenceEngine';
 
 /**
  * Sanctuary Multi-Format Task Exporter
- * Exports decrypted intentions into Markdown, CSV, and JSON.
+ * Exports decrypted tasks into Markdown, CSV, and JSON.
  */
 
 export const taskExport = {
@@ -16,16 +16,16 @@ export const taskExport = {
     const activeTasks = tasks.filter(t => !t.is_completed);
     const completedTasks = tasks.filter(t => t.is_completed);
 
-    let md = `# 🌿 Personal Intentions & Sanctuary Archive\n\n`;
-    md += `*Exported on ${today} • Total Intentions: ${tasks.length} (${activeTasks.length} active, ${completedTasks.length} accomplished)*\n\n`;
+    let md = `# 🌿 Personal Tasks & Sanctuary Archive\n\n`;
+    md += `*Exported on ${today} • Total Tasks: ${tasks.length} (${activeTasks.length} active, ${completedTasks.length} accomplished)*\n\n`;
     md += `---\n\n`;
 
-    md += `## ⏳ Active Intentions (${activeTasks.length})\n\n`;
+    md += `## ⏳ Active Tasks (${activeTasks.length})\n\n`;
     if (activeTasks.length === 0) {
-      md += `*No active intentions. Peace of mind restored.*\n\n`;
+      md += `*No active tasks. Peace of mind restored.*\n\n`;
     } else {
       for (const t of activeTasks) {
-        const title = t.decrypted?.title || '🔒 Encrypted Intention';
+        const title = t.decrypted?.title || '🔒 Encrypted Task';
         const notes = t.decrypted?.notes;
         const cat = getCategoryMeta(t.category_code);
         const energy = ENERGY_LEVELS.find(e => e.value === t.energy_level) || ENERGY_LEVELS[0];
@@ -49,16 +49,16 @@ export const taskExport = {
       }
     }
 
-    md += `## ✨ Accomplished Sanctuary (${completedTasks.length})\n\n`;
+    md += `## ✨ Completed Sanctuary (${completedTasks.length})\n\n`;
     if (completedTasks.length === 0) {
-      md += `*No completed intentions yet.*\n\n`;
+      md += `*No completed tasks yet.*\n\n`;
     } else {
       for (const t of completedTasks) {
-        const title = t.decrypted?.title || '🔒 Encrypted Intention';
+        const title = t.decrypted?.title || '🔒 Encrypted Task';
         const completedDate = t.completed_at ? t.completed_at.split('T')[0] : 'Unknown date';
         const cat = getCategoryMeta(t.category_code);
 
-        md += `- [x] **${title}** *(Accomplished: ${completedDate})* — ${cat.icon} ${cat.label}\n`;
+        md += `- [x] **${title}** *(Completed: ${completedDate})* — ${cat.icon} ${cat.label}\n`;
       }
     }
 
@@ -96,8 +96,8 @@ export const taskExport = {
 
       return [
         escapeCSV(t.id),
-        escapeCSV(t.is_completed ? 'Accomplished' : 'Active'),
-        escapeCSV(t.decrypted?.title || 'Encrypted Intention'),
+        escapeCSV(t.is_completed ? 'Completed' : 'Active'),
+        escapeCSV(t.decrypted?.title || 'Encrypted Task'),
         escapeCSV(t.decrypted?.notes || ''),
         escapeCSV(cat.label),
         escapeCSV(energy.label),
@@ -161,18 +161,18 @@ export const taskExport = {
   exportMarkdown(tasks: PersonalTask[]) {
     const today = new Date().toISOString().split('T')[0];
     const md = this.generateMarkdown(tasks);
-    this.download(`intentions_export_${today}.md`, md, 'text/markdown;charset=utf-8');
+    this.download(`tasks_export_${today}.md`, md, 'text/markdown;charset=utf-8');
   },
 
   exportCSV(tasks: PersonalTask[]) {
     const today = new Date().toISOString().split('T')[0];
     const csv = this.generateCSV(tasks);
-    this.download(`intentions_export_${today}.csv`, csv, 'text/csv;charset=utf-8');
+    this.download(`tasks_export_${today}.csv`, csv, 'text/csv;charset=utf-8');
   },
 
   exportJSON(tasks: PersonalTask[]) {
     const today = new Date().toISOString().split('T')[0];
     const json = this.generateJSON(tasks);
-    this.download(`intentions_export_${today}.json`, json, 'application/json;charset=utf-8');
+    this.download(`tasks_export_${today}.json`, json, 'application/json;charset=utf-8');
   },
 };

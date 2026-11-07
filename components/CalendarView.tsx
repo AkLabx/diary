@@ -115,7 +115,7 @@ const CalendarView: React.FC<CalendarViewProps> = ({ entries, onSelectDate, onCr
               <div className="w-1.5 h-1.5 bg-indigo-500 dark:bg-indigo-400 rounded-full mt-1" title="Journal Entry"></div>
             )}
             {hasTask && (
-              <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full mt-1" title="Personal Intention"></div>
+              <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full mt-1" title="Task due"></div>
             )}
           </div>
         );

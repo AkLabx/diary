@@ -39,7 +39,7 @@ export const TaskExportModal: React.FC<TaskExportModalProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-xl">📤</span>
             <h3 className="text-lg font-semibold text-stone-800 dark:text-zinc-100">
-              Export Intentions
+              Export Tasks
             </h3>
           </div>
           <button
@@ -54,12 +54,12 @@ export const TaskExportModal: React.FC<TaskExportModalProps> = ({
         </div>
 
         <p className="text-xs text-stone-500 dark:text-zinc-400 mt-3">
-          Download your decrypted intentions in your preferred format. All exports are generated entirely on your device with 0 server transmission.
+          Download your decrypted tasks in your preferred format. All exports are generated entirely on your device with 0 server transmission.
         </p>
 
         <div className="my-3 px-3 py-2 rounded-xl bg-stone-50 dark:bg-zinc-800/60 flex items-center justify-between text-xs text-stone-600 dark:text-zinc-300">
           <span>Active: <strong>{activeCount}</strong></span>
-          <span>Accomplished: <strong>{completedCount}</strong></span>
+          <span>Completed: <strong>{completedCount}</strong></span>
           <span>Total: <strong>{tasks.length}</strong></span>
         </div>
 
