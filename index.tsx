@@ -2,6 +2,10 @@ import './index.css';
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
+import { initTelemetry } from './lib/telemetry';
+
+// Initialize zero-PII client crash and error telemetry
+initTelemetry();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

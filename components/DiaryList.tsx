@@ -52,8 +52,8 @@ const DiaryListItem: React.FC<{
     }, [entry.id, entry.isDecrypted, entry.isLoading, onLoadContent]);
 
     const stripHtml = (html: string) => {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        return doc.body.textContent || "";
+        if (!html) return "";
+        return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ').trim();
     };
 
     return (

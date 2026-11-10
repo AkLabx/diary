@@ -1,9 +1,9 @@
 import { Weather } from '../types';
+import { supabase } from './supabaseClient';
 
 // =================================================================================
-// Weather Service: OpenWeatherMap (Primary) + Open-Meteo (Automatic Resilient Fallback)
+// Weather Service: Supabase Edge Proxy (OpenWeatherMap) + Resilient Open-Meteo Fallback
 // =================================================================================
-const API_KEY: string = '227b57dcb9e272db9e362fee3a14b924';
 const CACHE_KEY = 'diary_cached_weather';
 const CUSTOM_CITY_KEY = 'diary_custom_city';
 const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes cache validity
@@ -227,33 +227,29 @@ export async function fetchWeather(
   source: 'gps' | 'ip' | 'manual' = 'gps',
   locationNameHint?: string
 ): Promise<Weather | null> {
-  if (!API_KEY || API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
-    return fetchOpenMeteoWeather(lat, lon, source, locationNameHint);
-  }
-
-  const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric`;
-
+  // 1. Try secure Supabase Edge Function weather-proxy (proxies OpenWeatherMap + server-side Open-Meteo fallback)
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Weather API request failed with status ${response.status}`);
+    const { data, error } = await supabase.functions.invoke('weather-proxy', {
+      body: { lat, lon }
+    });
+    if (!error && data && typeof data.temp === 'number') {
+      const result: Weather = {
+        temp: data.temp,
+        description: data.description || '',
+        icon: data.icon || '',
+        location: data.location || locationNameHint || `Nearby (${lat.toFixed(1)}, ${lon.toFixed(1)})`,
+        source,
+        updatedAt: Date.now()
+      };
+      setCachedWeather(result);
+      return result;
     }
-    const data = await response.json();
-
-    const result: Weather = {
-      temp: data.main.temp,
-      description: data.weather[0]?.description || '',
-      icon: data.weather[0]?.icon || '',
-      location: data.name || locationNameHint || `Nearby (${lat.toFixed(1)}, ${lon.toFixed(1)})`,
-      source,
-      updatedAt: Date.now()
-    };
-    setCachedWeather(result);
-    return result;
-  } catch (error) {
-    console.warn("Primary weather provider failed, switching to Open-Meteo fallback...", error);
-    return fetchOpenMeteoWeather(lat, lon, source, locationNameHint);
+  } catch (proxyError) {
+    console.warn("Weather proxy Edge Function failed, falling back to direct Open-Meteo...", proxyError);
   }
+
+  // 2. Direct client-side resilient fallback to Open-Meteo
+  return fetchOpenMeteoWeather(lat, lon, source, locationNameHint);
 }
 
 export async function fetchWeatherByCity(cityName: string): Promise<Weather | null> {
@@ -261,38 +257,37 @@ export async function fetchWeatherByCity(cityName: string): Promise<Weather | nu
     return null;
   }
 
-  if (!API_KEY || API_KEY === 'YOUR_OPENWEATHERMAP_API_KEY') {
-    return fetchOpenMeteoWeatherByCity(cityName);
-  }
-
-  const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(cityName.trim())}&appid=${API_KEY}&units=metric`;
-
+  // 1. Try secure Supabase Edge Function weather-proxy
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      throw new Error(`Weather API request failed with status ${response.status}`);
+    const { data, error } = await supabase.functions.invoke('weather-proxy', {
+      body: { city: cityName.trim() }
+    });
+    if (!error && data && typeof data.temp === 'number') {
+      const result: Weather = {
+        temp: data.temp,
+        description: data.description || '',
+        icon: data.icon || '',
+        location: data.location || cityName.trim(),
+        source: 'manual',
+        updatedAt: Date.now()
+      };
+      setCachedWeather(result);
+      return result;
     }
-    const data = await response.json();
-
-    const result: Weather = {
-      temp: data.main.temp,
-      description: data.weather[0]?.description || '',
-      icon: data.weather[0]?.icon || '',
-      location: data.name,
-      source: 'manual',
-      updatedAt: Date.now()
-    };
-    setCachedWeather(result);
-    return result;
-  } catch (error) {
-    console.warn(`OpenWeatherMap failed for city "${cityName}", switching to Open-Meteo fallback...`, error);
-    return fetchOpenMeteoWeatherByCity(cityName);
+  } catch (proxyError) {
+    console.warn(`Weather proxy failed for city "${cityName}", falling back to direct Open-Meteo...`, proxyError);
   }
+
+  // 2. Direct client-side resilient fallback to Open-Meteo
+  return fetchOpenMeteoWeatherByCity(cityName);
 }
 
 export async function fetchLocationByIP(): Promise<{ lat: number; lon: number; city: string } | null> {
   try {
-    const res = await fetch('https://ipwho.is/');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 4000);
+    const res = await fetch('https://ipwho.is/', { signal: controller.signal });
+    clearTimeout(timeout);
     if (!res.ok) return null;
     const data = await res.json();
     if (data && data.success && typeof data.latitude === 'number' && typeof data.longitude === 'number') {
@@ -303,7 +298,7 @@ export async function fetchLocationByIP(): Promise<{ lat: number; lon: number; c
       };
     }
   } catch (e) {
-    console.warn("IP geolocation fallback failed:", e);
+    console.warn("IP geolocation fallback failed or timed out:", e);
   }
   return null;
 }
