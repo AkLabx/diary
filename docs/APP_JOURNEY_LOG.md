@@ -26,6 +26,20 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.16] — 2026-11-10 12:15:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Instant Startup Stability Hotfix:**
+  - **Reliable App Launch Everywhere**: Resolved a critical startup issue where the web app could stall on a blank cream screen before opening. Your private sanctuary now loads reliably across mobile and desktop browsers.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Eliminated Circular ES Module Chunk Dependency in Production Build (`vite.config.ts`)**:
+  - **Root Cause**: The custom Rollup `manualChunks` function introduced in `v1.0.15` caused Rollup to place shared CommonJS helpers inside `vendor-editor` (`react-quill`), while `vendor-editor` imported `React` from `vendor-react`. That circular ESM graph (`vendor-react` <-> `vendor-editor`) evaluated `react-quill` before `React` was initialized, throwing `Uncaught TypeError: Cannot read properties of undefined (reading 'Component')` and aborting startup before `#root` could mount.
+  - **Fix**: Removed the conflicting `manualChunks` configuration from `vite.config.ts`, allowing Vite/Rollup's native automatic code splitting (alongside `React.lazy()` routes in `App.tsx`) to isolate lazy chunks cleanly (e.g., `Editor-*.js`) with 0 circular imports.
+  - **Verification**: Verified 0 circular imports across all 27 generated JS chunks, rebuilt `v1.0.16` cleanly, synced Capacitor Android assets, and verified E2E startup, authentication, Timeline, ReactQuill Editor, Tasks, and Profile in headless Chromium.
+
+---
+
 ### [v1.0.15] — 2026-11-10 08:30:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

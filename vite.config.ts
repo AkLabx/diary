@@ -130,30 +130,7 @@ export default defineConfig(({ mode }) => {
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
     },
     build: {
-      chunkSizeWarningLimit: 600,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('react-quill') || id.includes('quill')) {
-                return 'vendor-editor';
-              }
-              if (id.includes('jspdf') || id.includes('html2canvas')) {
-                return 'vendor-pdf';
-              }
-              if (id.includes('compromise')) {
-                return 'vendor-nlp';
-              }
-              if (id.includes('@supabase')) {
-                return 'vendor-supabase';
-              }
-              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
-                return 'vendor-react';
-              }
-            }
-          }
-        }
-      }
+      chunkSizeWarningLimit: 1500,
     },
     // Base path conditionally set for Capacitor or GitHub Pages deployment
     base: baseFolder
