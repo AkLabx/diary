@@ -44,8 +44,7 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry, onBack 
   }, [entries]);
 
   const stripHtml = (html: string) => {
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    return doc.body.textContent || "";
+    return html.replace(/<[^>]*>?/gm, '');
   };
 
   const filteredEntries = useMemo(() => {

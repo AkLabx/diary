@@ -4,10 +4,28 @@ import { Profile } from '../types';
 export const KEY_CHECK_STRING = "DAILY_DIARY_KEY_CHECK_v1";
 
 // --- Helper Functions ---
-// Fix: Change parameter type to ArrayBufferLike to handle buffers from Uint8Array.
-export const encodeBase64 = (buf: ArrayBufferLike): string => btoa(String.fromCharCode(...new Uint8Array(buf)));
-// Fix: Cast the result to ArrayBuffer to satisfy the return type. The .buffer property on a Uint8Array is typed as ArrayBufferLike.
-export const decodeBase64 = (str: string): ArrayBuffer => Uint8Array.from(atob(str), c => c.charCodeAt(0)).buffer as ArrayBuffer;
+// Chunked base64 encoder to avoid "RangeError: Maximum call stack size exceeded" on buffers > 64 KB.
+export const encodeBase64 = (buf: ArrayBufferLike): string => {
+  const bytes = new Uint8Array(buf);
+  const len = bytes.byteLength;
+  const chunkSize = 0x8000; // 32,768 bytes safe chunk size
+  let binary = '';
+  for (let i = 0; i < len; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, Math.min(i + chunkSize, len)) as unknown as number[]);
+  }
+  return btoa(binary);
+};
+
+// Fast and stack-safe base64 decoder avoiding Uint8Array.from callback overhead on large payloads.
+export const decodeBase64 = (str: string): ArrayBuffer => {
+  const binary = atob(str);
+  const len = binary.length;
+  const bytes = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes.buffer as ArrayBuffer;
+};
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
 
@@ -217,4 +235,25 @@ export const importKey = async (rawKeyBase64: string): Promise<CryptoKey> => {
         true,
         ["encrypt", "decrypt"]
     );
+};
+
+/**
+ * Derives a deterministic HMAC-SHA256 blind index for searching tags/terms
+ * without leaking raw plaintext to the database server.
+ */
+export const deriveBlindIndex = async (key: CryptoKey, term: string): Promise<string> => {
+  const rawKey = await window.crypto.subtle.exportKey("raw", key);
+  const hmacKey = await window.crypto.subtle.importKey(
+    "raw",
+    rawKey,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const signature = await window.crypto.subtle.sign(
+    "HMAC",
+    hmacKey,
+    textEncoder.encode(term.toLowerCase().trim())
+  );
+  return encodeBase64(signature).slice(0, 32);
 };

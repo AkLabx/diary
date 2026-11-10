@@ -19,6 +19,7 @@ interface ProfileViewProps {
   onAvatarUpload: (file: File) => Promise<void>;
   onExportData: (onProgress: (progress: string) => void) => Promise<void>;
   onSignOut: () => void;
+  onDeleteAccount?: () => Promise<void>;
   theme: string;
   onToggleTheme: () => void;
 }
@@ -30,6 +31,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   onAvatarUpload,
   onExportData,
   onSignOut,
+  onDeleteAccount,
   theme,
   onToggleTheme,
 }) => {
@@ -37,6 +39,12 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [isSavingName, setIsSavingName] = useState(false);
+
+  // Account Deletion State
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   // Export State
   const [isExporting, setIsExporting] = useState(false);
@@ -226,6 +234,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         setIsGeneratingKit(false);
     }
   };
+
+  const handleConfirmDeleteAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (deleteConfirmInput !== 'DELETE') {
+      setDeleteError('Please type DELETE to confirm.');
+      return;
+    }
+    if (!onDeleteAccount) return;
+    setIsDeletingAccount(true);
+    setDeleteError(null);
+    try {
+      await onDeleteAccount();
+    } catch (err: any) {
+      setDeleteError(err?.message || 'Failed to delete account. Please try again.');
+      setIsDeletingAccount(false);
+    }
+  };
   
   const toggleBiometric = async () => {
       if (!key) {
@@ -397,10 +422,36 @@ const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
         </div>
 
-        <div className="mt-12">
+        {/* Danger Zone: Permanent Account Deletion */}
+        {onDeleteAccount && (
+          <div className="mt-12 pt-6 border-t border-red-200 dark:border-red-900/40">
+            <h3 className="text-sm font-bold text-red-600 dark:text-red-400 mb-1 flex items-center gap-1.5">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              Danger Zone
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+              Permanently delete your account, encrypted entries, and multimedia attachments. This action is completely irreversible.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                setDeleteConfirmInput('');
+                setDeleteError(null);
+                setIsDeleteModalOpen(true);
+              }}
+              className="px-4 py-2 font-semibold text-xs text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors shadow-sm"
+            >
+              Delete Account & All Data
+            </button>
+          </div>
+        )}
+
+        <div className="mt-8">
             <button
                 onClick={onSignOut}
-                className="w-full sm:w-auto px-6 py-2 font-semibold text-red-600 bg-red-100 rounded-md hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300 dark:hover:bg-red-900/80 transition-colors"
+                className="w-full sm:w-auto px-6 py-2 font-semibold text-slate-700 bg-slate-100 rounded-md hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 transition-colors text-sm"
             >
                 Sign Out
             </button>
@@ -515,6 +566,76 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </form>
                 </div>
             </div>
+        )}
+
+        {/* Account Deletion Confirmation Modal */}
+        {isDeleteModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-md border border-red-200 dark:border-red-900/60 animate-fade-in-down">
+              <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+                <h3 className="text-lg font-bold">Delete Account & All Data?</h3>
+              </div>
+
+              <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2 mb-4 bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
+                <p className="font-semibold text-red-700 dark:text-red-300">
+                  This action is permanent and completely irreversible!
+                </p>
+                <ul className="list-disc pl-4 space-y-1">
+                  <li>Your user account will be permanently erased.</li>
+                  <li>All encrypted diary entries will be purged from the database.</li>
+                  <li>All uploaded images and voice notes will be destroyed.</li>
+                  <li>Local cryptographic keys and biometrics will be wiped.</li>
+                </ul>
+              </div>
+
+              <form onSubmit={handleConfirmDeleteAccount} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    To confirm, please type <span className="font-mono text-red-600 font-bold">DELETE</span> below:
+                  </label>
+                  <input
+                    type="text"
+                    value={deleteConfirmInput}
+                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    placeholder="DELETE"
+                    autoFocus
+                    className="w-full px-3 py-2 text-sm border border-slate-300 dark:border-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-red-500 dark:bg-slate-700 dark:text-slate-100"
+                  />
+                </div>
+
+                {deleteError && (
+                  <p className="text-xs text-red-600 dark:text-red-400 font-medium">
+                    {deleteError}
+                  </p>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <button
+                    type="button"
+                    disabled={isDeletingAccount}
+                    onClick={() => {
+                      setIsDeleteModalOpen(false);
+                      setDeleteConfirmInput('');
+                      setDeleteError(null);
+                    }}
+                    className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-md dark:text-slate-300 dark:hover:bg-slate-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={deleteConfirmInput !== 'DELETE' || isDeletingAccount}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-red-600 hover:bg-red-700 rounded-md disabled:bg-red-400 transition-colors"
+                  >
+                    {isDeletingAccount ? 'Erasing Everything...' : 'Permanently Delete Everything'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
     </div>
   );

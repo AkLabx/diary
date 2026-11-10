@@ -150,10 +150,9 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
   const hydrateSecureImages = useCallback(async (htmlContent: string, editor: any) => {
       if (!key || !htmlContent.includes('secure-diary-image')) return;
 
-      // We need to work on the actual DOM nodes managed by Quill
       const root = editor.root as HTMLElement;
-      // Updated selector to find images inside figures or standalone
       const images = root.querySelectorAll('img.secure-diary-image');
+      const imageList: { img: HTMLImageElement; path: string; iv: string }[] = [];
 
       for (let i = 0; i < images.length; i++) {
           const img = images[i] as HTMLImageElement;
@@ -166,25 +165,48 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
               const metadata = JSON.parse(metadataStr);
               if (metadata && metadata.path && metadata.iv) {
                    img.style.opacity = '0.5';
-                   
-                   const { data: signedData, error: signedError } = await supabase.storage
-                      .from('diary-images')
-                      .createSignedUrl(metadata.path, 60);
-
-                   if (signedError) throw signedError;
-
-                   const response = await fetch(signedData.signedUrl);
-                   if (!response.ok) throw new Error(`Failed to fetch image blob: ${response.status}`);
-
-                   const encryptedBuffer = await response.arrayBuffer();
-                   const decryptedBuffer = await decryptBinary(key, encryptedBuffer, metadata.iv);
-                   
-                   const decryptedBlob = new Blob([decryptedBuffer], { type: 'image/webp' });
-                   const url = URL.createObjectURL(decryptedBlob);
-                   
-                   img.src = url;
-                   img.style.opacity = '1';
+                   imageList.push({ img, path: metadata.path, iv: metadata.iv });
               }
+          } catch (e) {
+              console.warn("Failed to parse image metadata in editor", e);
+          }
+      }
+
+      if (imageList.length === 0) return;
+
+      // Batch signed URLs
+      const paths = imageList.map(item => item.path);
+      const { data: signedUrls, error: signedError } = await supabase.storage
+          .from('diary-images')
+          .createSignedUrls(paths, 300);
+
+      const urlMap = new Map<string, string>();
+      if (!signedError && signedUrls) {
+          signedUrls.forEach(item => {
+              if (item.signedUrl && item.path) urlMap.set(item.path, item.signedUrl);
+          });
+      }
+
+      for (const item of imageList) {
+          try {
+              let signedUrl = urlMap.get(item.path);
+              if (!signedUrl) {
+                  const { data: single } = await supabase.storage.from('diary-images').createSignedUrl(item.path, 300);
+                  signedUrl = single?.signedUrl;
+              }
+              if (!signedUrl) throw new Error("Could not obtain signed URL");
+
+              const response = await fetch(signedUrl);
+              if (!response.ok) throw new Error(`Failed to fetch image blob: ${response.status}`);
+
+              const encryptedBuffer = await response.arrayBuffer();
+              const decryptedBuffer = await decryptBinary(key, encryptedBuffer, item.iv);
+              
+              const decryptedBlob = new Blob([decryptedBuffer], { type: 'image/webp' });
+              const url = URL.createObjectURL(decryptedBlob);
+              
+              item.img.src = url;
+              item.img.style.opacity = '1';
           } catch (e) {
               console.error("Failed to decrypt image in editor", e);
           }

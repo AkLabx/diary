@@ -1,33 +1,47 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { RouterProvider, createHashRouter, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
-import Auth from './components/Auth';
 import PWAUpdateManager from './components/PWAUpdateManager';
-import LandingPage from './components/LandingPage';
-import PrivacyPolicy from './components/PrivacyPolicy';
-import TermsOfUse from './components/TermsOfUse';
 import NotFound from './components/NotFound';
 import ErrorBoundary from './components/ErrorBoundary';
 import DiaryLayout from './DiaryLayout';
 import { CryptoProvider } from './contexts/CryptoContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { Session } from '@supabase/supabase-js';
-import { Capacitor } from '@capacitor/core';
 import { NativeBackButtonHandler } from './lib/native/useAndroidBackButton';
 import { Outlet } from 'react-router-dom';
-
-// Route Components
-import Timeline from './routes/Timeline';
-import Calendar from './routes/Calendar';
-import Search from './routes/Search';
-import Profile from './routes/Profile';
-import EntryDetail from './routes/EntryDetail';
-import Editor from './routes/Editor';
-import MyStuffHome from './routes/MyStuff/MyStuffHome';
-import MyStuffImages from './routes/MyStuff/MyStuffImages';
-import MyStuffAudio from './routes/MyStuff/MyStuffAudio';
-import TasksHub from './routes/Tasks/TasksHub';
 import { TaskProvider } from './contexts/TaskContext';
+
+// Dynamic route code splitting to reduce initial bundle from ~2MB to lightweight chunks
+const Timeline = React.lazy(() => import('./routes/Timeline'));
+const Calendar = React.lazy(() => import('./routes/Calendar'));
+const Search = React.lazy(() => import('./routes/Search'));
+const Profile = React.lazy(() => import('./routes/Profile'));
+const EntryDetail = React.lazy(() => import('./routes/EntryDetail'));
+const Editor = React.lazy(() => import('./routes/Editor'));
+const MyStuffHome = React.lazy(() => import('./routes/MyStuff/MyStuffHome'));
+const MyStuffImages = React.lazy(() => import('./routes/MyStuff/MyStuffImages'));
+const MyStuffAudio = React.lazy(() => import('./routes/MyStuff/MyStuffAudio'));
+const TasksHub = React.lazy(() => import('./routes/Tasks/TasksHub'));
+const LandingPage = React.lazy(() => import('./components/LandingPage'));
+const Auth = React.lazy(() => import('./components/Auth'));
+const PrivacyPolicy = React.lazy(() => import('./components/PrivacyPolicy'));
+const TermsOfUse = React.lazy(() => import('./components/TermsOfUse'));
+const DeleteAccountWeb = React.lazy(() => import('./routes/DeleteAccountWeb'));
+
+const RouteLoadingSkeleton: React.FC = () => (
+  <div className="flex-1 flex flex-col items-center justify-center min-h-[50vh] p-8 animate-pulse text-slate-400">
+    <div className="w-10 h-10 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin mb-3" />
+    <div className="h-3 w-32 bg-slate-200 dark:bg-slate-700 rounded mb-2" />
+    <div className="h-2 w-48 bg-slate-100 dark:bg-slate-800 rounded" />
+  </div>
+);
+
+const withSuspense = (Component: React.ComponentType) => (
+  <Suspense fallback={<RouteLoadingSkeleton />}>
+    <Component />
+  </Suspense>
+);
 
 const ProtectedRoute = ({ children, session }: { children: React.ReactNode, session: Session | null }) => {
   // We can't use useLocation here if this component is rendered *outside* the provider context
@@ -95,24 +109,6 @@ const App: React.FC = () => {
     localStorage.setItem('theme', theme);
   }, [theme]);
 
-  useEffect(() => {
-    // Only register service worker on the web, not in native app
-    if ('serviceWorker' in navigator && Capacitor.getPlatform() === 'web') {
-      window.addEventListener('load', () => {
-        // Automatically determine correct path based on whether we are in dev or prod (gh-pages)
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-        const swPath = isLocalhost ? '/sw.js' : '/diary/sw.js';
-        const swScope = isLocalhost ? '/' : '/diary/';
-
-        navigator.serviceWorker.register(swPath, { scope: swScope }).then(registration => {
-          console.log('ServiceWorker registration successful with scope: ', registration.scope);
-        }).catch(err => {
-          console.log('ServiceWorker registration failed: ', err);
-        });
-      });
-    }
-  }, []);
-
   const toggleTheme = () => {
     setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
   };
@@ -125,19 +121,23 @@ const App: React.FC = () => {
            children: [
         {
             path: "/",
-            element: session ? <Navigate to="/app" /> : <LandingPage />,
+            element: session ? <Navigate to="/app" /> : withSuspense(LandingPage),
         },
         {
             path: "/login",
-            element: session ? <Navigate to="/app" /> : <Auth />,
+            element: session ? <Navigate to="/app" /> : withSuspense(Auth),
         },
         {
             path: "/privacy",
-            element: <PrivacyPolicy />,
+            element: withSuspense(PrivacyPolicy),
         },
         {
             path: "/terms",
-            element: <TermsOfUse />,
+            element: withSuspense(TermsOfUse),
+        },
+        {
+            path: "/delete-account",
+            element: withSuspense(DeleteAccountWeb),
         },
         {
             path: "/app",
@@ -150,17 +150,17 @@ const App: React.FC = () => {
             ),
             errorElement: <ErrorBoundary />,
             children: [
-                { index: true, element: <Timeline /> },
-                { path: "tasks", element: <TasksHub /> },
-                { path: "calendar", element: <Calendar /> },
-                { path: "search", element: <Search /> },
-                { path: "profile", element: <Profile /> },
-                { path: "mystuff", element: <MyStuffHome /> },
-                { path: "mystuff/images", element: <MyStuffImages /> },
-                { path: "mystuff/audio", element: <MyStuffAudio /> },
-                { path: "entry/:id", element: <EntryDetail /> },
-                { path: "new", element: <Editor /> },
-                { path: "edit/:id", element: <Editor /> },
+                { index: true, element: withSuspense(Timeline) },
+                { path: "tasks", element: withSuspense(TasksHub) },
+                { path: "calendar", element: withSuspense(Calendar) },
+                { path: "search", element: withSuspense(Search) },
+                { path: "profile", element: withSuspense(Profile) },
+                { path: "mystuff", element: withSuspense(MyStuffHome) },
+                { path: "mystuff/images", element: withSuspense(MyStuffImages) },
+                { path: "mystuff/audio", element: withSuspense(MyStuffAudio) },
+                { path: "entry/:id", element: withSuspense(EntryDetail) },
+                { path: "new", element: withSuspense(Editor) },
+                { path: "edit/:id", element: withSuspense(Editor) },
             ],
         },
         {

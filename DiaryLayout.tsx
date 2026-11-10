@@ -8,19 +8,22 @@ import { useToast } from './contexts/ToastContext';
 import { loadWeather, fetchWeatherByCity, fetchWeather, setCustomCity, getCoordinatesFromGPS } from './lib/weather';
 import { generateSmartTags } from './lib/smartTags';
 import { extractImagePaths, diffImagePaths } from './lib/cleanupUtils';
+import { processImage } from './lib/imageUtils';
 import { setIsAppSaving } from './lib/native/backButtonRegistry';
 
 // @ts-ignore
-import { ZipWriter, BlobWriter, TextReader } from '@zip.js/zip.js';
+import { ZipWriter, BlobWriter, TextReader, BlobReader } from '@zip.js/zip.js';
 
 import LeftSidebar from './components/LeftSidebar';
 import TopBar from './components/TopBar';
 import InitializeEncryption from './components/InitializeEncryption';
 import PasswordPrompt from './components/PasswordPrompt';
-
 import SmartTagsModal from './components/SmartTagsModal';
+import { enqueueMutation, processOutbox } from './lib/syncQueue';
+import { getDraft, saveDraft } from './lib/autoSave';
 
 import { Capacitor } from '@capacitor/core';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 
 
 type Session = any;
@@ -53,6 +56,7 @@ export interface DiaryContextType {
   encryptBinary: (key: CryptoKey, data: ArrayBuffer) => Promise<{ iv: string; data: ArrayBuffer }>;
   session: Session;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   registerSaveHandler: (handler: () => void) => void;
   isToolsPanelVisible: boolean;
   setToolsPanelVisible: (visible: boolean) => void;
@@ -67,7 +71,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   const [entries, setEntries] = useState<DiaryEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const { key, setKey, encrypt, decrypt, encryptBinary, lock } = useCrypto();
+  const { key, setKey, encrypt, decrypt, encryptBinary, decryptBinary, lock } = useCrypto();
   const [keyStatus, setKeyStatus] = useState<KeyStatus>('checking');
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -248,6 +252,16 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     if (!key) return;
     setLoading(true);
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const cached = localStorage.getItem(`diary_meta_${session.user.id}`);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          setEntries(parsed);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data, error } = await supabase
         .from('diaries')
         .select('id, created_at, mood, tags, owner_id, journal')
@@ -269,11 +283,23 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       }));
 
       setEntries(initialEntries);
+      try {
+        localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(initialEntries));
+      } catch (cacheErr) {}
     } catch (error) {
       console.error("Error fetching entries:", error);
+      const cached = localStorage.getItem(`diary_meta_${session.user.id}`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          setEntries(parsed);
+          setLoading(false);
+          return;
+        } catch (e) {}
+      }
       addToast("Could not fetch entries.", "error");
     } finally { setLoading(false); }
-  }, [key, addToast]);
+  }, [key, addToast, session.user.id]);
 
   const loadEntryContent = useCallback(async (id: string) => {
     if (loadingEntriesRef.current.has(id) || !key) return;
@@ -286,22 +312,46 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     setEntries(prev => prev.map(e => e.id === id ? { ...e, isLoading: true } : e));
 
     try {
-        const { data, error } = await supabase
-            .from('diaries')
-            .select('encrypted_entry, iv')
-            .eq('id', id)
-            .single();
+        let encryptedEntry = '';
+        let entryIv = '';
 
-        if (error) throw error;
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          const cachedDraft = await getDraft(id);
+          if (cachedDraft && cachedDraft.encryptedData) {
+            encryptedEntry = await cachedDraft.encryptedData.text();
+            entryIv = cachedDraft.iv;
+          }
+        }
 
-        const decrypted = await decrypt(key, data.encrypted_entry, data.iv);
-        const { title, content, audio } = JSON.parse(decrypted);
+        if (!encryptedEntry) {
+          const { data, error } = await supabase
+              .from('diaries')
+              .select('encrypted_entry, iv')
+              .eq('id', id)
+              .single();
+
+          if (error) throw error;
+          encryptedEntry = data.encrypted_entry;
+          entryIv = data.iv;
+
+          try {
+            const blob = new Blob([data.encrypted_entry], { type: 'text/plain' });
+            await saveDraft(id, blob, data.iv);
+          } catch (cacheErr) {}
+        }
+
+        const decrypted = await decrypt(key, encryptedEntry, entryIv);
+        const parsed = JSON.parse(decrypted);
+        const { title, content, audio } = parsed;
 
         setEntries(prev => prev.map(e => e.id === id ? {
             ...e,
             title,
             content,
             audio, // This might now be an array or single object (legacy)
+            mood: parsed.mood !== undefined ? parsed.mood : e.mood,
+            tags: parsed.tags !== undefined ? parsed.tags : e.tags,
+            journal: parsed.journal !== undefined ? parsed.journal : e.journal,
             isDecrypted: true,
             isLoading: false
         } : e));
@@ -343,7 +393,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     } finally {
         loadingEntriesRef.current.delete(id);
     }
-  }, [entries, key, decrypt]);
+  }, [entries, key, decrypt, session.user.id]);
 
 
   useEffect(() => {
@@ -352,6 +402,47 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       fetchProfile();
     }
   }, [fetchEntries, fetchProfile, keyStatus]);
+
+  useEffect(() => {
+    const handleOnline = async () => {
+      console.log("[SyncQueue] Device reconnected; processing offline outbox...");
+      try {
+        const { processed, failed } = await processOutbox(supabase, (item, serverData) => {
+          if (item.operation === 'INSERT' && serverData?.id) {
+            setEntries(prev => prev.map(e => e.id === item.entryId ? { ...e, id: serverData.id } : e));
+          }
+        });
+        if (processed > 0) {
+          addToast(`Synced ${processed} offline change(s).`, "success");
+          fetchEntries();
+        }
+        if (failed > 0) {
+          console.warn(`[SyncQueue] ${failed} mutation(s) could not sync yet.`);
+        }
+      } catch (err) {
+        console.error("[SyncQueue] Error syncing offline outbox on reconnect:", err);
+      }
+    };
+
+    window.addEventListener('online', handleOnline);
+
+    if (typeof navigator !== 'undefined' && navigator.onLine && session?.user?.id) {
+      processOutbox(supabase, (item, serverData) => {
+        if (item.operation === 'INSERT' && serverData?.id) {
+          setEntries(prev => prev.map(e => e.id === item.entryId ? { ...e, id: serverData.id } : e));
+        }
+      }).then(({ processed }) => {
+        if (processed > 0) {
+          addToast(`Synced ${processed} pending change(s).`, "success");
+          fetchEntries();
+        }
+      }).catch(err => console.error("[SyncQueue] Initial outbox sync pass error:", err));
+    }
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [supabase, session?.user?.id, fetchEntries, addToast]);
 
   const uniqueJournals = useMemo(() => {
       const journals = new Set<string>();
@@ -465,7 +556,10 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
        const contentToEncrypt = JSON.stringify({
            title: entryData.title,
            content: cleanContent,
-           audio: finalAudioList // Save as array
+           audio: finalAudioList, // Save as array
+           mood: entryData.mood,
+           tags: entryData.tags,
+           journal: entryData.journal || 'Personal'
        });
        const { iv, data: encrypted_entry } = await encrypt(key, contentToEncrypt);
 
@@ -477,18 +571,97 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
          created_at: entryData.created_at
        };
 
+       // Cache locally in IndexedDB (zero unencrypted data: stores AES-GCM ciphertext)
+       try {
+         const cacheId = entryData.id || 'draft';
+         const blob = new Blob([encrypted_entry], { type: 'text/plain' });
+         saveDraft(cacheId, blob, iv);
+       } catch (cacheErr) {}
+
+       const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+       if (!isOnline) {
+         const entryId = entryData.id || crypto.randomUUID();
+         const offlineRecord = {
+           ...record,
+           id: entryId,
+           owner_id: session.user.id
+         };
+
+         await enqueueMutation({
+           id: crypto.randomUUID(),
+           entryId,
+           operation: isUpdate ? 'UPDATE' : 'INSERT',
+           payload: offlineRecord,
+           timestamp: Date.now(),
+           retryCount: 0
+         });
+
+         // Also save in local encrypted draft store under entryId
+         try {
+           const blob = new Blob([encrypted_entry], { type: 'text/plain' });
+           saveDraft(entryId, blob, iv);
+         } catch (e) {}
+
+         if (isUpdate) {
+           setEntries(prev => {
+             const updated = prev.map(e => e.id === entryId ? {
+               ...e,
+               ...entryData,
+               audio: finalAudioList,
+               tempAudioBlobs: [],
+               isDecrypted: true
+             } as DiaryEntry : e);
+             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+             return updated;
+           });
+         } else {
+           const newEntry: DiaryEntry = {
+             ...offlineRecord,
+             ...entryData,
+             audio: finalAudioList,
+             tempAudioBlobs: [],
+             id: entryId,
+             isDecrypted: true,
+             isLoading: false
+           } as DiaryEntry;
+           setEntries(prev => {
+             const updated = [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+             return updated;
+           });
+         }
+
+         setSaveStatus('synced');
+         setIsSmartTagsModalOpen(false);
+         setPendingEntrySave(null);
+         clearTimeout(saveTimeout);
+         setIsAppSaving(false);
+         addToast("Saved offline. Will sync when reconnected.", "info");
+         navigate(`/app/entry/${entryId}`);
+         return;
+       }
+
        let newEntryId: string | null = null;
        if (isUpdate) {
          const { error } = await supabase.from('diaries').update(record).eq('id', entryData.id);
          if (error) throw error;
 
-         setEntries(prev => prev.map(e => e.id === entryData.id ? {
-             ...e,
-             ...entryData,
-             audio: finalAudioList,
-             tempAudioBlobs: [], // Clear temps
-             isDecrypted: true
-         } as DiaryEntry : e));
+         setEntries(prev => {
+           const updated = prev.map(e => e.id === entryData.id ? {
+               ...e,
+               ...entryData,
+               audio: finalAudioList,
+               tempAudioBlobs: [], // Clear temps
+               isDecrypted: true
+           } as DiaryEntry : e);
+           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+           return updated;
+         });
+
+         try {
+           const blob = new Blob([encrypted_entry], { type: 'text/plain' });
+           saveDraft(entryData.id!, blob, iv);
+         } catch (e) {}
 
          addToast('Entry saved!', 'success');
          // Redirect to view mode
@@ -509,7 +682,17 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
              isLoading: false
          } as DiaryEntry;
 
-         setEntries(prev => [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+         setEntries(prev => {
+           const updated = [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+           return updated;
+         });
+
+         try {
+           const blob = new Blob([encrypted_entry], { type: 'text/plain' });
+           saveDraft(data.id, blob, iv);
+         } catch (e) {}
+
          addToast('Entry created!', 'success');
          navigate(`/app/entry/${data.id}`);
        }
@@ -561,8 +744,65 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
        clearTimeout(saveTimeout);
        setIsAppSaving(false);
 
-     } catch (error) {
+     } catch (error: any) {
        console.error("Error saving entry:", error);
+       const isNetworkErr = (typeof navigator !== 'undefined' && !navigator.onLine) ||
+         error?.message?.includes('fetch') ||
+         error?.message?.includes('network') ||
+         error?.name === 'TypeError';
+
+       if (isNetworkErr) {
+         try {
+           const entryId = entryData.id || crypto.randomUUID();
+           const isUpdate = !!entryData.id;
+           const cleanContent = cleanContentBeforeSave(entryData.content);
+           const contentToEncrypt = JSON.stringify({
+             title: entryData.title,
+             content: cleanContent,
+             audio: entryData.audio || [],
+             mood: entryData.mood,
+             tags: entryData.tags,
+             journal: entryData.journal || 'Personal'
+           });
+           const { iv, data: encrypted_entry } = await encrypt(key, contentToEncrypt);
+           const offlineRecord = {
+             id: entryId,
+             owner_id: session.user.id,
+             encrypted_entry,
+             iv,
+             mood: entryData.mood,
+             tags: entryData.tags,
+             journal: entryData.journal || 'Personal',
+             created_at: entryData.created_at
+           };
+
+           await enqueueMutation({
+             id: crypto.randomUUID(),
+             entryId,
+             operation: isUpdate ? 'UPDATE' : 'INSERT',
+             payload: offlineRecord,
+             timestamp: Date.now(),
+             retryCount: 0
+           });
+
+           try {
+             const blob = new Blob([encrypted_entry], { type: 'text/plain' });
+             saveDraft(entryId, blob, iv);
+           } catch (e) {}
+
+           addToast("Network interrupted. Saved offline and will sync.", "info");
+           setSaveStatus('synced');
+           setIsSmartTagsModalOpen(false);
+           setPendingEntrySave(null);
+           clearTimeout(saveTimeout);
+           setIsAppSaving(false);
+           navigate(`/app/entry/${entryId}`);
+           return;
+         } catch (fallbackErr) {
+           console.error("Offline fallback save failed:", fallbackErr);
+         }
+       }
+
        addToast("Failed to save entry.", "error");
        setSaveStatus('error');
        clearTimeout(saveTimeout);
@@ -607,6 +847,26 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
   const handleDeleteEntry = async (id: string) => {
     try {
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await enqueueMutation({
+          id: crypto.randomUUID(),
+          entryId: id,
+          operation: 'DELETE',
+          payload: { id },
+          timestamp: Date.now(),
+          retryCount: 0
+        });
+        setEntries(prev => {
+          const updated = prev.filter(e => e.id !== id);
+          try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+          return updated;
+        });
+        addToast("Entry deleted offline. Will sync when reconnected.", "info");
+        navigate('/app');
+        return;
+      }
+
       // Cleanup Audio Files first
       const entryToDelete = entries.find(e => e.id === id);
 
@@ -640,11 +900,40 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
       const { error } = await supabase.from('diaries').delete().eq('id', id);
       if (error) throw error;
-      setEntries(prev => prev.filter(e => e.id !== id));
+      setEntries(prev => {
+        const updated = prev.filter(e => e.id !== id);
+        try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+        return updated;
+      });
       addToast('Entry deleted successfully.', 'success');
       navigate('/app');
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting entry:", error);
+      const isNetworkErr = (typeof navigator !== 'undefined' && !navigator.onLine) ||
+        error?.message?.includes('fetch') ||
+        error?.message?.includes('network') ||
+        error?.name === 'TypeError';
+
+      if (isNetworkErr) {
+        try {
+          await enqueueMutation({
+            id: crypto.randomUUID(),
+            entryId: id,
+            operation: 'DELETE',
+            payload: { id },
+            timestamp: Date.now(),
+            retryCount: 0
+          });
+          setEntries(prev => {
+            const updated = prev.filter(e => e.id !== id);
+            try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+            return updated;
+          });
+          addToast("Network interrupted. Entry deleted offline and will sync.", "info");
+          navigate('/app');
+          return;
+        } catch (e) {}
+      }
       addToast("Failed to delete entry.", "error");
     }
   };
@@ -663,9 +952,12 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
   const handleAvatarUpload = async (file: File) => {
     try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${session.user.id}/${Date.now()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, file, { upsert: true });
+      const { blob } = await processImage(file, 256, 0.85);
+      const fileName = `${session.user.id}/${Date.now()}.webp`;
+      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, blob, {
+        contentType: 'image/webp',
+        upsert: true
+      });
       if (uploadError) throw uploadError;
       const { error: updateError } = await supabase.from('profiles').update({ avatar_url: fileName }).eq('id', session.user.id);
       if (updateError) throw updateError;
@@ -677,7 +969,6 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   };
 
   const handleExportData = async (onProgress: (progress: string) => void) => {
-      // Reuse the export logic from previous DiaryApp
       if (!key) return;
       try {
         const { count, error: countError } = await supabase.from('diaries').select('*', { count: 'exact', head: true });
@@ -690,9 +981,10 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         let processedCount = 0;
         let currentMonthBuffer: any[] = [];
         let currentMonthKey = "";
+        const exportedMediaPaths = new Set<string>();
 
         for (let i = 0; i < totalEntries; i += BATCH_SIZE) {
-            onProgress(`Processing ${processedCount} / ${totalEntries}`);
+            onProgress(`Exporting entries (${processedCount} / ${totalEntries})...`);
             await yieldToMain();
             const { data: batch, error } = await supabase.from('diaries').select('*').order('created_at', { ascending: false }).range(i, i + BATCH_SIZE - 1);
             if (error) throw error;
@@ -710,9 +1002,86 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                         await yieldToMain();
                     }
                     currentMonthKey = monthKey;
+
+                    // Multimedia Export: Audio notes
+                    const exportedAudios: string[] = [];
+                    if (content.audio) {
+                      const audioList = Array.isArray(content.audio) ? content.audio : [content.audio];
+                      for (const audioItem of audioList) {
+                        if (audioItem.path && !exportedMediaPaths.has(audioItem.path)) {
+                          try {
+                            const { data: signed } = await supabase.storage.from('diary-audio').createSignedUrl(audioItem.path, 120);
+                            if (signed?.signedUrl) {
+                              const res = await fetch(signed.signedUrl);
+                              if (res.ok) {
+                                const encBuffer = await res.arrayBuffer();
+                                const decBuffer = await decryptBinary(key, encBuffer, audioItem.iv);
+                                const safeName = audioItem.path.split('/').pop()?.replace('.bin', '.webm') || `audio_${Date.now()}.webm`;
+                                const zipPath = `attachments/audio/${safeName}`;
+                                await zipWriter.add(zipPath, new BlobReader(new Blob([decBuffer], { type: 'audio/webm' })));
+                                exportedMediaPaths.add(audioItem.path);
+                                exportedAudios.push(zipPath);
+                              }
+                            }
+                          } catch (mediaErr) {
+                            console.warn("Could not export audio attachment:", mediaErr);
+                          }
+                        }
+                      }
+                    }
+
+                    // Multimedia Export: Images
+                    const exportedImages: string[] = [];
+                    const imgPaths = extractImagePaths(content.content || '');
+                    if (imgPaths.length > 0) {
+                      const { data: signedUrls } = await supabase.storage.from('diary-images').createSignedUrls(imgPaths, 120);
+                      if (signedUrls) {
+                        for (const item of signedUrls) {
+                          if (item.path && item.signedUrl && !exportedMediaPaths.has(item.path)) {
+                            try {
+                              const ivMatch = content.content?.match(new RegExp(`data-secure-metadata=["']([^"']*${item.path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}[^"']*)["']`));
+                              let iv = '';
+                              if (ivMatch) {
+                                try {
+                                  const meta = JSON.parse(ivMatch[1].replace(/&quot;/g, '"'));
+                                  iv = meta.iv;
+                                } catch (e) {}
+                              }
+
+                              const res = await fetch(item.signedUrl);
+                              if (res.ok) {
+                                const encBuffer = await res.arrayBuffer();
+                                let finalBlob: Blob;
+                                if (iv) {
+                                  const decBuffer = await decryptBinary(key, encBuffer, iv);
+                                  finalBlob = new Blob([decBuffer], { type: 'image/webp' });
+                                } else {
+                                  finalBlob = new Blob([encBuffer], { type: 'application/octet-stream' });
+                                }
+                                const safeName = item.path.split('/').pop()?.replace('.bin', '.webp') || `image_${Date.now()}.webp`;
+                                const zipPath = `attachments/images/${safeName}`;
+                                await zipWriter.add(zipPath, new BlobReader(finalBlob));
+                                exportedMediaPaths.add(item.path);
+                                exportedImages.push(zipPath);
+                              }
+                            } catch (imgErr) {
+                              console.warn("Could not export image attachment:", imgErr);
+                            }
+                          }
+                        }
+                      }
+                    }
+
                     currentMonthBuffer.push({
-                        id: entry.id, created_at: entry.created_at, title: content.title, content: content.content, tags: entry.tags,
-                        mood: entry.mood, journal: entry.journal, audio: content.audio ? "Audio file attached" : undefined
+                        id: entry.id,
+                        created_at: entry.created_at,
+                        title: content.title,
+                        content: content.content,
+                        tags: content.tags !== undefined ? content.tags : entry.tags,
+                        mood: content.mood !== undefined ? content.mood : entry.mood,
+                        journal: content.journal !== undefined ? content.journal : entry.journal,
+                        audio_attachments: exportedAudios.length > 0 ? exportedAudios : undefined,
+                        image_attachments: exportedImages.length > 0 ? exportedImages : undefined
                     });
                 } catch (err) { console.error(`Failed to export entry ${entry.id}`, err); }
                 processedCount++;
@@ -721,7 +1090,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         if (currentMonthBuffer.length > 0) {
             await zipWriter.add(`${currentMonthKey}.json`, new TextReader(JSON.stringify(currentMonthBuffer, null, 2)));
         }
-        onProgress("Finalizing ZIP...");
+        onProgress("Finalizing ZIP archive with all multimedia...");
         const blob = await zipWriter.close();
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
@@ -731,7 +1100,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         link.click();
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
-        addToast("Export complete!", "success");
+        addToast("Export complete with all multimedia attachments!", "success");
       } catch (error) {
         console.error("Export failed:", error);
         addToast("Export failed.", "error");
@@ -739,9 +1108,62 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   };
 
   const handleSignOut = async () => {
-      await supabase.auth.signOut();
-      navigate('/');
+    if (session?.user?.id) {
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await NativeBiometric.deleteData({ key: `diary_master_key_${session.user.id}` });
+        } catch (e) {
+          console.warn('Failed to clear native biometric during sign out', e);
+        }
+      }
+      localStorage.removeItem(`diary_bio_${session.user.id}`);
+    }
+    await supabase.auth.signOut();
+    navigate('/');
   };
+
+  const handleDeleteAccount = useCallback(async () => {
+    try {
+      setIsAppSaving(true);
+      addToast("Initiating complete account & data deletion...", "info");
+
+      const { error } = await supabase.functions.invoke('delete-account', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Failed to delete account on server');
+      }
+
+      if (Capacitor.isNativePlatform()) {
+        try {
+          await NativeBiometric.deleteData({ key: `diary_master_key_${session.user.id}` });
+        } catch (e) {
+          console.warn('Failed to clear native biometric', e);
+        }
+      }
+
+      localStorage.removeItem(`diary_bio_${session.user.id}`);
+      localStorage.removeItem(`diary_meta_${session.user.id}`);
+
+      try {
+        indexedDB.deleteDatabase('diary_sync_db');
+        indexedDB.deleteDatabase('diary_drafts_db');
+      } catch (idbErr) {}
+
+      await supabase.auth.signOut();
+      addToast("Your account and all encrypted data have been permanently deleted.", "success");
+      navigate('/');
+    } catch (err: any) {
+      console.error("Account deletion failed:", err);
+      addToast(err?.message || "Failed to delete account. Please try again or contact support.", "error");
+      throw err;
+    } finally {
+      setIsAppSaving(false);
+    }
+  }, [session, addToast, navigate]);
 
   // Derived state for UI components
   // We need to map the current route to "activeView" string for LeftSidebar highlight
@@ -770,6 +1192,23 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   };
 
 
+  // Prepare Context Value (Memoized to prevent full-tree cascading re-renders on clock ticks)
+  const contextValue: DiaryContextType = useMemo(() => ({
+      entries, profile, loading, weather, uniqueJournals,
+      refreshEntries: fetchEntries, loadEntryContent, saveEntry: handleInitiateSave, deleteEntry: handleDeleteEntry,
+      updateProfile: handleUpdateProfile, uploadAvatar: handleAvatarUpload, exportData: handleExportData,
+      theme, onToggleTheme, key, encryptBinary, session, signOut: handleSignOut,
+      deleteAccount: handleDeleteAccount,
+      registerSaveHandler, isToolsPanelVisible, setToolsPanelVisible
+  }), [
+      entries, profile, loading, weather, uniqueJournals,
+      fetchEntries, loadEntryContent, handleInitiateSave, handleDeleteEntry,
+      handleUpdateProfile, handleAvatarUpload, handleExportData,
+      theme, onToggleTheme, key, encryptBinary, session, handleSignOut,
+      handleDeleteAccount,
+      registerSaveHandler, isToolsPanelVisible
+  ]);
+
   if (keyStatus !== 'ready') {
     let content;
     switch (keyStatus) {
@@ -780,15 +1219,6 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     }
     return <main className="flex items-center justify-center h-screen bg-[#FBF8F3] dark:bg-slate-900 text-slate-800 dark:text-slate-200">{content}</main>;
   }
-
-  // Prepare Context Value
-  const contextValue: DiaryContextType = {
-      entries, profile, loading, weather, uniqueJournals,
-      refreshEntries: fetchEntries, loadEntryContent, saveEntry: handleInitiateSave, deleteEntry: handleDeleteEntry,
-      updateProfile: handleUpdateProfile, uploadAvatar: handleAvatarUpload, exportData: handleExportData,
-      theme, onToggleTheme, key, encryptBinary, session, signOut: handleSignOut,
-      registerSaveHandler, isToolsPanelVisible, setToolsPanelVisible
-  };
 
   return (
     <div className="h-screen w-screen flex flex-col font-sans bg-[#FBF8F3] dark:bg-slate-900">

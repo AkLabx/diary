@@ -100,6 +100,27 @@ export default defineConfig(({ mode }) => {
                   statuses: [0, 200],
                 },
               },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
+              handler: 'StaleWhileRevalidate',
+              options: {
+                cacheName: 'google-fonts-stylesheets',
+              },
+            },
+            {
+              urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
+              handler: 'CacheFirst',
+              options: {
+                cacheName: 'google-fonts-webfonts',
+                expiration: {
+                  maxEntries: 30,
+                  maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                },
+                cacheableResponse: {
+                  statuses: [0, 200],
+                },
+              },
             }
           ]
         }
@@ -107,6 +128,32 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       'import.meta.env.VITE_APP_VERSION': JSON.stringify(appVersion),
+    },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('react-quill') || id.includes('quill')) {
+                return 'vendor-editor';
+              }
+              if (id.includes('jspdf') || id.includes('html2canvas')) {
+                return 'vendor-pdf';
+              }
+              if (id.includes('compromise')) {
+                return 'vendor-nlp';
+              }
+              if (id.includes('@supabase')) {
+                return 'vendor-supabase';
+              }
+              if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) {
+                return 'vendor-react';
+              }
+            }
+          }
+        }
+      }
     },
     // Base path conditionally set for Capacitor or GitHub Pages deployment
     base: baseFolder

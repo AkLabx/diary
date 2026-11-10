@@ -1,8 +1,17 @@
 
+import { useEffect } from "react";
 import { useRouteError } from "react-router-dom";
+import { captureException } from "../lib/telemetry";
 
 export default function ErrorBoundary() {
   const error: any = useRouteError();
+
+  useEffect(() => {
+    if (error) {
+      captureException(error, { source: "ErrorBoundary" });
+    }
+  }, [error]);
+
   console.error(error);
 
   return (
