@@ -8,6 +8,8 @@ import { Link } from 'react-router-dom';
 
 interface DiaryListProps {
   entries: DiaryEntry[];
+  totalEntriesCount?: number;
+  activeJournal?: string | null;
   onSelectEntry: (id: string) => void;
   onLoadContent: (id: string) => void;
   onThisDayEntries: DiaryEntry[];
@@ -122,7 +124,20 @@ const DiaryListItem: React.FC<{
     );
 };
 
-const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadContent, onThisDayEntries, profile, filteredDate, onClearFilter, timeFilter = 'all', onTimeFilterChange, weather }) => {
+const DiaryList: React.FC<DiaryListProps> = ({ 
+  entries, 
+  totalEntriesCount,
+  activeJournal,
+  onSelectEntry, 
+  onLoadContent, 
+  onThisDayEntries, 
+  profile, 
+  filteredDate, 
+  onClearFilter, 
+  timeFilter = 'all', 
+  onTimeFilterChange, 
+  weather 
+}) => {
 
   // Group entries by Month and Year
   const groupedEntries = useMemo(() => {
@@ -138,26 +153,11 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
     return groups;
   }, [entries]);
 
-  if (entries.length === 0) {
-    if (filteredDate) {
-       return (
-        <div className="text-center py-20 flex flex-col items-center">
-          <svg xmlns="http://www.w3.org/2000/svg" className="mx-auto h-20 w-20 text-slate-300 dark:text-slate-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 4h-4m-4-4h-4" />
-          </svg>
-          <h2 className="mt-6 text-2xl font-bold text-slate-700 dark:text-slate-200">
-            No entries found for {filteredDate.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' })}.
-          </h2>
-          <button 
-            onClick={onClearFilter} 
-            className="mt-4 text-indigo-600 dark:text-indigo-400 hover:underline font-semibold"
-          >
-            Show All Entries
-          </button>
-        </div>
-      );
-    }
+  const totalCount = totalEntriesCount ?? entries.length;
+  const isFiltered = Boolean(filteredDate || (timeFilter && timeFilter !== 'all') || activeJournal);
+
+  // If the user truly has no entries in their diary and no filter is active, show the initial welcome onboarding state
+  if (totalCount === 0 && !isFiltered) {
     return (
       <div className="text-center py-20 flex flex-col items-center">
         <div className="bg-indigo-50 dark:bg-slate-800 p-6 rounded-full mb-6">
@@ -228,37 +228,100 @@ const DiaryList: React.FC<DiaryListProps> = ({ entries, onSelectEntry, onLoadCon
 
       )}
       
-      {/* TIMELINE CONTAINER */}
-      <div className="relative pl-2 sm:pl-4 mt-8">
-          {/* THE VERTICAL LINE */}
-          <div className="absolute top-0 bottom-0 left-[7.5px] sm:left-[15.5px] w-[3px] bg-gradient-to-b from-indigo-200 via-indigo-100 to-transparent dark:from-indigo-800 dark:via-indigo-900/50 rounded-full" />
+      {/* TIMELINE OR EMPTY FILTER STATE */}
+      {entries.length === 0 ? (
+        <div className="text-center py-16 px-4 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 flex flex-col items-center justify-center shadow-xs">
+          <div className="w-14 h-14 rounded-2xl bg-indigo-50 dark:bg-indigo-900/40 text-indigo-500 dark:text-indigo-400 flex items-center justify-center mb-4 shadow-2xs">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H9m12 4h-4m-4-4h-4" />
+            </svg>
+          </div>
+          <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+            {filteredDate
+              ? `No entries found for ${filteredDate.toLocaleDateString('default', { month: 'long', day: 'numeric', year: 'numeric' })}`
+              : timeFilter !== 'all'
+                ? `No entries recorded for this ${timeFilter}`
+                : activeJournal
+                  ? `No entries found in "${activeJournal}"`
+                  : 'No entries found'}
+          </h3>
+          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 max-w-sm">
+            {timeFilter !== 'all'
+              ? 'Try switching to another time period, reset to All Time, or capture your thoughts now.'
+              : filteredDate
+                ? 'Try picking another date or clear the filter to show all entries.'
+                : 'Try adjusting your filters or write a new entry.'}
+          </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+            {timeFilter !== 'all' && onTimeFilterChange && (
+              <button
+                type="button"
+                onClick={() => onTimeFilterChange('all')}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer"
+              >
+                Reset to All Time
+              </button>
+            )}
+            {filteredDate && (
+              <button
+                type="button"
+                onClick={onClearFilter}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer"
+              >
+                Show All Entries
+              </button>
+            )}
+            {activeJournal && onClearFilter && (
+              <button
+                type="button"
+                onClick={onClearFilter}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer"
+              >
+                Show All Journals
+              </button>
+            )}
+            <Link
+              to="/app/new"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-600 shadow-2xs transition-all"
+            >
+              Write New Entry
+            </Link>
+          </div>
+        </div>
+      ) : (
+        /* TIMELINE CONTAINER */
+        <div className="relative pl-2 sm:pl-4 mt-8">
+            {/* THE VERTICAL LINE */}
+            <div className="absolute top-0 bottom-0 left-[7.5px] sm:left-[15.5px] w-[3px] bg-gradient-to-b from-indigo-200 via-indigo-100 to-transparent dark:from-indigo-800 dark:via-indigo-900/50 rounded-full" />
 
-          {Object.entries(groupedEntries).map(([monthYear, monthEntries]) => (
-              <div key={monthYear} className="mb-10 relative">
-                  {/* Timeline Milestone Header */}
-                  <div className="relative flex items-center mb-6 group z-10">
-                      <div className="absolute left-0 w-4 h-4 bg-white dark:bg-slate-900 rounded-full border-4 border-indigo-500 dark:border-indigo-400 transform -translate-x-[6.5px] sm:-translate-x-[2.5px] shadow-sm z-20" />
-                      <div className="pl-10 sm:pl-14">
-                          <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full inline-block border border-indigo-100 dark:border-indigo-800/50">
-                              {monthYear}
-                          </h3>
-                      </div>
-                  </div>
+            {Object.entries(groupedEntries).map(([monthYear, monthEntries]) => (
+                <div key={monthYear} className="mb-10 relative">
+                    {/* Timeline Milestone Header */}
+                    <div className="relative flex items-center mb-6 group z-10">
+                        <div className="absolute left-0 w-4 h-4 bg-white dark:bg-slate-900 rounded-full border-4 border-indigo-500 dark:border-indigo-400 transform -translate-x-[6.5px] sm:-translate-x-[2.5px] shadow-sm z-20" />
+                        <div className="pl-10 sm:pl-14">
+                            <h3 className="text-sm font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-3 py-1 rounded-full inline-block border border-indigo-100 dark:border-indigo-800/50">
+                                {monthYear}
+                            </h3>
+                        </div>
+                    </div>
 
-                  {/* Entries for this month */}
-                  <div className="space-y-4">
-                      {monthEntries.map(entry => (
-                          <DiaryListItem
-                             key={entry.id}
-                             entry={entry}
-                             onLoadContent={onLoadContent}
-                             monthIndex={new Date(entry.created_at).getMonth()}
-                          />
-                      ))}
-                  </div>
-              </div>
-          ))}
-      </div>
+                    {/* Entries for this month */}
+                    <div className="space-y-4">
+                        {monthEntries.map(entry => (
+                            <DiaryListItem
+                               key={entry.id}
+                               entry={entry}
+                               onLoadContent={onLoadContent}
+                               monthIndex={new Date(entry.created_at).getMonth()}
+                            />
+                        ))}
+                    </div>
+                </div>
+            ))}
+        </div>
+      )}
     </div>
   );
 };
