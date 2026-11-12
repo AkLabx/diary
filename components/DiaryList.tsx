@@ -68,26 +68,26 @@ const DiaryListItem: React.FC<{
             <Link
                 ref={ref}
                 to={`/app/entry/${entry.id}`}
-                className={`block backdrop-blur-sm p-5 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border hover:-translate-y-1 ${colors.bg} ${colors.border}`}
+                className={`block min-w-0 w-full overflow-hidden backdrop-blur-sm p-4 sm:p-6 rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border hover:-translate-y-1 ${colors.bg} ${colors.border}`}
             >
-                <div className="flex justify-between items-start gap-4">
-                    <div className="flex flex-col gap-1">
+                <div className="flex justify-between items-start gap-2 sm:gap-4">
+                    <div className="flex flex-col gap-1 min-w-0 flex-1">
                          {/* Journal Badge */}
-                        <div className="flex items-center gap-1.5 mb-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v11.494m0-11.494M12 6.253a4.093 4.093 0 00-3.32 6.19l-2.06 2.06a1 1 0 001.42 1.42l2.06-2.06A4.094 4.094 0 0012 17.747m0 0a4.093 4.093 0 003.32-6.19l2.06-2.06a1 1 0 00-1.42-1.42l-2.06 2.06A4.094 4.094 0 0012 6.253z" /></svg>
-                            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400">{entry.journal || 'Personal'}</span>
+                        <div className="flex items-center gap-1.5 mb-1 min-w-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v11.494m0-11.494M12 6.253a4.093 4.093 0 00-3.32 6.19l-2.06 2.06a1 1 0 001.42 1.42l2.06-2.06A4.094 4.094 0 0012 17.747m0 0a4.093 4.093 0 003.32-6.19l2.06-2.06a1 1 0 00-1.42-1.42l-2.06 2.06A4.094 4.094 0 0012 6.253z" /></svg>
+                            <span className="text-xs font-semibold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 truncate">{entry.journal || 'Personal'}</span>
                         </div>
 
                         {entry.isDecrypted ? (
-                            <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors">{entry.title || 'Untitled'}</h2>
+                            <h2 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-slate-100 group-hover:text-indigo-700 dark:group-hover:text-indigo-300 transition-colors break-words">{entry.title || 'Untitled'}</h2>
                         ) : (
-                            <div className="h-7 bg-slate-200 dark:bg-slate-700 rounded w-48 animate-pulse" />
+                            <div className="h-7 bg-slate-200 dark:bg-slate-700 rounded w-full max-w-[12rem] animate-pulse" />
                         )}
                     </div>
 
                     <div className="text-right flex-shrink-0">
                         <span
-                            className="text-sm font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md"
+                            className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-md"
                             title={new Date(entry.created_at).toLocaleString()}
                         >
                             {formatTimestamp(entry.created_at)}
@@ -100,7 +100,7 @@ const DiaryListItem: React.FC<{
                 {entry.tags && entry.tags.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
                         {entry.tags.map(tag => (
-                            <span key={tag} className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/50">
+                            <span key={tag} className="text-xs font-semibold bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full dark:bg-indigo-900/40 dark:text-indigo-300 border border-indigo-100 dark:border-indigo-800/50 break-words max-w-full">
                                 {tag}
                             </span>
                         ))}
@@ -109,7 +109,7 @@ const DiaryListItem: React.FC<{
 
                 <div className="mt-4">
                     {entry.isDecrypted ? (
-                        <p className="text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed">
+                        <p className="text-slate-600 dark:text-slate-300 line-clamp-3 leading-relaxed break-words">
                             {stripHtml(entry.content)}
                         </p>
                     ) : (

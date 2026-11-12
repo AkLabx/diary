@@ -112,10 +112,10 @@ const TopBar: React.FC<TopBarProps> = ({
 
   return (
     <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-[#EAE1D6] dark:border-slate-800 pt-[env(safe-area-inset-top,0px)] flex-shrink-0 relative z-20 transition-all duration-200">
-      <div className="h-14 sm:h-16 flex items-center justify-between px-3 sm:px-6 gap-2">
+      <div className="h-14 sm:h-16 flex items-center justify-between px-2.5 sm:px-6 gap-1.5 sm:gap-2">
         
         {/* Left Section: Hamburger Button + Date/Time/Weather */}
-        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+        <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0 overflow-hidden">
           {!isLeftSidebarVisible && onOpenSidebar && (
             <button
               onClick={onOpenSidebar}
@@ -129,10 +129,10 @@ const TopBar: React.FC<TopBarProps> = ({
           )}
 
           {/* Date, Time & Weather */}
-          <div className={`items-center gap-1.5 sm:gap-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 min-w-0 ${isEditing ? 'hidden md:flex' : 'flex'}`}>
-            <span className="font-semibold whitespace-nowrap">{format(currentTime, 'p')}</span>
-            <span className="font-medium whitespace-nowrap hidden sm:inline">{format(currentDate, 'MMMM d, yyyy')}</span>
-            <span className="font-medium whitespace-nowrap sm:hidden">{format(currentDate, 'MMM d')}</span>
+          <div className={`items-center gap-1.5 sm:gap-2.5 text-xs sm:text-sm text-slate-600 dark:text-slate-300 flex-1 min-w-0 ${isEditing ? 'hidden md:flex' : 'flex'}`}>
+            <span className="font-semibold whitespace-nowrap flex-shrink-0">{format(currentTime, 'p')}</span>
+            <span className="font-medium whitespace-nowrap hidden sm:inline flex-shrink-0">{format(currentDate, 'MMMM d, yyyy')}</span>
+            <span className="font-medium whitespace-nowrap hidden min-[380px]:inline sm:hidden flex-shrink-0">{format(currentDate, 'MMM d')}</span>
 
             {/* Weather / Location Badge */}
             {weather ? (
@@ -140,18 +140,18 @@ const TopBar: React.FC<TopBarProps> = ({
                 type="button"
                 onClick={() => setIsWeatherModalOpen(true)}
                 title={`${weather.location}: ${Math.round(weather.temp)}°C, ${weather.description || 'Clear'}. Click for details.`}
-                className="flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-400/10 dark:hover:bg-amber-400/20 text-amber-900 dark:text-amber-200 transition-all text-xs border border-amber-500/20 active:scale-95 max-w-[130px] sm:max-w-[200px]"
+                className="flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 hover:bg-amber-500/20 dark:bg-amber-400/10 dark:hover:bg-amber-400/20 text-amber-900 dark:text-amber-200 transition-all text-xs border border-amber-500/20 active:scale-95 min-w-0 shrink max-w-[130px] sm:max-w-[200px]"
               >
-                <span className="text-xs select-none" role="img" aria-label="weather-icon">
+                <span className="text-xs select-none flex-shrink-0" role="img" aria-label="weather-icon">
                   {getWeatherConditionEmoji(weather.icon, weather.description)}
                 </span>
                 <span className="truncate font-medium text-[11px] sm:text-xs">
-                  <span className="hidden xs:inline sm:inline">{weather.location}, </span>
+                  <span className="hidden min-[400px]:inline sm:inline">{weather.location}, </span>
                   {Math.round(weather.temp)}°C
                 </span>
               </button>
             ) : isWeatherLoading ? (
-              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/70 dark:bg-slate-800/70 text-slate-400 text-xs animate-pulse border border-slate-200/50 dark:border-slate-700/50">
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100/70 dark:bg-slate-800/70 text-slate-400 text-xs animate-pulse border border-slate-200/50 dark:border-slate-700/50 flex-shrink-0">
                 <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-ping"></span>
                 <span className="text-[11px] hidden sm:inline">Weather...</span>
               </div>
@@ -160,13 +160,13 @@ const TopBar: React.FC<TopBarProps> = ({
                 type="button"
                 onClick={() => setIsWeatherModalOpen(true)}
                 title="Click to enable location or set your city"
-                className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-xs font-medium transition-all border border-indigo-200/60 dark:border-indigo-800/60 active:scale-95"
+                className="flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded-full bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 text-xs font-medium transition-all border border-indigo-200/60 dark:border-indigo-800/60 active:scale-95 min-w-0 shrink"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                <span className="text-[11px] sm:text-xs">
+                <span className="text-[11px] sm:text-xs truncate">
                   <span className="hidden sm:inline">Set </span>Location
                 </span>
               </button>
@@ -207,14 +207,14 @@ const TopBar: React.FC<TopBarProps> = ({
         )}
 
         {/* Right Section: Search / Tools / Theme / Lock / Profile */}
-        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+        <div className="flex items-center gap-0.5 sm:gap-2 flex-shrink-0">
           {/* Quick Search Shortcut */}
           {!isEditing && (
             <button
               type="button"
               onClick={() => navigate('/app/search')}
               title="Search Diary & Tasks"
-              className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -226,7 +226,7 @@ const TopBar: React.FC<TopBarProps> = ({
             <button 
               onClick={onToggleToolsPanel} 
               title="Toggle Tools Panel" 
-              className={`p-2 rounded-lg transition-colors ${isToolsPanelVisible ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}
+              className={`p-1.5 sm:p-2 rounded-lg transition-colors ${isToolsPanelVisible ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
@@ -237,7 +237,7 @@ const TopBar: React.FC<TopBarProps> = ({
           <button 
             onClick={lock} 
             title="Lock Diary" 
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
@@ -247,7 +247,7 @@ const TopBar: React.FC<TopBarProps> = ({
           <button 
             onClick={onToggleTheme} 
             title="Toggle Theme" 
-            className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+            className="p-1.5 sm:p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
           >
             {theme === 'dark' ? 
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" /></svg> :
