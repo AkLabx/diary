@@ -75,11 +75,13 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   const [selectedImageSrc, setSelectedImageSrc] = useState<string | null>(null);
 
   useEffect(() => {
+      const container = contentRef.current;
+
       // Decrypt secure images
       const decryptImages = async () => {
-          if (!contentRef.current || !key) return;
+          if (!container || !key) return;
 
-          const images = contentRef.current.querySelectorAll('img.secure-diary-image');
+          const images = container.querySelectorAll('img.secure-diary-image');
           
           const imageList: { img: HTMLImageElement; path: string; iv: string }[] = [];
           for (let i = 0; i < images.length; i++) {
@@ -150,8 +152,8 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
       
       // Cleanup function to revoke object URLs when component unmounts or entry changes
       return () => {
-          if (contentRef.current) {
-               const images = contentRef.current.querySelectorAll('img.secure-diary-image');
+          if (container) {
+               const images = container.querySelectorAll('img.secure-diary-image');
                images.forEach((img) => {
                    const src = (img as HTMLImageElement).src;
                    if (src.startsWith('blob:')) {

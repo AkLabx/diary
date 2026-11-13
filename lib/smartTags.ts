@@ -1,5 +1,4 @@
 
-// @ts-ignore
 import nlp from 'compromise';
 
 export const generateSmartTags = (htmlContent: string): string[] => {

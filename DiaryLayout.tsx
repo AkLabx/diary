@@ -11,7 +11,6 @@ import { extractImagePaths, diffImagePaths } from './lib/cleanupUtils';
 import { processImage } from './lib/imageUtils';
 import { setIsAppSaving } from './lib/native/backButtonRegistry';
 
-// @ts-ignore
 import { ZipWriter, BlobWriter, TextReader, BlobReader } from '@zip.js/zip.js';
 
 import LeftSidebar from './components/LeftSidebar';
@@ -285,7 +284,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       setEntries(initialEntries);
       try {
         localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(initialEntries));
-      } catch (cacheErr) {}
+      } catch (cacheErr) {
+        /* ignore localStorage quota/cache errors */
+      }
     } catch (error) {
       console.error("Error fetching entries:", error);
       const cached = localStorage.getItem(`diary_meta_${session.user.id}`);
@@ -295,7 +296,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           setEntries(parsed);
           setLoading(false);
           return;
-        } catch (e) {}
+        } catch (e) {
+          /* ignore corrupted localStorage cache */
+        }
       }
       addToast("Could not fetch entries.", "error");
     } finally { setLoading(false); }
@@ -337,7 +340,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           try {
             const blob = new Blob([data.encrypted_entry], { type: 'text/plain' });
             await saveDraft(id, blob, data.iv);
-          } catch (cacheErr) {}
+          } catch (cacheErr) {
+            /* ignore IndexedDB draft cache errors */
+          }
         }
 
         const decrypted = await decrypt(key, encryptedEntry, entryIv);
@@ -442,7 +447,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     return () => {
       window.removeEventListener('online', handleOnline);
     };
-  }, [supabase, session?.user?.id, fetchEntries, addToast]);
+  }, [session?.user?.id, fetchEntries, addToast]);
 
   const uniqueJournals = useMemo(() => {
       const journals = new Set<string>();
@@ -485,8 +490,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
            if (Array.isArray(existingEntry.audio)) {
                currentAudioList.push(...existingEntry.audio);
            } else {
-               // @ts-ignore: Handle legacy format
-               currentAudioList.push({ ...existingEntry.audio, id: 'legacy' });
+               // Handle legacy single-object audio format
+               currentAudioList.push({ ...(existingEntry.audio as AudioMetadata), id: 'legacy' });
            }
        }
 
@@ -576,7 +581,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
          const cacheId = entryData.id || 'draft';
          const blob = new Blob([encrypted_entry], { type: 'text/plain' });
          saveDraft(cacheId, blob, iv);
-       } catch (cacheErr) {}
+       } catch (cacheErr) {
+         /* ignore IndexedDB draft cache errors */
+       }
 
        const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
        if (!isOnline) {
@@ -600,7 +607,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
          try {
            const blob = new Blob([encrypted_entry], { type: 'text/plain' });
            saveDraft(entryId, blob, iv);
-         } catch (e) {}
+         } catch (e) {
+           /* ignore IndexedDB draft cache errors */
+         }
 
          if (isUpdate) {
            setEntries(prev => {
@@ -611,7 +620,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                tempAudioBlobs: [],
                isDecrypted: true
              } as DiaryEntry : e);
-             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
              return updated;
            });
          } else {
@@ -626,7 +635,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
            } as DiaryEntry;
            setEntries(prev => {
              const updated = [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
              return updated;
            });
          }
@@ -654,14 +663,16 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                tempAudioBlobs: [], // Clear temps
                isDecrypted: true
            } as DiaryEntry : e);
-           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
            return updated;
          });
 
          try {
            const blob = new Blob([encrypted_entry], { type: 'text/plain' });
            saveDraft(entryData.id!, blob, iv);
-         } catch (e) {}
+         } catch (e) {
+           /* ignore IndexedDB draft cache errors */
+         }
 
          addToast('Entry saved!', 'success');
          // Redirect to view mode
@@ -684,14 +695,16 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
          setEntries(prev => {
            const updated = [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
            return updated;
          });
 
          try {
            const blob = new Blob([encrypted_entry], { type: 'text/plain' });
            saveDraft(data.id, blob, iv);
-         } catch (e) {}
+         } catch (e) {
+           /* ignore IndexedDB draft cache errors */
+         }
 
          addToast('Entry created!', 'success');
          navigate(`/app/entry/${data.id}`);
@@ -788,7 +801,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
            try {
              const blob = new Blob([encrypted_entry], { type: 'text/plain' });
              saveDraft(entryId, blob, iv);
-           } catch (e) {}
+           } catch (e) {
+             /* ignore IndexedDB draft cache errors */
+           }
 
            addToast("Network interrupted. Saved offline and will sync.", "info");
            setSaveStatus('synced');
@@ -845,7 +860,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
      }
   };
 
-  const handleDeleteEntry = async (id: string) => {
+  const handleDeleteEntry = useCallback(async (id: string) => {
     try {
       const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
       if (!isOnline) {
@@ -859,7 +874,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         });
         setEntries(prev => {
           const updated = prev.filter(e => e.id !== id);
-          try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+          try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
           return updated;
         });
         addToast("Entry deleted offline. Will sync when reconnected.", "info");
@@ -902,7 +917,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       if (error) throw error;
       setEntries(prev => {
         const updated = prev.filter(e => e.id !== id);
-        try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+        try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
         return updated;
       });
       addToast('Entry deleted successfully.', 'success');
@@ -926,19 +941,21 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           });
           setEntries(prev => {
             const updated = prev.filter(e => e.id !== id);
-            try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) {}
+            try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
             return updated;
           });
           addToast("Network interrupted. Entry deleted offline and will sync.", "info");
           navigate('/app');
           return;
-        } catch (e) {}
+        } catch (e) {
+          /* ignore offline deletion fallback error */
+        }
       }
       addToast("Failed to delete entry.", "error");
     }
-  };
+  }, [entries, session.user.id, addToast, navigate]);
 
-  const handleUpdateProfile = async (updates: { full_name?: string }) => {
+  const handleUpdateProfile = useCallback(async (updates: { full_name?: string }) => {
     try {
       const { data, error } = await supabase.from('profiles').update(updates).eq('id', session.user.id).select().single();
       if (error) throw error;
@@ -948,9 +965,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       addToast("Failed to update profile.", "error");
       console.error("Error updating profile:", error);
     }
-  };
+  }, [session.user.id, addToast]);
 
-  const handleAvatarUpload = async (file: File) => {
+  const handleAvatarUpload = useCallback(async (file: File) => {
     try {
       const { blob } = await processImage(file, 256, 0.85);
       const fileName = `${session.user.id}/${Date.now()}.webp`;
@@ -966,9 +983,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       console.error("Error uploading avatar:", error);
       throw error;
     }
-  };
+  }, [session.user.id]);
 
-  const handleExportData = async (onProgress: (progress: string) => void) => {
+  const handleExportData = useCallback(async (onProgress: (progress: string) => void) => {
       if (!key) return;
       try {
         const { count, error: countError } = await supabase.from('diaries').select('*', { count: 'exact', head: true });
@@ -1045,7 +1062,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                                 try {
                                   const meta = JSON.parse(ivMatch[1].replace(/&quot;/g, '"'));
                                   iv = meta.iv;
-                                } catch (e) {}
+                                } catch (e) {
+                                  /* ignore malformed image metadata JSON */
+                                }
                               }
 
                               const res = await fetch(item.signedUrl);
@@ -1105,9 +1124,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         console.error("Export failed:", error);
         addToast("Export failed.", "error");
       }
-  };
+  }, [key, decrypt, decryptBinary, addToast]);
 
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     if (session?.user?.id) {
       if (Capacitor.isNativePlatform()) {
         try {
@@ -1120,7 +1139,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     }
     await supabase.auth.signOut();
     navigate('/');
-  };
+  }, [session?.user?.id, navigate]);
 
   const handleDeleteAccount = useCallback(async () => {
     try {
@@ -1151,7 +1170,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       try {
         indexedDB.deleteDatabase('diary_sync_db');
         indexedDB.deleteDatabase('diary_drafts_db');
-      } catch (idbErr) {}
+      } catch (idbErr) {
+        /* ignore IndexedDB deletion errors */
+      }
 
       await supabase.auth.signOut();
       addToast("Your account and all encrypted data have been permanently deleted.", "success");
@@ -1286,6 +1307,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
 export default DiaryLayout;
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useDiary() {
     return useOutletContext<DiaryContextType>();
 }

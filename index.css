@@ -19,30 +19,60 @@ body {
     @apply bg-[#FBF8F3] dark:bg-slate-900 font-serif text-slate-700 dark:text-slate-300;
 }
 
-/* Custom scrollbar to match the new aesthetic */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-track {
-  background: #F4EFE9; /* A slightly darker shade for the track */
-}
-::-webkit-scrollbar-thumb {
-  background: #DCD1C1; /* A muted color for the thumb */
-  border-radius: 10px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #C9BBAA;
+/* Color-scheme & scrollbar design tokens */
+:root {
+  color-scheme: light dark;
+  --scrollbar-thumb: #8A7B6A;
+  --scrollbar-thumb-hover: #7E6F5E;
+  --scrollbar-track: #F4EFE9;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
 }
 
-/* Dark mode scrollbar */
-.dark ::-webkit-scrollbar-track {
-    background: #0f172a; /* slate-900 */
+@media (prefers-color-scheme: dark) {
+  :root:not(:has(> head > meta[name="color-scheme"][content="light"])) {
+    --scrollbar-thumb: #64748b;
+    --scrollbar-thumb-hover: #94a3b8;
+    --scrollbar-track: #0f172a;
+  }
 }
-.dark ::-webkit-scrollbar-thumb {
-    background: #475569; /* slate-600 */
+
+:root:has(> head > meta[name="color-scheme"][content="dark"]),
+:root.dark {
+  color-scheme: dark;
+  --scrollbar-thumb: #64748b;
+  --scrollbar-thumb-hover: #94a3b8;
+  --scrollbar-track: #0f172a;
 }
-.dark ::-webkit-scrollbar-thumb:hover {
-    background: #64748b; /* slate-500 */
+
+:root:has(> head > meta[name="color-scheme"][content="light"]) {
+  color-scheme: light;
+  --scrollbar-thumb: #8A7B6A;
+  --scrollbar-thumb-hover: #7E6F5E;
+  --scrollbar-track: #F4EFE9;
+}
+
+/* Custom scrollbar to match the new aesthetic */
+main, aside, .overflow-y-auto, .overflow-auto {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+}
+
+@supports not (scrollbar-color: auto) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 10px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+  }
 }
 
 /* Styles for the "paper" editor canvas */

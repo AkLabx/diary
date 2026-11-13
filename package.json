@@ -1,7 +1,7 @@
 {
   "name": "diary",
   "private": true,
-  "version": "1.0.17",
+  "version": "1.0.18",
   "type": "module",
   "homepage": "https://aklabx.github.io/diary/",
   "scripts": {
@@ -57,5 +57,8 @@
     "tailwindcss": "^3.4.4",
     "typescript": "^5.2.2",
     "vite": "^5.3.1"
-  }
+  },
+  "browserslist": [
+    "baseline widely available"
+  ]
 }

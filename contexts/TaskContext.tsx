@@ -215,7 +215,7 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
         addToast('Failed to update task state', 'error');
       }
     },
-    [tasks, addToast]
+    [tasks, addToast, createTask]
   );
 
   const updateTask = useCallback(
@@ -338,6 +338,7 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const usePersonalTasks = (): TaskContextType => {
   const context = useContext(TaskContext);
   if (!context) {

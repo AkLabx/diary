@@ -45,6 +45,7 @@ export const CryptoProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useCrypto = (): CryptoContextType => {
   const context = useContext(CryptoContext);
   if (context === undefined) {

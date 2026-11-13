@@ -180,7 +180,6 @@ const Editor: React.FC = () => {
         if (blot && blot.statics.blotName === 'secure-image') {
              const currentVal = blot.value();
              // Update the value with new caption
-             // @ts-ignore
              blot.replaceWith('secure-image', { ...currentVal, caption: formats.caption });
         }
     } else {

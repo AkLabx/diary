@@ -6,6 +6,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useToast } from '../../contexts/ToastContext';
 import { isAppSaving } from './backButtonRegistry';
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAndroidBackButton = () => {
     const navigate = useNavigate();
     const location = useLocation();

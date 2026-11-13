@@ -26,6 +26,27 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.18] — 2026-11-13 10:37:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Automatic System Theme Comfort & Visual Polish:**
+  - **Follows Your Device Automatically**: Your diary now gently adapts between Light and Dark appearance to match your device preference on first visit—with zero jarring white flashes while loading—while still remembering whenever you manually switch themes in the app.
+  - **Refined Reading Scrollbars & Stronger Style Protection**: Improved scrollbar contrast across light and dark themes for clearer navigation, and tightened verification on third-party editor styling so your writing sanctuary stays even safer.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Modern Web Guidance (MWG) & Baseline Widely Available Alignment (`package.json`, `index.html`, `index.css`, `App.tsx`)**:
+  - Added `"browserslist": ["baseline widely available"]` to `package.json` matching web and Capacitor Android (`minSdkVersion = 24`) runtime targets.
+  - **Color-Scheme Sync & FOUC Prevention (`index.html`, `App.tsx`, `index.css`)**: Added `<meta name="color-scheme" content="light dark">`, an inline pre-paint theme/FOUC script, `prefers-color-scheme` + cross-tab `storage` listeners, and synchronized `<meta name="color-scheme">`, `<meta name="theme-color">`, CSS `color-scheme`, and Tailwind `.dark` class handling (preserving existing `'theme': 'dark'` preferences).
+  - **Standard Scrollbars with `@supports` Fallback (`index.css`)**: Adopted `scrollbar-color` and `scrollbar-width: thin` with WCAG 1.4.11 (`>= 3:1`) custom property tokens (`#8A7B6A`/`#F4EFE9` light, `#64748b`/`#0f172a` dark) and wrapped legacy `::-webkit-scrollbar*` rules in `@supports not (scrollbar-color: auto)`.
+  - **Subresource Integrity & Referrer Hardening (`index.html`)**: Added `<meta name="referrer" content="strict-origin-when-cross-origin">` plus `integrity="sha384-..."`, `crossorigin="anonymous"`, and `referrerpolicy="no-referrer"` on the version-pinned `react-quill@2.0.0` `quill.snow.css` CDN stylesheet (verified byte-identical to local `node_modules/react-quill/dist/quill.snow.css`).
+* **ESLint Cleanup (40 Pre-Existing Findings Resolved Across 12 Files)**:
+  - Fixed React Hook rules/dependency issues, `prefer-const`, unnecessary `@ts-ignore` directives, empty `catch` blocks, and Fast Refresh export lint warnings across `ConfirmationModal.tsx`, `DatePickerPopup.tsx`, `DiaryEntryView.tsx`, `LandingPage.tsx`, `CryptoContext.tsx`, `TaskContext.tsx`, `ToastContext.tsx`, `useAndroidBackButton.tsx`, `smartTags.ts`, `Editor.tsx`, `MyStuffImages.tsx`, and `DiaryLayout.tsx`.
+* **Developer & AI Documentation Alignment (`AGENTS.md`, `docs/ai/memory.md`, `docs/ai/security.md`, `docs/ai/workflow.md`)**:
+  - Documented Windows `.cmd` / NVM PowerShell execution guidelines, added MWG & Baseline browser-support policies, and removed stale references to legacy routing, context, Supabase client, and service worker paths.
+* **Verification**: Verified `0` findings from `modern-web-guidance legacy-scan`, `0` errors/warnings from ESLint & `tsc --noEmit`, clean `npm run build` & `npm run build:android`, `12/12` `tests/security/penetration-audit.js`, `100%` `tests/e2e/auth-crypto-roundtrip.js`, and Playwright UI/theme/SRI E2E checks.
+
+---
+
 ### [v1.0.17] — 2026-11-13 01:26:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)
