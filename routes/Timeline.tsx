@@ -63,12 +63,15 @@ const Timeline: React.FC = () => {
 
   const handleClearFilter = () => {
       setFilteredDate(null);
+      setTimeFilter('all');
       navigate('/app');
   };
 
   return (
     <DiaryList
         entries={entriesToShow}
+        totalEntriesCount={entries.length}
+        activeJournal={activeJournal}
         onThisDayEntries={onThisDayEntries}
         onSelectEntry={() => { /* Navigation handled by Link in DiaryList now */ }}
         onLoadContent={loadEntryContent}

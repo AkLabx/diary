@@ -26,6 +26,26 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.17] — 2026-11-13 01:26:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Effortless Mobile & Android Screen Fit:**
+  - **Edge-to-Edge Stability on Phones**: Fixed horizontal page drifting and awkward side-scrolling on smartphones and the Android app so every screen—from your timeline to the welcome page—stays comfortably locked to your display width.
+  - **Cleaner Mood & Header Comfort**: All five Quick Mood Check-in options fit cleanly side-by-side on mobile screens without getting cut off, and the top bar stays crisp with zero icon overlap.
+* **Always-Accessible Timeline Filters:**
+  - **Never Get Stuck on Empty Time Ranges**: Selecting a quiet time filter like "This Week" or "This Month" now keeps your filter bar right at the top and offers a friendly one-tap "Show All Entries" escape instead of hiding your controls.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Timeline Filter State Architecture Fix (`routes/Timeline.tsx`, `components/DiaryList.tsx`)**:
+  - **Root Cause**: When no entries matched a non-default `timeFilter` (`week`, `month`, `year`), the empty-state guard hid `renderFilterControls()` and showed a misleading first-time onboarding card with no filter reset path.
+  - **Fix**: Preserved timeline filter controls whenever `entries.length > 0` regardless of `filteredEntries.length === 0`, and added a dedicated empty-filter card with an `onClearFilter` action (`Show All Entries`).
+* **Mobile & Capacitor WebView Viewport Containment (`index.css`, `DiaryLayout.tsx`, `LeftSidebar.tsx`, `TopBar.tsx`, `InteractiveGreeting.tsx`, `DiaryList.tsx`, `ToastContainer.tsx`, `LandingPage.tsx`)**:
+  - **Root Cause**: `<main>` in `DiaryLayout.tsx` used `overflow-y-auto` without `overflow-x-hidden` (computing `overflow-x: auto`), `html`/`body`/`#root` lacked root `overflow-x: clip` guards, `TopBar.tsx` and `InteractiveGreeting.tsx` used non-existent `xs:` Tailwind classes and non-shrinking flex/mood rows (`min-w-[70px]`), `DiaryList` items lacked `min-w-0 flex-1`/`break-words`, and `ToastContainer` overflowed left edges below `404px`.
+  - **Fix**: Added root viewport containment (`overflow-x: hidden; overflow-x: clip; max-width: 100%;`), `w-full max-w-full overflow-x-hidden` on shell and `<main>`, `flex-1 min-w-0 overflow-hidden` + `min-[380px]`/`min-[400px]` breakpoints in `TopBar`, a responsive 5-column `grid-cols-5` Quick Mood Check-in bar, responsive flex/skeleton wrapping in `DiaryList`, viewport-safe anchoring in `ToastContainer`, and constrained hero/3D phone framing in `LandingPage`.
+  - **Verification**: Verified with `npm run build`, targeted ESLint, and Playwright viewport matrix + visual screenshot checks across `320×640`, `360×800`, `390×844`, and `412×915`.
+
+---
+
 ### [v1.0.16] — 2026-11-10 12:15:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

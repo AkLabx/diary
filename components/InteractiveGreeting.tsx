@@ -135,17 +135,17 @@ export const InteractiveGreeting: React.FC<InteractiveGreetingProps> = ({ profil
   return (
     <div className="space-y-4 mb-6 animate-fade-in">
       {/* 1. Dynamic Time-of-Day Greeting with Ambient Festive Diya */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2">
-        <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 min-w-0">
+        <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto min-w-0">
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className="h-10 w-10 sm:h-11 sm:w-11 bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center text-white text-xl shadow-md flex-shrink-0 transform hover:scale-105 transition-transform">
               <span>{icon}</span>
             </div>
-            <div>
-              <h2 className="text-xl sm:text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg sm:text-2xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight flex items-center gap-2 break-words">
                 <span>{greeting}</span>
               </h2>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 break-words">
                 {weather ? (
                   <span>
                     {Math.round(weather.temp)}°C in {weather.location} · Take a quiet moment to reflect.
@@ -175,29 +175,29 @@ export const InteractiveGreeting: React.FC<InteractiveGreetingProps> = ({ profil
       </div>
 
       {/* 2. Quick Mood Check-in Bar */}
-      <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border border-[#EAE1D6] dark:border-slate-800/80 shadow-xs">
-        <div className="flex items-center justify-between mb-2.5">
+      <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm rounded-2xl p-3 sm:p-4 border border-[#EAE1D6] dark:border-slate-800/80 shadow-xs overflow-hidden">
+        <div className="flex items-center justify-between mb-2.5 gap-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
             <span>💭</span> Quick Mood Check-in
           </span>
-          <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden xs:inline">
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 hidden sm:inline">
             Tap to start an entry
           </span>
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5">
           {QUICK_MOODS.map((m) => (
             <button
               key={m.label}
               type="button"
               onClick={(e) => handleMoodSelect(m.emoji, e)}
               title={`Feeling ${m.label}? Write a quick entry.`}
-              className={`flex-1 min-w-[70px] sm:min-w-[85px] py-2 px-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-xs font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 shadow-xs hover:shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-200 ${m.bg}`}
+              className={`min-w-0 w-full py-2 px-0.5 sm:px-2.5 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200/80 dark:border-slate-700 text-xs font-medium flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-1.5 shadow-xs hover:shadow-sm hover:-translate-y-0.5 active:scale-95 transition-all duration-200 ${m.bg}`}
             >
-              <span className="text-lg leading-none select-none transform hover:scale-110 transition-transform">
+              <span className="text-base sm:text-lg leading-none select-none transform hover:scale-110 transition-transform">
                 {m.emoji}
               </span>
-              <span className="text-[11px] sm:text-xs font-medium whitespace-nowrap">
+              <span className="text-[9px] min-[390px]:text-[10px] sm:text-xs font-medium tracking-tight sm:tracking-normal truncate max-w-full">
                 {m.label}
               </span>
             </button>

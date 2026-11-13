@@ -88,21 +88,21 @@ const LandingPage: React.FC = () => {
       </div>
 
       {/* Navbar */}
-      <nav className="relative z-20 flex items-center justify-between px-6 py-6 max-w-6xl mx-auto">
-        <div className="text-2xl font-bold font-serif tracking-tight flex items-center gap-2 text-slate-800">
-           <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-900/5 border border-slate-100">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
+      <nav className="relative z-20 flex items-center justify-between px-4 sm:px-6 py-4 sm:py-6 max-w-6xl mx-auto gap-2">
+        <div className="text-xl sm:text-2xl font-bold font-serif tracking-tight flex items-center gap-2 text-slate-800 min-w-0">
+           <div className="w-9 h-9 sm:w-10 sm:h-10 bg-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-900/5 border border-slate-100 flex-shrink-0">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
                 <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
               </svg>
            </div>
-           <span>Diary</span>
+           <span className="truncate">Diary</span>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
           {deferredPrompt && (
              <button
                 onClick={handleInstallClick}
-                className="flex items-center gap-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-indigo-700 font-semibold bg-white shadow-sm border border-indigo-100 hover:bg-indigo-50 transition-all hover:scale-105 text-sm sm:text-base"
+                className="flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5 sm:py-2.5 rounded-full text-indigo-700 font-semibold bg-white shadow-sm border border-indigo-100 hover:bg-indigo-50 transition-all hover:scale-105 text-xs sm:text-base whitespace-nowrap"
              >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd" />
@@ -113,7 +113,7 @@ const LandingPage: React.FC = () => {
           )}
           <button
             onClick={handleGetStarted}
-            className="px-8 py-2.5 rounded-full text-white font-semibold bg-gradient-to-br from-indigo-400 to-purple-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform border border-indigo-300/50"
+            className="px-5 sm:px-8 py-2 sm:py-2.5 rounded-full text-white font-semibold text-sm sm:text-base whitespace-nowrap bg-gradient-to-br from-indigo-400 to-purple-600 shadow-[inset_0_2px_4px_rgba(255,255,255,0.3),inset_0_-2px_4px_rgba(0,0,0,0.2),0_8px_20px_-6px_rgba(124,58,237,0.5)] hover:scale-105 transition-transform border border-indigo-300/50"
           >
             Log In
           </button>
@@ -124,15 +124,15 @@ const LandingPage: React.FC = () => {
       <main className="relative z-10 w-full flex flex-col items-center">
         
         {/* --- HERO SECTION --- */}
-        <section className="max-w-6xl mx-auto px-6 pb-20 pt-10 w-full flex flex-col items-center">
+        <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16 sm:pb-20 pt-6 sm:pt-10 w-full flex flex-col items-center">
             {/* 1. THE 3D PHONE (Polished Black Metal) */}
-            <div className="w-full flex justify-center perspective-1000 py-12 sm:py-16 relative">
+            <div className="w-full flex justify-center perspective-1000 py-10 sm:py-16 relative overflow-hidden sm:overflow-visible">
             
             {/* Grounding Shadow - The Floor */}
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-56 h-8 bg-black/20 blur-2xl rounded-[100%]" />
 
             {/* The Phone Body */}
-            <div className="relative w-[280px] h-[580px] bg-slate-900 rounded-[3.5rem] border-[6px] border-slate-950 shadow-[0_0_0_1.5px_rgba(255,255,255,0.15),0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-float-phone preserve-3d">
+            <div className="relative w-[260px] h-[540px] sm:w-[280px] sm:h-[580px] bg-slate-900 rounded-[3.5rem] border-[6px] border-slate-950 shadow-[0_0_0_1.5px_rgba(255,255,255,0.15),0_50px_100px_-20px_rgba(0,0,0,0.5)] animate-float-phone preserve-3d">
                 
                 {/* Metallic Gloss Reflection */}
                 <div className="absolute inset-0 rounded-[3.2rem] bg-gradient-to-tr from-white/10 via-transparent to-transparent pointer-events-none z-20" />
@@ -200,8 +200,8 @@ const LandingPage: React.FC = () => {
             {/* 2. Hero Text */}
             <div className="text-center space-y-8 max-w-2xl">
             
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold font-serif leading-[1.1] tracking-tight text-slate-900">
-                Your <span className="text-indigo-600 inline-block min-w-[200px] border-b-4 border-indigo-200">{displayedText}</span><br/>
+            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold font-serif leading-[1.1] tracking-tight text-slate-900 break-words">
+                Your <span className="text-indigo-600 inline-block min-w-[140px] sm:min-w-[200px] border-b-4 border-indigo-200">{displayedText}</span><br/>
                 Encrypted. Forever.
             </h1>
             

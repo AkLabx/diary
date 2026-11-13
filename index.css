@@ -3,7 +3,18 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Base body styles for the new theme */
+/* Base body styles and root viewport containment (prevents horizontal scroll in mobile/Capacitor WebView without breaking sticky) */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-x: clip;
+}
+
+#root {
+    width: 100%;
+    max-width: 100%;
+}
+
 body {
     @apply bg-[#FBF8F3] dark:bg-slate-900 font-serif text-slate-700 dark:text-slate-300;
 }

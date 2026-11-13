@@ -1221,7 +1221,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   }
 
   return (
-    <div className="h-screen w-screen flex flex-col font-sans bg-[#FBF8F3] dark:bg-slate-900">
+    <div className="h-[100dvh] h-screen w-full max-w-full overflow-x-hidden flex flex-col font-sans bg-[#FBF8F3] dark:bg-slate-900">
        <TopBar
         isEditing={isEditing}
         onSave={() => {
@@ -1266,7 +1266,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           onSelectJournal={handleJournalSelect}
         />
 
-        <main className={`flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto min-w-0 w-full relative ${!isEditing ? 'pb-28' : ''}`}>
+        <main className={`flex-1 p-4 sm:p-6 md:p-8 overflow-y-auto overflow-x-hidden min-w-0 w-full relative ${!isEditing ? 'pb-28' : ''}`}>
             <Outlet context={contextValue} />
         </main>
       </div>
