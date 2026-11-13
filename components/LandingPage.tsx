@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+const TYPEWRITER_WORDS = ["Thoughts", "Secrets", "Memories", "Dreams"];
+
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const [demoStep, setDemoStep] = useState(0);
@@ -8,7 +10,6 @@ const LandingPage: React.FC = () => {
   // 1: Encrypting
   // 2: Locked
   
-  const words = ["Thoughts", "Secrets", "Memories", "Dreams"];
   const [wordIndex, setWordIndex] = useState(0);
   const [displayedText, setDisplayedText] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
@@ -37,7 +38,7 @@ const LandingPage: React.FC = () => {
 
   // Typewriter Effect for the Headline
   useEffect(() => {
-    const currentWord = words[wordIndex];
+    const currentWord = TYPEWRITER_WORDS[wordIndex];
     const typeSpeed = isDeleting ? 50 : 100;
 
     const timeout = setTimeout(() => {
@@ -47,7 +48,7 @@ const LandingPage: React.FC = () => {
       } else if (isDeleting && displayedText === "") {
         // Finished deleting, move to next word
         setIsDeleting(false);
-        setWordIndex((prev) => (prev + 1) % words.length);
+        setWordIndex((prev) => (prev + 1) % TYPEWRITER_WORDS.length);
       } else {
         // Typing or Deleting characters
         const nextText = isDeleting 

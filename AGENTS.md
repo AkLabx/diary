@@ -21,13 +21,13 @@ When conflicting instructions or ambiguous choices arise, strictly follow this o
 ## 1. Session Start: Repository Discovery Phase
 
 Before making architectural assumptions or writing code at the start of a session, inspect the workspace:
-- `package.json` (Scripts, dependencies, and configured tooling).
+- `package.json` (Scripts, dependencies, `"browserslist"` browser targets, and configured tooling).
 - Lockfile (`package-lock.json` indicates `npm` is active; or `pnpm-lock.yaml`, `bun.lockb`, `yarn.lock`).
 - `tsconfig.json` and bundler config (`vite.config.ts`).
 - Root source layout: Core source files (`App.tsx`, `DiaryLayout.tsx`, `index.tsx`) and `routes/` reside directly in root (outside `src/`).
 - `README.md` and `docs/ai/memory.md` (Project overview, stack reference, and quirks).
 - `.gitignore` (Ignored directories and secret patterns like `.env.local`).
-- Supabase configuration & client in `lib/supabase.ts` (Target Project: `ccgiozknvlknbrkzfcdx`).
+- Supabase configuration & client in `lib/supabaseClient.ts` (Target Project: `ccgiozknvlknbrkzfcdx`).
 
 ---
 
@@ -73,6 +73,13 @@ The file must exist at `d:\diary-main\powershell.bat` with the following exact c
 set "PATH=C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI;D:\DevTools\nvm\v22.16.0;D:\DevTools\nvm;C:\Program Files\nodejs;%APPDATA%\npm;%LOCALAPPDATA%\Programs\Python\Python312\Scripts;%LOCALAPPDATA%\Programs\Python\Python312;%PATH%"
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass %*
 ```
+
+### E. Direct `run_command` PowerShell Rules (When `powershell.bat` Is Bypassed)
+When an agent's `run_command` runner spawns `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` directly instead of `powershell.bat`, **always follow both rules** in every Node/npm/npx command:
+1. Prepend NVM's Node folder at the start of the command (env vars do not persist across calls): `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH";`
+2. Call **`npm.cmd`** and **`npx.cmd`** (explicit `.cmd` extension) instead of bare `npm` / `npx` so PowerShell (`Restricted` execution policy) never invokes blocked `.ps1` wrappers.
+   - Example: `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH"; npx.cmd -y modern-web-guidance@latest search "accessible modal dialog"`
+   - Example: `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH"; npx.cmd tsc --noEmit; npm.cmd run build`
 
 ---
 
@@ -154,7 +161,7 @@ Before executing planned changes, **STOP and ask the user for confirmation** if:
 - **Strictly Private Media Storage**:
   - Storage buckets `diary-images`, `diary-audio`, and `avatars` must remain **STRICTLY PRIVATE** (`public = false`). Direct public access URLs are forbidden; access is granted solely via short-lived signed URLs for authenticated owners.
 - **Service Worker Isolation**:
-  - The Service Worker (`public/sw.js`) caches app shell and dependencies for offline capability. **It must strictly avoid caching any user data** to maintain E2EE security.
+  - The generated Workbox Service Worker (configured via `VitePWA` in `vite.config.ts`) caches the app shell and CDN font/stylesheet dependencies for offline capability. **It must strictly avoid caching any user data or Supabase API/storage responses** to maintain E2EE security.
 - **Data Preservation**:
   - NEVER execute destructive database operations (`DROP TABLE`, `TRUNCATE`, bulk `DELETE`) on Supabase project `ccgiozknvlknbrkzfcdx` without explicit user permission.
 - **Read-Before-Write**:
@@ -167,6 +174,11 @@ Before executing planned changes, **STOP and ask the user for confirmation** if:
   - Must utilize the `afterSanitizeAttributes` hook to automatically set `target="_blank"` and `rel="noopener noreferrer"` on links.
 
 ### [HIGH] Process & Verification Rules
+- **Modern Web Guidance (MWG) & Browser Support Policy**:
+  - **Consult MWG First**: Before authoring or updating frontend HTML, CSS, or client-side JS/DOM code (modals, popovers, forms, layout, animations, responsiveness, accessibility, CWV/INP, sanitization, WebAuthn/dates), consult the `modern-web-guidance` skill (`npx.cmd -y modern-web-guidance@latest search "<query>"` and `retrieve "<id>"`; on Windows shells without `powershell.bat`, ensure `D:\DevTools\nvm\v22.16.0` is on `PATH`).
+  - **Browser Support Target**: **Baseline Widely available** (declared via `"browserslist": ["baseline widely available"]` in `package.json`), aligned with GitHub Pages web users and Capacitor Android (`minSdkVersion = 24`, Android System WebView).
+  - **Fallback & Polyfill Rule**: Baseline Widely available features are safe to use without polyfills. **Baseline Newly available** or **Limited availability** features may be used only behind explicit `@supports` / JS feature detection with graceful degradation or a lightweight, zero-dependency fallback (`<= 20` lines); never add heavy polyfills or new npm UI packages without user confirmation (Section 3).
+  - **Alignment with Existing UI Invariants**: Keep build-time Tailwind CSS v3 + PostCSS (`tailwindcss`, `autoprefixer`; no CDN Tailwind), keep `ConfirmationModal` for alerts/confirmations (no native `alert()`/`confirm()`), and keep `DOMPurify` + `afterSanitizeAttributes` link hardening in `components/DiaryEntryView.tsx`.
 - **Dynamic Tooling & Scripts**:
   - Detect and use the repository's native package manager (`npm` via `package-lock.json`) and defined scripts in `package.json` (`npm run dev`, `npm run build`, `npm run build:android`, `npm run lint`).
 - **Mandatory Verification**:
@@ -188,7 +200,7 @@ Before executing planned changes, **STOP and ask the user for confirmation** if:
 - **Respect Dominant Structure**:
   - Source files (`App.tsx`, `DiaryLayout.tsx`, `index.tsx`, `routes/`) reside directly in the root directory, outside `src/`.
 - **Routing Architecture**:
-  - Must use `createHashRouter` and `RouterProvider` (React Router v6 Data Router) to enable features like `useBlocker`. Do not use the legacy `<HashRouter>` component.
+  - Must use `createHashRouter` and `RouterProvider` (React Router v7 `react-router-dom` `^7.9.6` Data Router APIs) to enable features like `useBlocker`. Do not use the legacy `<HashRouter>` component.
   - Internal navigation must use `Link` from `react-router-dom` to preserve router state. Navigation blocking uses `useBlocker` + `ConfirmationModal` + `window.onbeforeunload`.
 - **Styling Standards**:
   - Use build-time PostCSS/Vite Tailwind CSS. The use of CDN Tailwind (`https://cdn.tailwindcss.com`) or inline `tailwind.config` in `index.html` is strictly forbidden.
@@ -196,13 +208,13 @@ Before executing planned changes, **STOP and ask the user for confirmation** if:
 - **UI Alerts & Confirmation**:
   - User alerts and confirmations must use the reusable `ConfirmationModal` component (Tailwind-styled). Do not use native browser alerts (`alert()`, `confirm()`).
 - **PWA & Web App Manifest**:
-  - Increment `CACHE_NAME` in `public/sw.js` whenever core application logic changes.
-  - Add external CDN dependencies and `index.css` to `urlsToCache` in `public/sw.js`.
-  - SVG icons in `manifest.json` must specify `sizes: 'any'` and `purpose: 'any maskable'`. PNG icons are strictly forbidden.
+  - PWA manifest and Workbox Service Worker are generated by `VitePWA` (`registerType: 'prompt'`) in `vite.config.ts`—do not reintroduce manual `public/sw.js` or `manifest.json` files unless intentionally migrating off `vite-plugin-pwa`.
+  - External CDN dependencies (Google Fonts, `react-quill` CSS) are runtime-cached via `workbox.runtimeCaching` in `vite.config.ts`.
+  - SVG icons in the `VitePWA` `manifest.icons` config (`public/pwa-icon.svg`) must specify `sizes: 'any'` and `purpose: 'any maskable'`. PNG app icons are strictly forbidden.
   - The "Install App" button must remain visible on mobile devices.
 - **Hosting & Bundling**:
-  - Hosted on GitHub Pages with base path `/diary/` (maintained in `vite.config.ts`, `manifest.json`, `public/sw.js`). Reload 404s handled by `public/404.html`.
-  - React, ReactDOM, and React Router are bundled by Vite. Only `@zip.js/zip.js` is loaded via CDN (`importmap` in `index.html`) and marked `external` in `vite.config.ts`.
+  - Hosted on GitHub Pages with base path `/diary/` (set dynamically in `vite.config.ts` for production web builds, and `/` for dev and Capacitor `VITE_IS_CAPACITOR=true` builds). Reload 404s are handled by `public/404.html`.
+  - React, ReactDOM, React Router, and `@zip.js/zip.js` are bundled by Vite from `package.json` dependencies (no `importmap` in `index.html` or `external` overrides in `vite.config.ts`). Avoid custom Rollup `manualChunks` splits that introduce circular ESM dependencies across vendor chunks.
 
 ### [OPTIONAL] Performance & Ergonomics
 - **Timeline Performance**: Image thumbnails are intentionally excluded from timeline cards (`DiaryList.tsx`) to avoid performance bottlenecks caused by decrypting multiple signed URLs client-side.

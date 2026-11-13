@@ -7,29 +7,29 @@
 ## 1. Technology Stack Reference
 
 - **Frontend**: React 18.2.0, Vite 5.3.1, TypeScript 5.2.2, Tailwind CSS 3.4.4
+- **Browser Support Target**: Baseline Widely available (`"browserslist": ["baseline widely available"]` in `package.json`, following Modern Web Guidance policy in `AGENTS.md`)
 - **Package Manager**: `npm` (detected from `package-lock.json`)
-- **Routing**: React Router v7.9.6 / v6 Data Router (`createHashRouter` + `RouterProvider`) with `useBlocker`
-- **State & Data Management**: `DiaryLayout.tsx` context provider (`DiaryContext`), encrypted drafts cached to IndexedDB (`diary_drafts_db`)
-- **Backend & Database**: Supabase (Project Ref: `ccgiozknvlknbrkzfcdx`, PostgreSQL with RLS, GoTrue Auth, Private Storage Buckets)
-- **Mobile Runtime**: Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capgo/capacitor-native-biometric`, `@capgo/capacitor-social-login`)
+- **Routing**: React Router v7 (`^7.9.6`) Data Router (`createHashRouter` + `RouterProvider`) with `useBlocker`
+- **State & Data Management**: `DiaryLayout.tsx` outlet context (`DiaryContextType` / `useDiary()`), encrypted drafts cached to IndexedDB (`diary_drafts_db`)
+- **Backend & Database**: Supabase (Project Ref: `ccgiozknvlknbrkzfcdx`, PostgreSQL with RLS, GoTrue Auth, Private Storage Buckets; client in `lib/supabaseClient.ts`)
+- **Mobile Runtime**: Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capgo/capacitor-native-biometric`, `@capgo/capacitor-social-login`; Android `minSdkVersion = 24`, `targetSdkVersion = 36`)
 - **Hosting / CI/CD**: GitHub Pages with base path `/diary/` (`https://aklabx.github.io/diary/`, deployment via `gh-pages -d dist`)
 - **Rich Text Editor**: `react-quill` with custom `FigureBlot` (`secure-image`) and DOMPurify sanitization
-- **Bundling Strategy**: React, ReactDOM, and React Router are bundled by Vite. Only `@zip.js/zip.js` is loaded via CDN (`importmap` in `index.html`) and marked `external` in `vite.config.ts`.
+- **Bundling Strategy**: React, ReactDOM, React Router, and `@zip.js/zip.js` are bundled by Vite from `package.json` dependencies (no `importmap` or `external` overrides in `vite.config.ts`). Google Fonts and `react-quill` CSS (`quill.snow.css`) are loaded via `<link>` in `index.html` and runtime-cached by Workbox in `vite.config.ts`.
 
 ---
 
 ## 2. Known Workarounds & Repository Quirks
 
 ### GitHub Pages SPA Routing & Base Path
-- The base path `/diary/` must be consistently maintained in `vite.config.ts`, `manifest.json`, and `public/sw.js`.
+- The base path `/diary/` for production web builds (`/` for dev and Capacitor `VITE_IS_CAPACITOR=true` builds) is maintained dynamically in `vite.config.ts` (including `VitePWA` `base`, `start_url`, and `scope`).
 - SPA deep linking is protected against reload 404s via `public/404.html` and client-side hash routing (`createHashRouter`).
 - Frontend environment variables (such as `VITE_SUPABASE_ANON_KEY`) are intentionally bundled and exposed for client-side static execution without backend proxies.
 
 ### PWA & Service Worker Rules
-- The Service Worker (`public/sw.js`) caches the application shell and external dependencies for offline capability. **It must strictly avoid caching any user data** to maintain End-to-End Encryption security.
-- Whenever core application logic changes, manually increment `CACHE_NAME` in `public/sw.js` to invalidate stale caches immediately.
-- External dependencies (CDN links) and `index.css` must be explicitly added to `urlsToCache` in `public/sw.js`.
-- SVG icons in `manifest.json` must specify `sizes: 'any'` and `purpose: 'any maskable'`. PNG icons are strictly forbidden.
+- The Workbox Service Worker and web app manifest are generated at build time by `VitePWA` (`registerType: 'prompt'`) in `vite.config.ts` (do not reintroduce manual `public/sw.js` or `manifest.json` files). **The Service Worker must strictly avoid caching any user data or Supabase API/storage responses** to maintain End-to-End Encryption security.
+- External CDN dependencies (Google Fonts, `react-quill` CSS) are configured in `workbox.runtimeCaching` inside `vite.config.ts`.
+- SVG icons in `VitePWA` `manifest.icons` (`public/pwa-icon.svg`) must specify `sizes: 'any'` and `purpose: 'any maskable'`. PNG app icons are forbidden.
 - The "Install App" button must remain visible and accessible on mobile devices.
 
 ### Routing & Navigation

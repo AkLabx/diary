@@ -14,7 +14,7 @@ Our application operates under strict client-side Zero-Knowledge End-to-End Encr
 - **Client Cryptography (`lib/crypto.ts`)**: Key derivation uses PBKDF2 (100k iterations). Master passwords and raw encryption keys are never sent to or stored on any server.
 - **Encryption Verification Material (`profiles` table)**: Stores `salt`, `key_check_value`, and `key_check_iv`. These materials allow the client to verify password correctness locally without the server ever learning the master password.
 - **Draft Auto-Saving Security**: Encrypted drafts are cached locally in IndexedDB using `lib/autoSave.ts` in the `diary_drafts_db` database. Unencrypted drafts must never be written to storage.
-- **Service Worker Data Isolation**: The Service Worker (`public/sw.js`) caches app shell assets and dependencies only. **It must strictly avoid caching any user data or decrypted diary entries.**
+- **Service Worker Data Isolation**: The generated Workbox Service Worker (configured via `VitePWA` in `vite.config.ts`) caches app shell assets and CDN font/stylesheet dependencies only. **It must strictly avoid caching any user data, decrypted diary entries, or Supabase API/storage responses.**
 - **Media Upload Interception**: Drag-and-drop image uploads in `DiaryEditor.tsx` are intercepted by custom `onDrop` handlers to route files through `handleImageUpload`. Unencrypted base64 image strings must never be inserted into Quill. Image thumbnails are excluded from the timeline view to prevent mass client-side signed URL decryption bottlenecks.
 
 ---
@@ -132,6 +132,6 @@ RLS Policies:
 ---
 
 ## 7. Supabase Client Management & Auth Initialization
-- **Centralized Client**: Rely on the project's centralized Supabase client instance in `lib/supabase.ts`. Do not initialize ad-hoc `createClient()` calls inside UI components.
+- **Centralized Client**: Rely on the project's centralized Supabase client instance in `lib/supabaseClient.ts`. Do not initialize ad-hoc `createClient()` calls inside UI components.
 - **Guaranteed Init**: In `App.tsx`, `supabase.auth.getSession()` must be wrapped in a `try...finally` block to guarantee `setLoading(false)` is invoked, ensuring the UI renders even if the Supabase connection fails.
 - **Network Error Handling**: `components/Auth.tsx` implements explicit handling for `TypeError: Failed to fetch` to distinguish network/firewall drops from auth rejection.

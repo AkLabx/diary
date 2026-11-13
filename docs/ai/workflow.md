@@ -22,6 +22,10 @@ set "PATH=C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v
 C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass %*
 ```
 
+### Direct `run_command` PowerShell Rules (When `powershell.bat` Is Bypassed):
+- Always prepend `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH";` at the start of any `run_command` call that needs Node tooling.
+- Always invoke **`npm.cmd`** and **`npx.cmd`** (explicit `.cmd` extension) instead of bare `npm` / `npx` so PowerShell (`Restricted` execution policy) does not fail on `.ps1` wrappers.
+
 ---
 
 ## 1. Dynamic Tooling & Package Manager Detection

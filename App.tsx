@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { RouterProvider, createHashRouter, Navigate, useLocation } from 'react-router-dom';
 import { supabase } from './lib/supabaseClient';
 import PWAUpdateManager from './components/PWAUpdateManager';
@@ -64,10 +64,37 @@ const RootLayout: React.FC = () => {
   );
 };
 
+const COLOR_SCHEME_STORAGE_KEY = 'color-scheme';
+
+const getSystemColorScheme = (): 'light' | 'dark' =>
+  typeof window !== 'undefined' &&
+  typeof window.matchMedia === 'function' &&
+  window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
+
+const readStoredColorScheme = (): 'light' | 'dark' | null => {
+  try {
+    const stored = localStorage.getItem(COLOR_SCHEME_STORAGE_KEY);
+    if (stored === 'light' || stored === 'dark') {
+      return stored;
+    }
+    const legacy = localStorage.getItem('theme');
+    if (legacy === 'dark') {
+      return 'dark';
+    }
+  } catch {
+    /* ignore storage access errors */
+  }
+  return null;
+};
+
 const App: React.FC = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'light');
+  const [schemeOverride, setSchemeOverride] = useState<'light' | 'dark' | null>(readStoredColorScheme);
+  const [systemScheme, setSystemScheme] = useState<'light' | 'dark'>(getSystemColorScheme);
+  const effectiveTheme = schemeOverride ?? systemScheme;
 
   useEffect(() => {
     // Handle session initialization with error handling to prevent infinite loading
@@ -100,18 +127,61 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const root = window.document.documentElement;
-    if (theme === 'dark') {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-    localStorage.setItem('theme', theme);
-  }, [theme]);
+    const mediaQuery =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(prefers-color-scheme: dark)')
+        : null;
 
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
+    const handleMediaChange = (event: MediaQueryListEvent) => {
+      setSystemScheme(event.matches ? 'dark' : 'light');
+    };
+
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === COLOR_SCHEME_STORAGE_KEY || event.key === null) {
+        setSchemeOverride(readStoredColorScheme());
+      }
+    };
+
+    mediaQuery?.addEventListener('change', handleMediaChange);
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      mediaQuery?.removeEventListener('change', handleMediaChange);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = window.document.documentElement;
+    const isDark = effectiveTheme === 'dark';
+    root.classList.toggle('dark', isDark);
+
+    const colorSchemeMeta = document.querySelector('meta[name="color-scheme"]');
+    if (colorSchemeMeta) {
+      colorSchemeMeta.setAttribute('content', schemeOverride ?? 'light dark');
+    }
+
+    const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeColorMeta) {
+      themeColorMeta.setAttribute('content', isDark ? '#0f172a' : '#FBF8F3');
+    }
+  }, [effectiveTheme, schemeOverride]);
+
+  const toggleTheme = useCallback(() => {
+    const currentEffective = schemeOverride ?? systemScheme;
+    const target: 'light' | 'dark' = currentEffective === 'dark' ? 'light' : 'dark';
+    const nextOverride = target === systemScheme ? null : target;
+    try {
+      if (nextOverride) {
+        localStorage.setItem(COLOR_SCHEME_STORAGE_KEY, nextOverride);
+      } else {
+        localStorage.removeItem(COLOR_SCHEME_STORAGE_KEY);
+      }
+      localStorage.removeItem('theme');
+    } catch {
+      /* ignore storage access errors */
+    }
+    setSchemeOverride(nextOverride);
+  }, [schemeOverride, systemScheme]);
 
   const router = useMemo(() => {
      return createHashRouter([
@@ -144,7 +214,7 @@ const App: React.FC = () => {
             element: (
                 <ProtectedRoute session={session}>
                     <TaskProvider userId={session?.user?.id}>
-                        <DiaryLayout session={session} theme={theme} onToggleTheme={toggleTheme} />
+                        <DiaryLayout session={session} theme={effectiveTheme} onToggleTheme={toggleTheme} />
                     </TaskProvider>
                 </ProtectedRoute>
             ),
@@ -170,7 +240,7 @@ const App: React.FC = () => {
            ]
        }
      ]);
-  }, [session, theme]); // Dependencies ensure router updates if these change
+  }, [session, effectiveTheme, toggleTheme]); // Dependencies ensure router updates if these change
 
   if (loading) {
      return (

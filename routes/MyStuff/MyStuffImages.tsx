@@ -109,7 +109,9 @@ const MyStuffImages: React.FC = () => {
                         if (meta.path === path) {
                             matchedIv = meta.iv;
                         }
-                    } catch (e) {}
+                    } catch (e) {
+                        /* ignore malformed image metadata */
+                    }
                 }
             });
 

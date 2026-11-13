@@ -8,13 +8,41 @@
 
     <!-- PWA Manifest & Theme -->
     <link rel="apple-touch-icon" href="./pwa-icon.svg" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('color-scheme');
+          if (stored !== 'light' && stored !== 'dark') {
+            var legacy = localStorage.getItem('theme');
+            stored = legacy === 'dark' ? 'dark' : null;
+          }
+          var meta = document.querySelector('meta[name="color-scheme"]');
+          if (meta) meta.setAttribute('content', stored || 'light dark');
+          var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var isDark = stored === 'dark' || (!stored && prefersDark);
+          if (isDark) document.documentElement.classList.add('dark');
+          var themeMeta = document.querySelector('meta[name="theme-color"]');
+          if (themeMeta) themeMeta.setAttribute('content', isDark ? '#0f172a' : '#FBF8F3');
+        } catch (_e) {
+          /* ignore storage access errors */
+        }
+      })();
+    </script>
     <meta name="theme-color" content="#FBF8F3" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
     <meta name="description" content="A simple and elegant web application to write and save your life events. All your data is end-to-end encrypted and stored securely." />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400..700;1,400..700&family=Inter:wght@400;700&family=Inconsolata:wght@400;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/react-quill@2.0.0/dist/quill.snow.css" />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/react-quill@2.0.0/dist/quill.snow.css"
+      integrity="sha384-cPa8kzsYWhqpAfWOLWYIw3V0BhPi/m3lrd8tBTPxr2NrYCHRVZ7xy1cEoRGOM/03"
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    />
 
 </head>
   <body class="bg-[#FBF8F3] dark:bg-slate-900 text-slate-800">
