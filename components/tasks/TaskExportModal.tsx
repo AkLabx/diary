@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { PersonalTask } from '../../types';
 import { taskExport } from '../../lib/taskExport';
 
@@ -14,8 +14,23 @@ export const TaskExportModal: React.FC<TaskExportModalProps> = ({
   tasks,
 }) => {
   const [downloadingFormat, setDownloadingFormat] = useState<string | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closingProgrammaticallyRef = useRef(false);
+  const pressedOutsideRef = useRef(false);
+  const titleId = useId();
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      closingProgrammaticallyRef.current = true;
+      dialog.close();
+    }
+  }, [isOpen]);
 
   const handleExport = (format: 'md' | 'csv' | 'json') => {
     setDownloadingFormat(format);
@@ -28,17 +43,67 @@ export const TaskExportModal: React.FC<TaskExportModalProps> = ({
     }
   };
 
+  const handleClose = () => {
+    if (closingProgrammaticallyRef.current) {
+      closingProgrammaticallyRef.current = false;
+      return;
+    }
+    onClose();
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    const rect = dialog.getBoundingClientRect();
+    pressedOutsideRef.current =
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || !pressedOutsideRef.current || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    pressedOutsideRef.current = false;
+    if ('closedBy' in HTMLDialogElement.prototype) return;
+    const rect = dialog.getBoundingClientRect();
+    if (
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom
+    ) {
+      onClose();
+    }
+  };
+
   const activeCount = tasks.filter(t => !t.is_completed).length;
   const completedCount = tasks.filter(t => t.is_completed).length;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-zinc-800 p-6 overflow-hidden">
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onClose={handleClose}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      {...({ closedby: 'any' } as Record<string, string>)}
+      className="m-auto w-[calc(100%-2rem)] max-w-md bg-transparent p-0 border-0 text-inherit backdrop:bg-stone-900/50 backdrop:backdrop-blur-sm"
+    >
+      {isOpen && (
+      <div className="relative w-full bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-zinc-800 p-6 overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <span className="text-xl">📤</span>
-            <h3 className="text-lg font-semibold text-stone-800 dark:text-zinc-100">
+            <h3 id={titleId} className="text-lg font-semibold text-stone-800 dark:text-zinc-100">
               Export Tasks
             </h3>
           </div>
@@ -139,6 +204,7 @@ export const TaskExportModal: React.FC<TaskExportModalProps> = ({
         <div className="mt-6 flex justify-end">
           <button
             type="button"
+            autoFocus
             onClick={onClose}
             className="px-4 py-2 rounded-xl text-sm font-medium bg-stone-100 hover:bg-stone-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-stone-700 dark:text-zinc-200 transition-colors"
           >
@@ -146,6 +212,7 @@ export const TaskExportModal: React.FC<TaskExportModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+      )}
+    </dialog>
   );
 };

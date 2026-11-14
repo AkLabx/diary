@@ -1,6 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useState, useEffect, useId, useRef } from 'react';
 
 interface SmartTagsModalProps {
   isOpen: boolean;
@@ -12,6 +11,9 @@ interface SmartTagsModalProps {
 
 const SmartTagsModal: React.FC<SmartTagsModalProps> = ({ isOpen, existingTags, suggestedTags, onConfirm, onCancel }) => {
   const [tags, setTags] = useState<string[]>([]);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closingProgrammaticallyRef = useRef(false);
+  const titleId = useId();
 
   useEffect(() => {
     if (isOpen) {
@@ -21,26 +23,47 @@ const SmartTagsModal: React.FC<SmartTagsModalProps> = ({ isOpen, existingTags, s
     }
   }, [isOpen, existingTags, suggestedTags]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    if (isOpen) {
+      if (!dialog.open) {
+        closingProgrammaticallyRef.current = false;
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      closingProgrammaticallyRef.current = true;
+      dialog.close();
+    }
+  }, [isOpen]);
 
   const handleRemoveTag = (tagToRemove: string) => {
     setTags(prev => prev.filter(t => t !== tagToRemove));
   };
 
-  const portalRoot = document.getElementById('portal-root');
-  if (!portalRoot) return null;
-
-  return ReactDOM.createPortal(
-    <div 
-      className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in"
-      role="dialog"
-      aria-modal="true"
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      {...({ closedby: 'closerequest' } as Record<string, string>)}
+      onClose={() => {
+        if (closingProgrammaticallyRef.current) {
+          closingProgrammaticallyRef.current = false;
+          return;
+        }
+        if (isOpen) {
+          onCancel();
+        }
+      }}
+      className="m-auto p-0 border-0 bg-transparent w-[calc(100%-2rem)] max-w-md rounded-xl shadow-2xl animate-fade-in"
     >
-      <div className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl w-full max-w-md border border-slate-200 dark:border-slate-700 overflow-hidden">
+      {isOpen && (
+      <div className="bg-white dark:bg-slate-800 rounded-xl w-full border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="p-6">
           <div className="flex items-start justify-between mb-4">
              <div>
-                <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <h2 id={titleId} className="text-xl font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-indigo-500" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd" />
                     </svg>
@@ -69,6 +92,7 @@ const SmartTagsModal: React.FC<SmartTagsModalProps> = ({ isOpen, existingTags, s
                         >
                             {tag}
                             <button 
+                                type="button"
                                 onClick={() => handleRemoveTag(tag)}
                                 className="hover:text-red-500 dark:hover:text-red-400 focus:outline-none opacity-60 group-hover:opacity-100 transition-opacity"
                                 aria-label={`Remove tag ${tag}`}
@@ -101,12 +125,15 @@ const SmartTagsModal: React.FC<SmartTagsModalProps> = ({ isOpen, existingTags, s
 
         <div className="bg-slate-50 dark:bg-slate-900/80 px-6 py-4 flex justify-end gap-3 border-t border-slate-100 dark:border-slate-700">
           <button
+            type="button"
             onClick={onCancel}
             className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 transition-colors"
           >
             Save without suggestions
           </button>
           <button
+            type="button"
+            autoFocus
             onClick={() => onConfirm(tags)}
             className="px-6 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-sm shadow-indigo-200 dark:shadow-none transition-all transform active:scale-95"
           >
@@ -114,8 +141,8 @@ const SmartTagsModal: React.FC<SmartTagsModalProps> = ({ isOpen, existingTags, s
           </button>
         </div>
       </div>
-    </div>,
-    portalRoot
+      )}
+    </dialog>
   );
 };
 

@@ -26,6 +26,31 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.19] — 2026-11-14 11:22:15 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Smoother Dialogs, Drawers & Mobile Comfort:**
+  - **Effortless Popups & Bottom Sheets**: Alerts, weather details, photo previews, recovery kits, and task forms now open smoothly with natural Escape and outside-tap dismissal, while keeping background pages steady instead of drifting behind dialogs. On mobile screens, the task editor now glides up neatly as a bottom sheet.
+  - **Smarter Menus & Navigation**: Calendar date pickers, action menus, and search filters stay cleanly inside your screen edges, and mobile sidebars and editor tool drawers keep keyboard focus cleanly scoped while open.
+* **Typing Comfort & Calmer Feedback:**
+  - **Self-Expanding Note & Tag Fields**: Note and tag fields gently grow as you type more lines without cramped inner scrollbars, and form validation highlights wait until you finish editing a field instead of interrupting mid-keystroke.
+  - **Screen-Reader Ready Controls & Pausable Toasts**: Theme and biometric toggles announce their active state clearly, and notification banners politely stay visible while hovered or focused so you never miss a message.
+  - **Cleaner Typography & Smooth Long Feeds**: Headings wrap with balanced lines, diary entry prose reads more naturally, and long entry lists render smoothly as you scroll.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Native `<dialog>` Modal Migration & Scroll Containment (`index.css`, `ConfirmationModal.tsx`, `WeatherModal.tsx`, `SmartTagsModal.tsx`, `Lightbox.tsx`, `ProfileView.tsx`, `TaskEditorModal.tsx`, `TaskExportModal.tsx`, `TaskNotificationPrivacyModal.tsx`)**:
+  - Migrated all modal overlays—including a shared `useModalDialog` helper in `ProfileView.tsx`—to semantic top-layer `<dialog>` + `.showModal()` with `useId()` labelling, `closedby` + pointer outside-bounds light-dismiss fallback, `onClose` state sync, `onCancel` guards during async operations, and `autoFocus` on safe/close controls; removed `Lightbox` `window` keydown listeners and `body` scroll locking.
+  - Configured `:where(dialog:modal)` (`max-width: 100vw; max-height: 100dvh;` with zero specificity so Tailwind `max-w-*` modal cards remain compact), `dialog:modal { overscroll-behavior: contain; }`, and `dialog::backdrop { overflow: hidden; overscroll-behavior: contain; }` in `index.css`; updated `TaskEditorModal` mobile layout (`inset-x-0 top-auto bottom-0 m-0 md:inset-0 md:m-auto`) for flush mobile bottom-sheet positioning.
+* **Responsive Navigation Drawers & Viewport-Aware Popups (`TopBar.tsx`, `LeftSidebar.tsx`, `routes/Editor.tsx`, `DatePickerPopup.tsx`, `DateInteractionMenu.tsx`, `SearchView.tsx`)**:
+  - Added `aria-expanded` and `aria-controls` on sidebar/tools-drawer toggles (`TopBar.tsx`) and `matchMedia`-driven responsive mobile `role="dialog"` / `aria-modal="true"`, `Escape` key dismissal, and `inert` state syncing when collapsed (`LeftSidebar.tsx`, `Editor.tsx`).
+  - Added viewport boundary clamping, `resize`/`scroll` recalculation, `Escape` dismissal, and `aria-expanded` / mobile modal menu semantics across `DatePickerPopup.tsx`, `DateInteractionMenu.tsx`, and `SearchView.tsx`.
+* **Deferred Rendering, Typography, Form Controls & Accessible Notifications (`index.css`, `DiaryList.tsx`, `SearchView.tsx`, `ProfileView.tsx`, `ToolsPanel.tsx`, `TaskEditorModal.tsx`, `Auth.tsx`, `ToastContainer.tsx`, `Toast.tsx`)**:
+  - Added `.mwg-deferred-card` (`content-visibility: auto; contain-intrinsic-size: auto none auto 180px;`) scoped strictly below the fold (`DiaryList` `itemIndex >= 4`, `SearchView` `idx >= 6`), plus `h1, h2, h3 { text-wrap: balance; }` and `.prose p, .prose blockquote, .prose li { text-wrap: pretty; }`.
+  - Upgraded `ProfileView.tsx` Dark Mode and Biometric toggles to accessible `type="button"`, `role="switch"`, `aria-checked`, and `aria-labelledby` controls; enabled `[field-sizing:content]` on textareas in `ToolsPanel.tsx` and `TaskEditorModal.tsx`; fixed the `bg-.white` class typo and added `[&:user-invalid]` error borders in `Auth.tsx`; and added `role="region" aria-label="Notifications"` + dynamic `alert`/`status` roles and hover/focus pause-and-resume timers in `ToastContainer.tsx` and `Toast.tsx`.
+* **Verification**: Verified `tsc --noEmit` (0 errors), `npm run lint` (`--max-warnings 0`, 0 errors/warnings), `npm run build` & `npm run build:android`, `modern-web-guidance legacy-scan` (0 findings across 33 active guides), `12/12` `tests/security/penetration-audit.js`, `100%` `tests/e2e/auth-crypto-roundtrip.js`, and `28/28` Playwright E2E + visual screenshot checks.
+
+---
+
 ### [v1.0.18] — 2026-11-13 10:37:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

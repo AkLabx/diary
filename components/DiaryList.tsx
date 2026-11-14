@@ -28,7 +28,8 @@ const DiaryListItem: React.FC<{
     entry: DiaryEntry; 
     onLoadContent: (id: string) => void; 
     monthIndex?: number;
-}> = ({ entry, onLoadContent, monthIndex }) => {
+    itemIndex: number;
+}> = ({ entry, onLoadContent, monthIndex, itemIndex }) => {
     const ref = useRef<HTMLAnchorElement>(null);
     const colors = getMoodColorClass(entry.mood, monthIndex);
 
@@ -59,7 +60,7 @@ const DiaryListItem: React.FC<{
     };
 
     return (
-        <div className="relative pl-8 sm:pl-12 py-4 group">
+        <div className={`relative pl-8 sm:pl-12 py-4 group ${itemIndex >= 4 ? 'mwg-deferred-card' : ''}`}>
             {/* Timeline Dot */}
             <div className="absolute left-0 top-10 w-3 h-3 bg-indigo-400 dark:bg-indigo-500 rounded-full border-2 border-white dark:border-slate-900 transform -translate-x-1/2 z-10 group-hover:scale-125 group-hover:bg-indigo-600 dark:group-hover:bg-indigo-400 transition-transform duration-300 shadow-sm" />
 
@@ -295,7 +296,9 @@ const DiaryList: React.FC<DiaryListProps> = ({
             {/* THE VERTICAL LINE */}
             <div className="absolute top-0 bottom-0 left-[7.5px] sm:left-[15.5px] w-[3px] bg-gradient-to-b from-indigo-200 via-indigo-100 to-transparent dark:from-indigo-800 dark:via-indigo-900/50 rounded-full" />
 
-            {Object.entries(groupedEntries).map(([monthYear, monthEntries]) => (
+            {(() => {
+              let runningIndex = 0;
+              return Object.entries(groupedEntries).map(([monthYear, monthEntries]) => (
                 <div key={monthYear} className="mb-10 relative">
                     {/* Timeline Milestone Header */}
                     <div className="relative flex items-center mb-6 group z-10">
@@ -309,17 +312,22 @@ const DiaryList: React.FC<DiaryListProps> = ({
 
                     {/* Entries for this month */}
                     <div className="space-y-4">
-                        {monthEntries.map(entry => (
-                            <DiaryListItem
-                               key={entry.id}
-                               entry={entry}
-                               onLoadContent={onLoadContent}
-                               monthIndex={new Date(entry.created_at).getMonth()}
-                            />
-                        ))}
+                        {monthEntries.map(entry => {
+                            const currentIndex = runningIndex++;
+                            return (
+                              <DiaryListItem
+                                 key={entry.id}
+                                 entry={entry}
+                                 onLoadContent={onLoadContent}
+                                 monthIndex={new Date(entry.created_at).getMonth()}
+                                 itemIndex={currentIndex}
+                              />
+                            );
+                        })}
                     </div>
                 </div>
-            ))}
+              ));
+            })()}
         </div>
       )}
     </div>

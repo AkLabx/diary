@@ -32,6 +32,36 @@ const Editor: React.FC = () => {
   const [selectedImageFormat, setSelectedImageFormat] = useState<SelectedImageFormat | null>(null);
 
   const editorRef = useRef<EditorHandle>(null);
+  const toolsDrawerRef = useRef<HTMLDivElement>(null);
+  const [isMobileEditor, setIsMobileEditor] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1023px)').matches : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1023px)');
+    const update = () => setIsMobileEditor(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const el = toolsDrawerRef.current;
+    if (el && 'inert' in HTMLElement.prototype) {
+      (el as HTMLElement & { inert: boolean }).inert = isMobileEditor && !isToolsPanelVisible;
+    }
+  }, [isMobileEditor, isToolsPanelVisible]);
+
+  useEffect(() => {
+    if (!isMobileEditor || !isToolsPanelVisible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setToolsPanelVisible(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isMobileEditor, isToolsPanelVisible, setToolsPanelVisible]);
 
   // Register the save handler with the layout
   useEffect(() => {
@@ -221,7 +251,13 @@ const Editor: React.FC = () => {
          </div>
 
          {/* ToolsPanel - Desktop (Sidebar) or Mobile (Overlay) */}
-         <div className={`
+         <div
+             ref={toolsDrawerRef}
+             id="editor-tools-drawer"
+             role={isToolsPanelVisible && isMobileEditor ? 'dialog' : undefined}
+             aria-modal={isToolsPanelVisible && isMobileEditor ? true : undefined}
+             aria-label={isToolsPanelVisible && isMobileEditor ? 'Editor tools' : undefined}
+             className={`
              fixed inset-y-0 right-0 z-30 w-72 bg-white dark:bg-slate-900 shadow-xl transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:shadow-none lg:w-64 lg:border-l border-slate-200 dark:border-slate-800
              ${isToolsPanelVisible ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
          `}>

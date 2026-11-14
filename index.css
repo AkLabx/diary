@@ -75,6 +75,34 @@ main, aside, .overflow-y-auto, .overflow-auto {
   }
 }
 
+/* Native <dialog> top-layer scroll containment (MWG: dialog, prevent-page-scroll-under-modal-dialog) */
+:where(dialog:modal) {
+  max-width: 100vw;
+  max-height: 100dvh;
+}
+
+dialog:modal {
+  overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+  overflow: hidden;
+  overscroll-behavior: contain;
+  background-color: rgb(15 23 42 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+/* Below-the-fold offscreen rendering deferral (MWG: defer-rendering-heavy-content) */
+.mwg-deferred-card {
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 180px;
+}
+
+/* Balanced headings & orphan-preventing prose wrapping (MWG: improve-text-layout-and-legibility) */
+h1, h2, h3 {
+  text-wrap: balance;
+}
+
 /* Styles for the "paper" editor canvas */
 .paper-canvas {
     background-color: #fff;
@@ -191,6 +219,12 @@ main, aside, .overflow-y-auto, .overflow-auto {
   overflow-wrap: break-word;
   word-break: break-word;
   display: flow-root;
+}
+
+.prose p,
+.prose blockquote,
+.prose li {
+  text-wrap: pretty;
 }
 
 .prose figure {

@@ -217,7 +217,7 @@ const ToolsPanel: React.FC<ToolsPanelProps> = ({
                         value={tagInput}
                         onChange={(e) => handleTagInput(e.target.value)}
                         placeholder="travel, work..."
-                        className="w-full h-20 p-2 text-sm rounded-md bg-slate-100 dark:bg-slate-800 border-transparent focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                        className="w-full [field-sizing:content] min-h-[5rem] max-h-40 p-2 text-sm rounded-md bg-slate-100 dark:bg-slate-800 border-transparent focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                     />
                 </div>
             </div>

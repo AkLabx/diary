@@ -195,7 +195,7 @@ const Auth: React.FC<AuthProps> = () => {
             onFocus={handleFocusEmail}
             onBlur={handleBlurInputs}
             onKeyDown={handleKeyDown}
-            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 transition-all"
+            className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 [&:user-invalid]:border-red-500 dark:[&:user-invalid]:border-red-400 transition-all"
             autoComplete="username"
           />
           
@@ -213,7 +213,7 @@ const Auth: React.FC<AuthProps> = () => {
               onFocus={handleFocusPassword}
               onBlur={handleBlurInputs}
               onKeyDown={handleKeyDown}
-              className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 transition-all"
+              className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 [&:user-invalid]:border-red-500 dark:[&:user-invalid]:border-red-400 transition-all"
               autoComplete={isSignUp ? "new-password" : "current-password"}
             />
             <button 
@@ -268,7 +268,7 @@ const Auth: React.FC<AuthProps> = () => {
                 <div className="w-full border-t border-slate-200 dark:border-slate-600" />
             </div>
             <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-.white dark:bg-slate-800 text-slate-500 dark:text-slate-400">Or continue with</span>
+                <span className="px-2 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400">Or continue with</span>
             </div>
         </div>
         

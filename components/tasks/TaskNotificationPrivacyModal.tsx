@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import {
   notificationService,
   NotificationPrivacyMode,
@@ -17,17 +17,68 @@ export const TaskNotificationPrivacyModal: React.FC<TaskNotificationPrivacyModal
   const [selectedMode, setSelectedMode] = useState<NotificationPrivacyMode>('private');
   const [permissionState, setPermissionState] = useState<string>('default');
   const [testSent, setTestSent] = useState(false);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closingProgrammaticallyRef = useRef(false);
+  const pressedOutsideRef = useRef(false);
+  const titleId = useId();
 
   useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
     if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
       setSelectedMode(notificationService.getPrivacyMode());
       if ('Notification' in window) {
         setPermissionState(Notification.permission);
       }
+    } else if (dialog.open) {
+      closingProgrammaticallyRef.current = true;
+      dialog.close();
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  const handleClose = () => {
+    if (closingProgrammaticallyRef.current) {
+      closingProgrammaticallyRef.current = false;
+      return;
+    }
+    onClose();
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    const rect = dialog.getBoundingClientRect();
+    pressedOutsideRef.current =
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || !pressedOutsideRef.current || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    pressedOutsideRef.current = false;
+    if ('closedBy' in HTMLDialogElement.prototype) return;
+    const rect = dialog.getBoundingClientRect();
+    if (
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom
+    ) {
+      onClose();
+    }
+  };
 
   const handleSelectMode = (mode: NotificationPrivacyMode) => {
     setSelectedMode(mode);
@@ -53,18 +104,28 @@ export const TaskNotificationPrivacyModal: React.FC<TaskNotificationPrivacyModal
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-zinc-800 p-6 overflow-hidden">
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onClose={handleClose}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      {...({ closedby: 'any' } as Record<string, string>)}
+      className="m-auto w-[calc(100%-2rem)] max-w-lg bg-transparent p-0 border-0 text-inherit backdrop:bg-stone-900/50 backdrop:backdrop-blur-sm"
+    >
+      {isOpen && (
+      <div className="relative w-full bg-white dark:bg-zinc-900 rounded-3xl shadow-2xl border border-stone-200 dark:border-zinc-800 p-6 overflow-hidden animate-fade-in">
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <span className="text-xl">🛡️</span>
-            <h3 className="text-lg font-semibold text-stone-800 dark:text-zinc-100">
+            <h3 id={titleId} className="text-lg font-semibold text-stone-800 dark:text-zinc-100">
               Notification Privacy & Discretion
             </h3>
           </div>
           <button
             type="button"
+            aria-label="Close modal"
             onClick={onClose}
             className="p-2 text-stone-400 hover:text-stone-600 dark:text-zinc-500 dark:hover:text-zinc-300 rounded-full hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors"
           >
@@ -163,6 +224,7 @@ export const TaskNotificationPrivacyModal: React.FC<TaskNotificationPrivacyModal
         <div className="mt-5 flex justify-end">
           <button
             type="button"
+            autoFocus
             onClick={onClose}
             className="px-5 py-2 rounded-xl text-sm font-medium bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all cursor-pointer"
           >
@@ -170,6 +232,7 @@ export const TaskNotificationPrivacyModal: React.FC<TaskNotificationPrivacyModal
           </button>
         </div>
       </div>
-    </div>
+      )}
+    </dialog>
   );
 };

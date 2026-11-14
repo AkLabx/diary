@@ -1,4 +1,4 @@
-import React, { useState, useEffect, ChangeEvent, useRef } from 'react';
+import React, { useState, useEffect, ChangeEvent, useRef, useId } from 'react';
 type Session = any;
 import { Profile } from '../types';
 import { useCrypto } from '../contexts/CryptoContext';
@@ -22,6 +22,85 @@ interface ProfileViewProps {
   onDeleteAccount?: () => Promise<void>;
   theme: string;
   onToggleTheme: () => void;
+}
+
+function useModalDialog(isOpen: boolean, isBusy: boolean, onDismiss: () => void) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closingProgrammaticallyRef = useRef(false);
+  const pressedOutsideRef = useRef(false);
+  const titleId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      closingProgrammaticallyRef.current = true;
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  const handleCancel = (e: React.SyntheticEvent<HTMLDialogElement>) => {
+    if (isBusy) {
+      e.preventDefault();
+    }
+  };
+
+  const handleClose = () => {
+    if (closingProgrammaticallyRef.current) {
+      closingProgrammaticallyRef.current = false;
+      return;
+    }
+    onDismiss();
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    const rect = dialog.getBoundingClientRect();
+    pressedOutsideRef.current =
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || !pressedOutsideRef.current || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    pressedOutsideRef.current = false;
+    if (isBusy || 'closedBy' in HTMLDialogElement.prototype) return;
+    const rect = dialog.getBoundingClientRect();
+    const isOutside =
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom;
+    if (isOutside) {
+      onDismiss();
+    }
+  };
+
+  return {
+    dialogRef,
+    titleId,
+    dialogProps: {
+      onCancel: handleCancel,
+      onClose: handleClose,
+      onPointerDown: handlePointerDown,
+      onPointerUp: handlePointerUp,
+      ...({ closedby: isBusy ? 'none' : 'any' } as Record<string, string>),
+    },
+  };
 }
 
 const ProfileView: React.FC<ProfileViewProps> = ({
@@ -71,6 +150,21 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const closeRecoveryModal = () => {
+    setIsRecoveryModalOpen(false);
+    setRecoveryPassword('');
+    setRecoveryError(null);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setDeleteConfirmInput('');
+    setDeleteError(null);
+  };
+
+  const cropDialog = useModalDialog(Boolean(cropImage), isUploading, () => handleCropCancel());
+  const recoveryDialog = useModalDialog(isRecoveryModalOpen, isGeneratingKit, closeRecoveryModal);
+  const deleteDialog = useModalDialog(isDeleteModalOpen, isDeletingAccount, closeDeleteModal);
 
   const { deriveAndVerifyKey, key } = useCrypto();
   const { addToast } = useToast();
@@ -362,26 +456,37 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="mt-8 space-y-4">
             <div className="bg-white/50 dark:bg-slate-800/50 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                 <div>
-                    <h3 className="font-semibold text-slate-700 dark:text-slate-200">Dark Mode</h3>
+                    <h3 id="dark-mode-switch-label" className="font-semibold text-slate-700 dark:text-slate-200">Dark Mode</h3>
                     <p className="text-sm text-slate-500 dark:text-slate-400">Toggle between light and dark themes.</p>
                 </div>
-                <button onClick={onToggleTheme} className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${theme === 'dark' ? 'bg-indigo-500' : 'bg-slate-300'}`}>
-                    <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
+                <button
+                    type="button"
+                    role="switch"
+                    aria-checked={theme === 'dark'}
+                    aria-labelledby="dark-mode-switch-label"
+                    onClick={onToggleTheme}
+                    className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${theme === 'dark' ? 'bg-indigo-500' : 'bg-slate-300'}`}
+                >
+                    <span aria-hidden="true" className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${theme === 'dark' ? 'translate-x-6' : 'translate-x-1'}`} />
                 </button>
             </div>
 
             {isBioSupported && (
                 <div className="bg-white/50 dark:bg-slate-800/50 p-4 rounded-lg shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between">
                     <div>
-                        <h3 className="font-semibold text-slate-700 dark:text-slate-200">Biometric Unlock</h3>
+                        <h3 id="biometric-switch-label" className="font-semibold text-slate-700 dark:text-slate-200">Biometric Unlock</h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Use FaceID or TouchID to unlock your diary.</p>
                     </div>
                     <button 
+                        type="button"
+                        role="switch"
+                        aria-checked={isBioEnabled}
+                        aria-labelledby="biometric-switch-label"
                         onClick={toggleBiometric} 
                         disabled={isBioLoading}
-                        className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${isBioEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
+                        className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 ${isBioEnabled ? 'bg-green-500' : 'bg-slate-300'}`}
                     >
-                        <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${isBioEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                        <span aria-hidden="true" className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${isBioEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                     </button>
                 </div>
             )}
@@ -471,9 +576,15 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         {/* CROPPER MODAL */}
-        {cropImage && (
-            <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/90 p-4 animate-fade-in">
-                <div className="relative w-full max-w-lg h-[400px] bg-slate-800 rounded-lg overflow-hidden mb-4">
+        <dialog
+            ref={cropDialog.dialogRef}
+            aria-label="Crop avatar"
+            {...cropDialog.dialogProps}
+            className="m-auto w-[calc(100%-2rem)] max-w-lg bg-transparent p-0 border-0 text-inherit backdrop:bg-black/90"
+        >
+            {cropImage && (
+            <div className="flex flex-col items-center justify-center w-full animate-fade-in">
+                <div className="relative w-full h-[400px] bg-slate-800 rounded-lg overflow-hidden mb-4">
                     <Cropper
                         image={cropImage}
                         crop={crop}
@@ -489,14 +600,14 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 
                 {/* Zoom Control */}
                  <div className="w-full max-w-xs px-4 mb-6">
-                    <label className="block text-xs text-slate-400 mb-1 text-center">Zoom</label>
+                    <label id="avatar-zoom-label" className="block text-xs text-slate-400 mb-1 text-center">Zoom</label>
                     <input
                         type="range"
                         value={zoom}
                         min={1}
                         max={3}
                         step={0.1}
-                        aria-labelledby="Zoom"
+                        aria-labelledby="avatar-zoom-label"
                         onChange={(e) => setZoom(Number(e.target.value))}
                         className="w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                     />
@@ -504,6 +615,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
 
                 <div className="flex gap-4">
                     <button
+                        type="button"
+                        autoFocus
                         onClick={handleCropCancel}
                         disabled={isUploading}
                         className="px-6 py-2 text-sm font-semibold text-slate-300 bg-slate-700 hover:bg-slate-600 rounded-md"
@@ -511,6 +624,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         Cancel
                     </button>
                     <button
+                        type="button"
                         onClick={handleCropSave}
                         disabled={isUploading}
                         className="px-6 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md flex items-center gap-2"
@@ -519,13 +633,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                     </button>
                 </div>
             </div>
-        )}
+            )}
+        </dialog>
         
         {/* Password Confirmation Modal for Recovery Kit */}
-        {isRecoveryModalOpen && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-full max-w-md border border-slate-200 dark:border-slate-700 animate-fade-in-down">
-                    <h3 className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Verify Identity</h3>
+        <dialog
+            ref={recoveryDialog.dialogRef}
+            aria-labelledby={recoveryDialog.titleId}
+            {...recoveryDialog.dialogProps}
+            className="m-auto w-[calc(100%-2rem)] max-w-md bg-transparent p-0 border-0 text-inherit backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+        >
+            {isRecoveryModalOpen && (
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-full border border-slate-200 dark:border-slate-700 animate-fade-in-down">
+                    <h3 id={recoveryDialog.titleId} className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Verify Identity</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
                         Please enter your master password to authenticate and generate your Recovery Kit. This will contain your raw encryption keys.
                     </p>
@@ -546,11 +666,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         <div className="flex justify-end gap-3 mt-4">
                             <button 
                                 type="button"
-                                onClick={() => {
-                                    setIsRecoveryModalOpen(false);
-                                    setRecoveryPassword('');
-                                    setRecoveryError(null);
-                                }}
+                                disabled={isGeneratingKit}
+                                onClick={closeRecoveryModal}
                                 className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md dark:text-slate-300 dark:hover:bg-slate-700"
                             >
                                 Cancel
@@ -565,18 +682,23 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                         </div>
                     </form>
                 </div>
-            </div>
-        )}
+            )}
+        </dialog>
 
         {/* Account Deletion Confirmation Modal */}
-        {isDeleteModalOpen && (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
-            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl w-full max-w-md border border-red-200 dark:border-red-900/60 animate-fade-in-down">
+        <dialog
+          ref={deleteDialog.dialogRef}
+          aria-labelledby={deleteDialog.titleId}
+          {...deleteDialog.dialogProps}
+          className="m-auto w-[calc(100%-2rem)] max-w-md bg-transparent p-0 border-0 text-inherit backdrop:bg-black/60 backdrop:backdrop-blur-sm"
+        >
+          {isDeleteModalOpen && (
+            <div className="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-2xl w-full border border-red-200 dark:border-red-900/60 animate-fade-in-down">
               <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-3">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                 </svg>
-                <h3 className="text-lg font-bold">Delete Account & All Data?</h3>
+                <h3 id={deleteDialog.titleId} className="text-lg font-bold">Delete Account & All Data?</h3>
               </div>
 
               <div className="text-xs text-slate-600 dark:text-slate-300 space-y-2 mb-4 bg-red-50 dark:bg-red-950/30 p-3 rounded-lg border border-red-100 dark:border-red-900/30">
@@ -616,11 +738,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   <button
                     type="button"
                     disabled={isDeletingAccount}
-                    onClick={() => {
-                      setIsDeleteModalOpen(false);
-                      setDeleteConfirmInput('');
-                      setDeleteError(null);
-                    }}
+                    onClick={closeDeleteModal}
                     className="px-4 py-2 text-xs font-medium text-slate-600 hover:bg-slate-100 rounded-md dark:text-slate-300 dark:hover:bg-slate-700"
                   >
                     Cancel
@@ -635,8 +753,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                 </div>
               </form>
             </div>
-          </div>
-        )}
+          )}
+        </dialog>
     </div>
   );
 };
