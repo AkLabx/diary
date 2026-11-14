@@ -17,14 +17,25 @@ const DatePickerPopup = ({ currentDate, onSelectDate, onClose, triggerRef }: Dat
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
-    if (triggerRef.current) {
+    const updatePosition = () => {
+      if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
       const rightAlignedLeft = rect.right - POPUP_WIDTH;
+      const preferredLeft = rightAlignedLeft < 0 ? rect.left : rightAlignedLeft;
+      const maxLeft = Math.max(8, window.innerWidth - POPUP_WIDTH - 8);
       setPosition({
         top: rect.bottom + window.scrollY + 8,
-        left: rightAlignedLeft < 0 ? rect.left : rightAlignedLeft,
+        left: Math.min(Math.max(8, preferredLeft), maxLeft),
       });
-    }
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [triggerRef]);
 
   useEffect(() => {
@@ -36,8 +47,17 @@ const DatePickerPopup = ({ currentDate, onSelectDate, onClose, triggerRef }: Dat
         onClose();
       }
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, [onClose, triggerRef]);
 
   const changeMonth = (amount: number) => {

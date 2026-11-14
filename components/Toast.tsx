@@ -33,31 +33,56 @@ const typeClasses: { [key in ToastMessage['type']]: string } = {
 
 const Toast: React.FC<ToastProps> = ({ toast, onDismiss }) => {
   const [isExiting, setIsExiting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
+  const remainingMsRef = React.useRef(5000);
+  const exitTimerRef = React.useRef<number | null>(null);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (isPaused) return;
+    const startedAt = Date.now();
+    const timer = window.setTimeout(() => {
       setIsExiting(true);
-      setTimeout(() => onDismiss(toast.id), 300); // match animation duration
-    }, 5000);
+      exitTimerRef.current = window.setTimeout(() => onDismiss(toast.id), 300); // match animation duration
+    }, remainingMsRef.current);
 
-    return () => clearTimeout(timer);
-  }, [toast.id, onDismiss]);
+    return () => {
+      window.clearTimeout(timer);
+      remainingMsRef.current = Math.max(500, remainingMsRef.current - (Date.now() - startedAt));
+    };
+  }, [isPaused, toast.id, onDismiss]);
+
+  useEffect(() => {
+    return () => {
+      if (exitTimerRef.current !== null) {
+        window.clearTimeout(exitTimerRef.current);
+      }
+    };
+  }, []);
 
   const handleDismiss = () => {
     setIsExiting(true);
-    setTimeout(() => onDismiss(toast.id), 300);
+    exitTimerRef.current = window.setTimeout(() => onDismiss(toast.id), 300);
   };
   
   const animationClass = isExiting ? 'animate-toast-out' : 'animate-toast-in';
 
   return (
     <div
-      role="alert"
+      role={toast.type === 'error' ? 'alert' : 'status'}
+      onMouseEnter={() => setIsPaused(true)}
+      onMouseLeave={() => setIsPaused(false)}
+      onFocus={() => setIsPaused(true)}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+          setIsPaused(false);
+        }
+      }}
       className={`w-full p-4 rounded-lg shadow-lg border flex items-start gap-4 ${typeClasses[toast.type]} ${animationClass}`}
     >
       <div className="flex-shrink-0">{icons[toast.type]}</div>
       <div className="flex-1 text-sm font-medium">{toast.message}</div>
       <button
+        type="button"
         onClick={handleDismiss}
         className="p-1 rounded-md -m-1 hover:bg-black/10 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-current"
         aria-label="Dismiss"

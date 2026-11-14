@@ -118,8 +118,11 @@ const TopBar: React.FC<TopBarProps> = ({
         <div className="flex items-center gap-1.5 sm:gap-3 flex-1 min-w-0 overflow-hidden">
           {!isLeftSidebarVisible && onOpenSidebar && (
             <button
+              type="button"
               onClick={onOpenSidebar}
               aria-label="Open navigation menu"
+              aria-expanded={isLeftSidebarVisible}
+              aria-controls="app-left-sidebar"
               className="p-2 -ml-1 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-95 transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 flex-shrink-0"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -224,8 +227,11 @@ const TopBar: React.FC<TopBarProps> = ({
 
           {isEditing && (
             <button 
+              type="button"
               onClick={onToggleToolsPanel} 
               title="Toggle Tools Panel" 
+              aria-expanded={isToolsPanelVisible}
+              aria-controls="editor-tools-drawer"
               className={`p-1.5 sm:p-2 rounded-lg transition-colors ${isToolsPanelVisible ? 'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600' : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500'}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

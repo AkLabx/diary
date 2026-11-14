@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { PersonalTask, DecryptedTaskPayload } from '../../types';
 import { DEFAULT_TASK_CATEGORIES, ENERGY_LEVELS, IMPORTANCE_LEVELS } from '../../lib/taskUtils';
 import { RECURRENCE_OPTIONS, RecurrenceFrequency } from '../../lib/recurrenceEngine';
@@ -57,6 +57,23 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
   const [isLoadingAttachments, setIsLoadingAttachments] = useState(false);
   const [isUploadingAttachment, setIsUploadingAttachment] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closingProgrammaticallyRef = useRef(false);
+  const pressedOutsideRef = useRef(false);
+  const titleId = useId();
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+    if (isOpen) {
+      if (!dialog.open) {
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      closingProgrammaticallyRef.current = true;
+      dialog.close();
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (taskToEdit) {
@@ -100,7 +117,52 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
     }
   }, [taskToEdit, isOpen, key]);
 
-  if (!isOpen) return null;
+  const handleCancel = (e: React.SyntheticEvent<HTMLDialogElement>) => {
+    if (isSubmitting) {
+      e.preventDefault();
+    }
+  };
+
+  const handleDialogClose = () => {
+    if (closingProgrammaticallyRef.current) {
+      closingProgrammaticallyRef.current = false;
+      return;
+    }
+    onClose();
+  };
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    const rect = dialog.getBoundingClientRect();
+    pressedOutsideRef.current =
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom;
+  };
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog || !pressedOutsideRef.current || e.target !== dialog) {
+      pressedOutsideRef.current = false;
+      return;
+    }
+    pressedOutsideRef.current = false;
+    if (isSubmitting || 'closedBy' in HTMLDialogElement.prototype) return;
+    const rect = dialog.getBoundingClientRect();
+    if (
+      e.clientX < rect.left ||
+      e.clientX > rect.right ||
+      e.clientY < rect.top ||
+      e.clientY > rect.bottom
+    ) {
+      onClose();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -209,8 +271,18 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col justify-end md:justify-center items-center p-0 md:p-4 bg-stone-900/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg max-h-[92vh] md:max-h-[90vh] bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl border border-stone-200 dark:border-zinc-800 p-5 sm:p-6 overflow-y-auto">
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      onCancel={handleCancel}
+      onClose={handleDialogClose}
+      onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
+      {...({ closedby: isSubmitting ? 'none' : 'any' } as Record<string, string>)}
+      className="inset-x-0 top-auto bottom-0 m-0 md:inset-0 md:m-auto w-full max-w-full md:max-w-lg max-h-[92vh] md:max-h-[90vh] bg-transparent p-0 border-0 text-inherit backdrop:bg-stone-900/60 backdrop:backdrop-blur-sm"
+    >
+      {isOpen && (
+      <div className="relative w-full max-h-[92vh] md:max-h-[90vh] bg-white dark:bg-zinc-900 rounded-t-3xl md:rounded-3xl shadow-2xl border border-stone-200 dark:border-zinc-800 p-5 sm:p-6 overflow-y-auto animate-fade-in">
         {/* Mobile Top Drag Indicator */}
         <div className="w-10 h-1 bg-stone-300 dark:bg-zinc-700 rounded-full mx-auto mb-3 md:hidden" />
 
@@ -218,12 +290,13 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-stone-100 dark:border-zinc-800">
           <div className="flex items-center gap-2">
             <span className="text-xl">✅</span>
-            <h3 className="text-lg font-bold text-stone-800 dark:text-zinc-100">
+            <h3 id={titleId} className="text-lg font-bold text-stone-800 dark:text-zinc-100">
               {taskToEdit ? 'Edit Task' : 'New Task'}
             </h3>
           </div>
           <button
             type="button"
+            aria-label="Close modal"
             onClick={onClose}
             className="p-1.5 text-stone-400 hover:text-stone-600 dark:text-zinc-500 dark:hover:text-zinc-300 rounded-full hover:bg-stone-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
           >
@@ -386,7 +459,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
                   placeholder="Additional context, phone numbers, address, or thoughts..."
                   value={notes}
                   onChange={e => setNotes(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-zinc-700 bg-stone-50/50 dark:bg-zinc-800/50 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-xs resize-none"
+                  className="w-full px-3 py-2 rounded-xl border border-stone-300 dark:border-zinc-700 bg-stone-50/50 dark:bg-zinc-800/50 text-stone-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-xs [field-sizing:content] min-h-[4.5rem] max-h-48 resize-none"
                 />
               </div>
 
@@ -593,6 +666,7 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
           </div>
         </form>
       </div>
-    </div>
+      )}
+    </dialog>
   );
 };

@@ -31,8 +31,19 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry, onBack 
       if (moodRef.current && !moodRef.current.contains(event.target as Node)) setMoodOpen(false);
       if (tagsRef.current && !tagsRef.current.contains(event.target as Node)) setTagsOpen(false);
     };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDateOpen(false);
+        setMoodOpen(false);
+        setTagsOpen(false);
+      }
+    };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const allTags = useMemo(() => {
@@ -119,12 +130,12 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry, onBack 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           {/* Date Range Filter */}
           <div className="relative" ref={dateRef}>
-            <button onClick={() => setDateOpen(p => !p)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600">
+            <button type="button" aria-expanded={isDateOpen} onClick={() => setDateOpen(p => !p)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" /></svg>
               <span>Date Range</span>
             </button>
             {isDateOpen && (
-              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 p-4 rounded-lg shadow-xl border dark:border-slate-700 z-10 w-64 space-y-3">
+              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 p-4 rounded-lg shadow-xl border dark:border-slate-700 z-10 w-64 max-w-[calc(100vw-2rem)] space-y-3">
                 <div>
                   <label className="text-xs font-semibold text-slate-500">From</label>
                   <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full mt-1 border border-slate-300 rounded-md p-1.5 text-sm dark:bg-slate-700 dark:border-slate-600 dark:[color-scheme:dark]" />
@@ -138,12 +149,12 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry, onBack 
           </div>
           {/* Mood Filter */}
           <div className="relative" ref={moodRef}>
-             <button onClick={() => setMoodOpen(p => !p)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600">
+             <button type="button" aria-expanded={isMoodOpen} onClick={() => setMoodOpen(p => !p)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600">
               {selectedMood ? <span className="text-lg">{selectedMood}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a.5.5 S0 01.708 0 5 5 0 01-6.488 0 .5.5 0 01.708-.707A4 4 0 0013 12.5a.5.5 0 01.535.464z" clipRule="evenodd" /></svg>}
               <span>Mood</span>
             </button>
             {isMoodOpen && (
-              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 p-2 rounded-lg shadow-xl border dark:border-slate-700 z-10 grid grid-cols-4 gap-2 w-64">
+              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 p-2 rounded-lg shadow-xl border dark:border-slate-700 z-10 grid grid-cols-4 gap-2 w-64 max-w-[calc(100vw-2rem)]">
                 {moods.map(m => (
                   <button key={m} type="button" onClick={() => { setSelectedMood(m === selectedMood ? null : m); setMoodOpen(false); }} className={`text-3xl p-2 rounded-md transition-all ${selectedMood === m ? 'bg-indigo-100 dark:bg-indigo-500/50 scale-110' : 'hover:bg-slate-100 dark:hover:bg-slate-700'}`}>{m}</button>
                 ))}
@@ -152,12 +163,12 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry, onBack 
           </div>
           {/* Tags Filter */}
           <div className="relative" ref={tagsRef}>
-             <button onClick={() => setTagsOpen(p => !p)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600">
+             <button type="button" aria-expanded={isTagsOpen} onClick={() => setTagsOpen(p => !p)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path d="M5.5 16a3.5 3.5 0 01-3.5-3.5V5.5A3.5 3.5 0 015.5 2h5.086a2 2 0 011.414.586l4.414 4.414a2 2 0 01.586 1.414V12.5A3.5 3.5 0 0113.5 16h-8z" /></svg>
               <span>Tags</span>
             </button>
              {isTagsOpen && (
-              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 p-3 rounded-lg shadow-xl border dark:border-slate-700 z-10 w-64 max-h-60 overflow-y-auto">
+              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 p-3 rounded-lg shadow-xl border dark:border-slate-700 z-10 w-64 max-w-[calc(100vw-2rem)] max-h-60 overflow-y-auto">
                 {allTags.length > 0 ? (
                   <div className="flex flex-col gap-2">
                     {allTags.map(tag => (
@@ -188,8 +199,8 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry, onBack 
           </div>
         ) : filteredEntries.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEntries.map(entry => (
-              <div key={entry.id} onClick={() => onSelectEntry(entry.id)} className="bg-white dark:bg-slate-800 p-5 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 flex flex-col">
+            {filteredEntries.map((entry, idx) => (
+              <div key={entry.id} onClick={() => onSelectEntry(entry.id)} className={`bg-white dark:bg-slate-800 p-5 rounded-lg shadow-sm hover:shadow-lg transition-shadow duration-300 cursor-pointer border border-slate-200 dark:border-slate-700 flex flex-col ${idx >= 6 ? 'mwg-deferred-card' : ''}`}>
                 <div className="flex justify-between items-start gap-3">
                   {entry.isDecrypted ? (
                     <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100 line-clamp-1">{entry.title}</h3>

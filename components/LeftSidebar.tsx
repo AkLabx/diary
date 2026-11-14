@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { usePersonalTasks } from '../contexts/TaskContext';
 
@@ -22,6 +22,36 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
 }) => {
   const { todayTasks, carriedForwardTasks } = usePersonalTasks();
   const activeCount = todayTasks.length + carriedForwardTasks.length;
+  const asideRef = useRef<HTMLElement>(null);
+  const [isMobile, setIsMobile] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  useEffect(() => {
+    const el = asideRef.current;
+    if (el && 'inert' in HTMLElement.prototype) {
+      (el as HTMLElement & { inert: boolean }).inert = !isVisible;
+    }
+  }, [isVisible]);
+
+  useEffect(() => {
+    if (!isVisible || !isMobile) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isVisible, isMobile, onClose]);
 
   const navItems = [
     { path: '/app', end: true, label: 'Timeline', icon: <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg> },
@@ -44,10 +74,17 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({
   };
 
   return (
-    <aside className={`bg-[#F4EFE9] dark:bg-slate-900 border-r border-[#EAE1D6] dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out w-72 max-w-[85vw] md:w-64 fixed inset-y-0 left-0 md:inset-y-auto md:top-0 md:left-0 md:absolute z-50 md:z-30 h-full shadow-2xl md:shadow-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] ${isVisible ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none md:pointer-events-auto'}`}>
+    <aside
+      ref={asideRef}
+      id="app-left-sidebar"
+      role={isVisible && isMobile ? 'dialog' : undefined}
+      aria-modal={isVisible && isMobile ? true : undefined}
+      aria-label={isVisible && isMobile ? 'Navigation menu' : undefined}
+      className={`bg-[#F4EFE9] dark:bg-slate-900 border-r border-[#EAE1D6] dark:border-slate-800 flex flex-col transition-transform duration-300 ease-in-out w-72 max-w-[85vw] md:w-64 fixed inset-y-0 left-0 md:inset-y-auto md:top-0 md:left-0 md:absolute z-50 md:z-30 h-full shadow-2xl md:shadow-none pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] ${isVisible ? 'translate-x-0 pointer-events-auto' : '-translate-x-full pointer-events-none md:pointer-events-auto'}`}
+    >
       <div className="flex items-center justify-between px-4 border-b border-[#EAE1D6] dark:border-slate-800 h-14 sm:h-16">
         <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">Diary</h1>
-        <button onClick={onClose} aria-label="Close navigation menu" className="p-2 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
+        <button type="button" onClick={onClose} aria-label="Close navigation menu" className="p-2 rounded-lg text-slate-500 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 transition-colors">
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
         </button>
       </div>

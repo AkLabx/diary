@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { Weather } from '../types';
 import { getWeatherConditionEmoji, getCustomCity } from '../lib/weather';
 
@@ -27,6 +26,11 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const closingProgrammaticallyRef = useRef(false);
+  const pressedOutsideRef = useRef(false);
+  const titleId = useId();
+
   const customCity = getCustomCity();
 
   useEffect(() => {
@@ -38,16 +42,26 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
   }, [isOpen, customCity]);
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+    const dialog = dialogRef.current;
+    if (!dialog) return;
 
-  if (!isOpen) return null;
+    if (isOpen) {
+      if (!dialog.open) {
+        closingProgrammaticallyRef.current = false;
+        dialog.showModal();
+      }
+    } else if (dialog.open) {
+      closingProgrammaticallyRef.current = true;
+      dialog.close();
+    }
+  }, [isOpen]);
+
+  const isOutsideDialog = (e: React.PointerEvent<HTMLDialogElement>) => {
+    const dialog = dialogRef.current;
+    if (!dialog) return false;
+    const rect = dialog.getBoundingClientRect();
+    return e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom;
+  };
 
   const handleCitySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,31 +116,47 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
   };
 
   const sourceInfo = getSourceLabel();
-  const portalRoot = document.getElementById('portal-root') || document.body;
 
-  return ReactDOM.createPortal(
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in"
-      role="dialog" 
-      aria-modal="true" 
-      aria-labelledby="weather-modal-title"
-      onClick={onClose}
+  return (
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={titleId}
+      {...({ closedby: 'any' } as Record<string, string>)}
+      onClose={() => {
+        if (closingProgrammaticallyRef.current) {
+          closingProgrammaticallyRef.current = false;
+          return;
+        }
+        if (isOpen) {
+          onClose();
+        }
+      }}
+      onPointerDown={(e) => {
+        pressedOutsideRef.current = isOutsideDialog(e);
+      }}
+      onPointerUp={(e) => {
+        if (!('closedBy' in HTMLDialogElement.prototype) && pressedOutsideRef.current && isOutsideDialog(e)) {
+          onClose();
+        }
+        pressedOutsideRef.current = false;
+      }}
+      className="m-auto p-0 border-0 bg-transparent w-[calc(100%-2rem)] max-w-md rounded-3xl shadow-2xl animate-fade-in"
     >
-      {/* Modal Card */}
-      <div 
-        className="relative w-full max-w-md bg-white dark:bg-slate-900 rounded-3xl text-left overflow-hidden shadow-2xl border border-[#EAE1D6] dark:border-slate-800 p-6 sm:p-7 transform transition-all"
-        onClick={(e) => e.stopPropagation()}
+      {isOpen && (
+      <div
+        className="relative w-full bg-white dark:bg-slate-900 rounded-3xl text-left overflow-hidden border border-[#EAE1D6] dark:border-slate-800 p-6 sm:p-7"
       >
         
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-[#EAE1D6] dark:border-slate-800">
           <div className="flex items-center gap-2">
             <span className="text-xl">🌤️</span>
-            <h3 id="weather-modal-title" className="text-lg font-bold text-slate-800 dark:text-slate-100">
+            <h3 id={titleId} className="text-lg font-bold text-slate-800 dark:text-slate-100">
               Weather & Location
             </h3>
           </div>
           <button
+            type="button"
             onClick={onClose}
             aria-label="Close modal"
             className="p-1.5 rounded-full text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
@@ -284,7 +314,7 @@ export const WeatherModal: React.FC<WeatherModalProps> = ({
         </div>
 
       </div>
-    </div>,
-    portalRoot
+      )}
+    </dialog>
   );
 };
