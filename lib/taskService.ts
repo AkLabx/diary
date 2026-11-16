@@ -30,6 +30,7 @@ export const taskService = {
    * Creates a new personal task.
    */
   async createTask(taskData: {
+    id?: string;
     owner_id: string;
     entry_id?: string | null;
     encrypted_task: string;
@@ -42,23 +43,28 @@ export const taskService = {
     energy_level: 1 | 2 | 3;
     importance_level: 1 | 2 | 3;
   }): Promise<PersonalTask> {
+    const insertPayload: any = {
+      owner_id: taskData.owner_id,
+      entry_id: taskData.entry_id || null,
+      encrypted_task: taskData.encrypted_task,
+      iv: taskData.iv,
+      checksum: taskData.checksum,
+      key_version: taskData.key_version,
+      schema_version: taskData.schema_version,
+      version: 1,
+      is_completed: false,
+      due_date: taskData.due_date || null,
+      category_code: taskData.category_code,
+      energy_level: taskData.energy_level,
+      importance_level: taskData.importance_level,
+    };
+    if (taskData.id) {
+      insertPayload.id = taskData.id;
+    }
+
     const { data, error } = await supabase
       .from('personal_tasks')
-      .insert({
-        owner_id: taskData.owner_id,
-        entry_id: taskData.entry_id || null,
-        encrypted_task: taskData.encrypted_task,
-        iv: taskData.iv,
-        checksum: taskData.checksum,
-        key_version: taskData.key_version,
-        schema_version: taskData.schema_version,
-        version: 1,
-        is_completed: false,
-        due_date: taskData.due_date || null,
-        category_code: taskData.category_code,
-        energy_level: taskData.energy_level,
-        importance_level: taskData.importance_level,
-      })
+      .insert(insertPayload)
       .select()
       .single();
 
@@ -71,7 +77,7 @@ export const taskService = {
   },
 
   /**
-   * Toggles task completion state with monotonic version increment.
+   * Toggles task completion state with optimistic concurrency control (OCC).
    */
   async toggleTaskCompletion(id: string, isCompleted: boolean, currentVersion: number): Promise<PersonalTask> {
     const { data, error } = await supabase
@@ -83,19 +89,24 @@ export const taskService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      .eq('version', currentVersion)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error toggling task completion:', error);
       throw error;
     }
 
+    if (!data) {
+      throw new Error('CONFLICT: Task modified by another session. Please refresh.');
+    }
+
     return data;
   },
 
   /**
-   * Updates task metadata or re-encrypted payload with monotonic version increment.
+   * Updates task metadata or re-encrypted payload with optimistic concurrency control (OCC).
    */
   async updateTask(
     id: string,
@@ -115,38 +126,50 @@ export const taskService = {
       .from('personal_tasks')
       .update(payload)
       .eq('id', id)
+      .eq('version', currentVersion)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error updating personal task:', error);
       throw error;
     }
 
+    if (!data) {
+      throw new Error('CONFLICT: Task modified by another session. Please refresh.');
+    }
+
     return data;
   },
 
   /**
-   * Soft deletes a task (sets deleted_at) with version increment.
+   * Soft deletes a task with optimistic concurrency control (OCC).
    */
   async softDeleteTask(id: string, currentVersion: number): Promise<void> {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('personal_tasks')
       .update({
         deleted_at: new Date().toISOString(),
         version: (currentVersion || 1) + 1,
         updated_at: new Date().toISOString(),
       })
-      .eq('id', id);
+      .eq('id', id)
+      .eq('version', currentVersion)
+      .select()
+      .maybeSingle();
 
     if (error) {
       console.error('Error soft-deleting task:', error);
       throw error;
     }
+
+    if (!data) {
+      throw new Error('CONFLICT: Task modified by another session. Please refresh.');
+    }
   },
 
   /**
-   * Restores a soft-deleted task.
+   * Restores a soft-deleted task with optimistic concurrency control (OCC).
    */
   async restoreTask(id: string, currentVersion: number): Promise<PersonalTask> {
     const { data, error } = await supabase
@@ -157,12 +180,17 @@ export const taskService = {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
+      .eq('version', currentVersion)
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error restoring personal task:', error);
       throw error;
+    }
+
+    if (!data) {
+      throw new Error('CONFLICT: Task modified by another session. Please refresh.');
     }
 
     return data;

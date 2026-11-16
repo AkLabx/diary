@@ -52,11 +52,17 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
 
   const decryptSingleTask = useCallback(async (task: PersonalTask, cryptoKey: CryptoKey): Promise<PersonalTask> => {
     try {
-      const decrypted = await decryptTaskPayload(cryptoKey, task.encrypted_task, task.iv, {
-        taskId: task.id,
-        ownerId: task.owner_id,
-        version: task.version,
-      });
+      const decrypted = await decryptTaskPayload(
+        cryptoKey,
+        task.encrypted_task,
+        task.iv,
+        {
+          taskId: task.id,
+          ownerId: task.owner_id,
+          version: task.version,
+        },
+        task.checksum
+      );
       return {
         ...task,
         decrypted,
@@ -122,6 +128,7 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
         });
 
         const created = await taskService.createTask({
+          id: tempId,
           owner_id: userId,
           entry_id: meta.entry_id || null,
           encrypted_task: encrypted.encrypted_task,
@@ -212,10 +219,15 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
               : t
           )
         );
-        addToast('Failed to update task state', 'error');
+        if (err?.message?.includes('CONFLICT')) {
+          addToast('Task modified in another tab/session. Refreshed.', 'info');
+          refreshTasks();
+        } else {
+          addToast('Failed to update task state', 'error');
+        }
       }
     },
-    [tasks, addToast, createTask]
+    [tasks, addToast, createTask, refreshTasks]
   );
 
   const updateTask = useCallback(
@@ -268,10 +280,15 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
         addToast('Task updated', 'success');
       } catch (err: any) {
         console.error('Failed to update task:', err);
-        addToast('Failed to update task', 'error');
+        if (err?.message?.includes('CONFLICT')) {
+          addToast('Task modified in another tab/session. Refreshed.', 'info');
+          refreshTasks();
+        } else {
+          addToast('Failed to update task', 'error');
+        }
       }
     },
-    [tasks, key, userId, addToast]
+    [tasks, key, userId, addToast, refreshTasks]
   );
 
   const deleteTask = useCallback(
@@ -289,10 +306,15 @@ export const TaskProvider: React.FC<{ children: ReactNode; userId?: string | nul
         console.error('Failed to soft delete task:', err);
         // Rollback
         setTasks(prev => [target, ...prev]);
-        addToast('Failed to delete task', 'error');
+        if (err?.message?.includes('CONFLICT')) {
+          addToast('Task modified in another tab/session. Refreshed.', 'info');
+          refreshTasks();
+        } else {
+          addToast('Failed to delete task', 'error');
+        }
       }
     },
-    [tasks, addToast]
+    [tasks, addToast, refreshTasks]
   );
 
   // Grouped task selectors
