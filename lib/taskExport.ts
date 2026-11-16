@@ -85,8 +85,10 @@ export const taskExport = {
 
     const escapeCSV = (val: any) => {
       if (val === null || val === undefined) return '""';
-      const str = String(val).replace(/"/g, '""');
-      return `"${str}"`;
+      const str = String(val);
+      // Neutralize formula injection triggers: =, +, -, @, tab (\t), carriage return (\r)
+      const neutralized = /^[=+\-@\t\r]/.test(str) ? `'${str}` : str;
+      return `"${neutralized.replace(/"/g, '""')}"`;
     };
 
     const rows = tasks.map(t => {

@@ -1103,7 +1103,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                               if (res.ok) {
                                 const encBuffer = await res.arrayBuffer();
                                 const decBuffer = await decryptBinary(key, encBuffer, audioItem.iv);
-                                const safeName = audioItem.path.split('/').pop()?.replace('.bin', '.webm') || `audio_${Date.now()}.webm`;
+                                const rawAudioName = audioItem.path.split(/[/\\\\]/).pop() || `audio_${Date.now()}.bin`;
+                                const safeAudioBase = rawAudioName.replace(/\.\./g, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+                                const safeName = safeAudioBase.replace(/\.bin$/, '.webm') || `audio_${Date.now()}.webm`;
                                 const zipPath = `attachments/audio/${safeName}`;
                                 await zipWriter.add(zipPath, new BlobReader(new Blob([decBuffer], { type: 'audio/webm' })));
                                 exportedMediaPaths.add(audioItem.path);
@@ -1147,7 +1149,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                                 } else {
                                   finalBlob = new Blob([encBuffer], { type: 'application/octet-stream' });
                                 }
-                                const safeName = item.path.split('/').pop()?.replace('.bin', '.webp') || `image_${Date.now()}.webp`;
+                                const rawImgName = item.path.split(/[/\\\\]/).pop() || `image_${Date.now()}.bin`;
+                                const safeImgBase = rawImgName.replace(/\.\./g, '').replace(/[^a-zA-Z0-9._-]/g, '_');
+                                const safeName = safeImgBase.replace(/\.bin$/, '.webp') || `image_${Date.now()}.webp`;
                                 const zipPath = `attachments/images/${safeName}`;
                                 await zipWriter.add(zipPath, new BlobReader(finalBlob));
                                 exportedMediaPaths.add(item.path);
