@@ -58,16 +58,17 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
 
         try {
             // We use setSecureData to securely store the master key tied to biometrics.
+            // AccessControl.BIOMETRY_CURRENT_SET ensures biometrics are invalidated if new fingerprints/faces are enrolled.
             await NativeBiometric.setData({
                 key: `diary_master_key_${userId}`,
                 value: masterKeyString,
-                accessControl: AccessControl.BIOMETRY_ANY,
+                accessControl: AccessControl.BIOMETRY_CURRENT_SET,
                 title: 'Protect Master Key',
 
             });
             // Return a mock BiometricData object that signifies it's a native biometric registration
             return {
-                credentialId: 'native-biometric',
+                credentialId: 'native-biometric-v2',
                 salt: 'native-biometric',
                 encryptedKey: 'native-biometric',
                 iv: 'native-biometric',
@@ -182,7 +183,7 @@ export const registerBiometric = async (masterKey: CryptoKey, userId: string): P
  * Unlocks the Master Key using the stored Biometric Data or NativeBiometric.
  */
 export const unlockBiometric = async (data: BiometricData, userId: string): Promise<CryptoKey> => {
-    if (Capacitor.isNativePlatform() && data.credentialId === 'native-biometric') {
+    if (Capacitor.isNativePlatform() && (data.credentialId === 'native-biometric' || data.credentialId === 'native-biometric-v2')) {
         try {
             const result = await NativeBiometric.getSecureData({
                 key: `diary_master_key_${userId}`,
@@ -193,8 +194,17 @@ export const unlockBiometric = async (data: BiometricData, userId: string): Prom
             return importKey(result.value);
         } catch (err: any) {
             console.error("NativeBiometric getSecureData failed:", err);
-            if (err.code === "21") {
-                throw new Error("No biometric key found. Please re-enroll biometrics.");
+            if (err?.code === "0" || err?.code === 0 || (typeof err?.message === 'string' && (err.message.includes("KeyPermanentlyInvalidatedException") || err.message.includes("enrollment") || err.message.includes("invalidated")))) {
+                const invalidationErr: any = new Error("Biometric enrollment changed. Please unlock with your password to re-enable.");
+                invalidationErr.code = "0";
+                invalidationErr.enrollmentChanged = true;
+                throw invalidationErr;
+            }
+            if (err?.code === "21" || err?.code === 21) {
+                const notFoundErr: any = new Error("No biometric key found. Please unlock with your password to re-enable.");
+                notFoundErr.code = "21";
+                notFoundErr.enrollmentChanged = true;
+                throw notFoundErr;
             }
             throw new Error("Biometric authentication failed.");
         }

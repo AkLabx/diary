@@ -68,7 +68,13 @@ const PasswordPrompt: React.FC<PasswordPromptProps> = ({ onSuccess, session }) =
           onSuccess(key);
       } catch (err: any) {
           console.error("Biometric unlock failed:", err);
-          setError("Biometric unlock failed. Please use your password.");
+          if (err?.code === "0" || err?.code === 0 || err?.code === "21" || err?.code === 21 || err?.enrollmentChanged) {
+              localStorage.removeItem(`diary_bio_${session.user.id}`);
+              setHasBiometric(false);
+              setError("Biometrics on this device changed or expired. Please unlock with your password to re-enable.");
+          } else {
+              setError("Biometric unlock failed. Please use your password.");
+          }
       } finally {
           setLoading(false);
       }
