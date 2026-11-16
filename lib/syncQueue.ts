@@ -200,10 +200,20 @@ export async function processOutbox(
       return { processed: 0, failed: 0 };
     }
 
+    // Isolate sync execution to the currently authenticated user session
+    const { data: { user } } = await supabase.auth.getUser();
+    const currentUserId = user?.id;
+
     console.log(`[SyncQueue] Processing ${mutations.length} pending mutations...`);
 
     for (const item of mutations) {
       try {
+        // If mutation has an owner_id that doesn't match the current user, skip it to prevent cross-account sync leakage
+        if (currentUserId && item.payload?.owner_id && item.payload.owner_id !== currentUserId) {
+          console.warn(`[SyncQueue] Skipping mutation ${item.id} belonging to different user ${item.payload.owner_id}`);
+          continue;
+        }
+
         let resultData: any = null;
 
         if (item.operation === 'INSERT') {

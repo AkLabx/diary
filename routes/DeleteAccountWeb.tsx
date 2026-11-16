@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { useCrypto } from '../contexts/CryptoContext';
 
 const DeleteAccountWeb: React.FC = () => {
   const navigate = useNavigate();
+  const { lock } = useCrypto();
   const [session, setSession] = useState<any>(null);
   const [loadingSession, setLoadingSession] = useState(true);
 
@@ -46,7 +48,9 @@ const DeleteAccountWeb: React.FC = () => {
       if (error) throw new Error(error.message || 'Deletion failed');
 
       // Clear local state
+      lock();
       localStorage.clear();
+      sessionStorage.clear();
       try {
         indexedDB.deleteDatabase('diary_sync_db');
         indexedDB.deleteDatabase('diary_drafts_db');

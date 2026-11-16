@@ -87,6 +87,7 @@ interface DiaryEditorProps {
   onCharacterCountChange: (count: number) => void;
   editorFont: 'serif' | 'sans' | 'mono';
   onImageDrop?: (file: File) => void;
+  userId?: string;
 }
 
 export interface EditorHandle {
@@ -100,7 +101,7 @@ const fontClassMap = {
   mono: 'font-mono',
 };
 
-const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave, onWordCountChange, onCharacterCountChange, editorFont, onImageDrop }, ref) => {
+const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave, onWordCountChange, onCharacterCountChange, editorFont, onImageDrop, userId }, ref) => {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [entryDate, setEntryDate] = useState(new Date());
@@ -245,7 +246,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
         // Auto-Save Restoration
         try {
-            const draft = await autoSave.getDraft(incomingId);
+            const draft = await autoSave.getDraft(incomingId, userId);
             if (draft && key) {
                 const entryTime = entry ? new Date(entry.updated_at || entry.created_at).getTime() : 0;
                 if (draft.timestamp > entryTime) {
@@ -286,7 +287,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
 
     loadEntry();
 
-  }, [entry, hydrateSecureImages, key, decryptBinary, addToast]);
+  }, [entry, hydrateSecureImages, key, decryptBinary, addToast, userId]);
 
   useEffect(() => {
     const text = content.replace(/<[^>]*>?/gm, '');
@@ -316,7 +317,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
               const { iv, data } = await encryptBinary(key, buffer.buffer);
               const blob = new Blob([data], { type: 'application/octet-stream' });
 
-              await autoSave.saveDraft(idToSave, blob, iv);
+              await autoSave.saveDraft(idToSave, blob, iv, userId);
               console.log("Auto-saved draft to IndexedDB");
           } catch (e) {
               console.error("Auto-save failed", e);
@@ -326,7 +327,7 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
       return () => {
           if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       }
-  }, [title, content, isDirty, key, encryptBinary, entry]);
+  }, [title, content, isDirty, key, encryptBinary, entry, userId]);
 
   
   const handleInternalSave = useCallback(async () => {
@@ -346,12 +347,12 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
     });
 
     const idToDelete = entry?.id || 'draft';
-    await autoSave.deleteDraft(idToDelete);
+    await autoSave.deleteDraft(idToDelete, userId);
     setInitialTitle(title);
     setInitialContent(content);
     setIsDirty(false);
 
-  }, [title, content, entryDate, entry, onSave, addToast]);
+  }, [title, content, entryDate, entry, onSave, addToast, userId]);
 
   useImperativeHandle(ref, () => ({
     save: handleInternalSave,

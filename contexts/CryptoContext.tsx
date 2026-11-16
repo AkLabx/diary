@@ -1,4 +1,5 @@
-import React, { createContext, useState, useContext, ReactNode, useCallback } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useCallback, useEffect } from 'react';
+import { supabase } from '../lib/supabaseClient';
 import { 
   deriveAndVerifyKey as deriveAndVerifyKeyUtil, 
   encrypt as encryptUtil, 
@@ -25,6 +26,19 @@ export const CryptoProvider: React.FC<{ children: ReactNode }> = ({ children }) 
 
   const lock = useCallback(() => {
     setKey(null);
+  }, []);
+
+  // Ensure in-memory CryptoKey is immediately wiped when user signs out or session ends
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || !session) {
+        setKey(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const value = {

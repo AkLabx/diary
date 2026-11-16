@@ -19,7 +19,7 @@ import InitializeEncryption from './components/InitializeEncryption';
 import PasswordPrompt from './components/PasswordPrompt';
 import SmartTagsModal from './components/SmartTagsModal';
 import { enqueueMutation, processOutbox } from './lib/syncQueue';
-import { getDraft, saveDraft } from './lib/autoSave';
+import { getDraft, saveDraft, clearAllDrafts } from './lib/autoSave';
 
 import { Capacitor } from '@capacitor/core';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
@@ -64,6 +64,28 @@ export interface DiaryContextType {
 // Helper for image placeholder
 const SECURE_PLACEHOLDER = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 const yieldToMain = () => new Promise(resolve => setTimeout(resolve, 0));
+
+/**
+ * Strips decrypted content, titles, and audio from entries before caching in localStorage.
+ * Only structural metadata (id, owner_id, created_at, journal, mood, tags, isDecrypted: false)
+ * is permitted in diary_meta_* to prevent plaintext leakage across accounts or reloads.
+ */
+function sanitizeEntriesForMetadataCache(entriesList: DiaryEntry[]): DiaryEntry[] {
+  return entriesList.map(e => ({
+    id: e.id,
+    created_at: e.created_at,
+    mood: e.mood,
+    tags: e.tags,
+    owner_id: e.owner_id,
+    journal: e.journal || 'Personal',
+    title: '',
+    content: '',
+    audio: undefined,
+    tempAudioBlobs: undefined,
+    isDecrypted: false,
+    isLoading: false,
+  }));
+}
 
 
 const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme }) => {
@@ -620,7 +642,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                tempAudioBlobs: [],
                isDecrypted: true
              } as DiaryEntry : e);
-             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
+             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(sanitizeEntriesForMetadataCache(updated))); } catch (e) { /* ignore cache error */ }
              return updated;
            });
          } else {
@@ -635,7 +657,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
            } as DiaryEntry;
            setEntries(prev => {
              const updated = [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
+             try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(sanitizeEntriesForMetadataCache(updated))); } catch (e) { /* ignore cache error */ }
              return updated;
            });
          }
@@ -663,7 +685,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
                tempAudioBlobs: [], // Clear temps
                isDecrypted: true
            } as DiaryEntry : e);
-           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
+           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(sanitizeEntriesForMetadataCache(updated))); } catch (e) { /* ignore cache error */ }
            return updated;
          });
 
@@ -695,7 +717,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
          setEntries(prev => {
            const updated = [newEntry, ...prev].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
+           try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(sanitizeEntriesForMetadataCache(updated))); } catch (e) { /* ignore cache error */ }
            return updated;
          });
 
@@ -874,7 +896,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         });
         setEntries(prev => {
           const updated = prev.filter(e => e.id !== id);
-          try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
+          try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(sanitizeEntriesForMetadataCache(updated))); } catch (e) { /* ignore cache error */ }
           return updated;
         });
         addToast("Entry deleted offline. Will sync when reconnected.", "info");
@@ -917,7 +939,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
       if (error) throw error;
       setEntries(prev => {
         const updated = prev.filter(e => e.id !== id);
-        try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
+        try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(sanitizeEntriesForMetadataCache(updated))); } catch (e) { /* ignore cache error */ }
         return updated;
       });
       addToast('Entry deleted successfully.', 'success');
@@ -941,7 +963,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
           });
           setEntries(prev => {
             const updated = prev.filter(e => e.id !== id);
-            try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(updated)); } catch (e) { /* ignore cache error */ }
+            try { localStorage.setItem(`diary_meta_${session.user.id}`, JSON.stringify(sanitizeEntriesForMetadataCache(updated))); } catch (e) { /* ignore cache error */ }
             return updated;
           });
           addToast("Network interrupted. Entry deleted offline and will sync.", "info");
@@ -1127,6 +1149,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   }, [key, decrypt, decryptBinary, addToast]);
 
   const handleSignOut = useCallback(async () => {
+    lock();
     if (session?.user?.id) {
       if (Capacitor.isNativePlatform()) {
         try {
@@ -1136,10 +1159,25 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         }
       }
       localStorage.removeItem(`diary_bio_${session.user.id}`);
+      localStorage.removeItem(`diary_meta_${session.user.id}`);
     }
+    // Clean up local session and operational caches
+    localStorage.removeItem('diary_last_active');
+    localStorage.removeItem('diary_cached_weather');
+    localStorage.removeItem('diary_custom_city');
+    localStorage.removeItem('diary_notification_privacy_mode');
+    localStorage.removeItem('diary_hide_prompt_card');
+    sessionStorage.removeItem('diary_telemetry_events');
+
+    try {
+      await clearAllDrafts();
+    } catch (e) {
+      /* ignore draft clear error on signout */
+    }
+
     await supabase.auth.signOut();
     navigate('/');
-  }, [session?.user?.id, navigate]);
+  }, [session?.user?.id, lock, navigate]);
 
   const handleDeleteAccount = useCallback(async () => {
     try {
@@ -1156,6 +1194,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         throw new Error(error.message || 'Failed to delete account on server');
       }
 
+      lock();
+
       if (Capacitor.isNativePlatform()) {
         try {
           await NativeBiometric.deleteData({ key: `diary_master_key_${session.user.id}` });
@@ -1164,8 +1204,16 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         }
       }
 
-      localStorage.removeItem(`diary_bio_${session.user.id}`);
-      localStorage.removeItem(`diary_meta_${session.user.id}`);
+      if (session?.user?.id) {
+        localStorage.removeItem(`diary_bio_${session.user.id}`);
+        localStorage.removeItem(`diary_meta_${session.user.id}`);
+      }
+      localStorage.removeItem('diary_last_active');
+      localStorage.removeItem('diary_cached_weather');
+      localStorage.removeItem('diary_custom_city');
+      localStorage.removeItem('diary_notification_privacy_mode');
+      localStorage.removeItem('diary_hide_prompt_card');
+      sessionStorage.removeItem('diary_telemetry_events');
 
       try {
         indexedDB.deleteDatabase('diary_sync_db');
@@ -1184,7 +1232,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     } finally {
       setIsAppSaving(false);
     }
-  }, [session, addToast, navigate]);
+  }, [session, lock, addToast, navigate]);
 
   // Derived state for UI components
   // We need to map the current route to "activeView" string for LeftSidebar highlight
