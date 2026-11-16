@@ -12,6 +12,26 @@ export interface DecryptedAttachment {
   createdAt: string;
 }
 
+const SAFE_PREVIEW_MIME_TYPES = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'application/pdf',
+  'text/plain',
+]);
+
+/**
+ * Validates whether a given MIME type is safe for inline browser rendering in a blob: URL.
+ * Active / scriptable types like text/html, image/svg+xml, application/xhtml+xml, etc.,
+ * are explicitly rejected to prevent origin execution (CWE-79).
+ */
+export const isSafeInlinePreview = (mimeType: string): boolean => {
+  if (!mimeType) return false;
+  const normalized = mimeType.toLowerCase().trim().split(';')[0];
+  return SAFE_PREVIEW_MIME_TYPES.has(normalized);
+};
+
 export const taskAttachmentService = {
   /**
    * Encrypts and uploads an attachment file for a specific task.
@@ -124,7 +144,7 @@ export const taskAttachmentService = {
           id: row.id,
           taskId: row.task_id,
           filePath: row.file_path,
-          fileType: row.file_type,
+          fileType: meta.type || row.file_type || 'application/octet-stream',
           name: meta.name || 'Attachment',
           size: meta.size || 0,
           iv: row.iv,
@@ -159,7 +179,8 @@ export const taskAttachmentService = {
 
     const encryptedBuffer = await response.arrayBuffer();
     const decryptedBuffer = await decryptBinary(key, encryptedBuffer, iv);
-    const blob = new Blob([decryptedBuffer], { type: fileType });
+    const safeType = isSafeInlinePreview(fileType) ? fileType : 'application/octet-stream';
+    const blob = new Blob([decryptedBuffer], { type: safeType });
     return URL.createObjectURL(blob);
   },
 

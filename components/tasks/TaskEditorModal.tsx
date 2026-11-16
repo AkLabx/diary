@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useId } from 'react';
 import { PersonalTask, DecryptedTaskPayload } from '../../types';
 import { DEFAULT_TASK_CATEGORIES, ENERGY_LEVELS, IMPORTANCE_LEVELS } from '../../lib/taskUtils';
 import { RECURRENCE_OPTIONS, RecurrenceFrequency } from '../../lib/recurrenceEngine';
-import { taskAttachmentService, DecryptedAttachment } from '../../lib/taskAttachmentService';
+import { taskAttachmentService, DecryptedAttachment, isSafeInlinePreview } from '../../lib/taskAttachmentService';
 import { useCrypto } from '../../contexts/CryptoContext';
 import { useToast } from '../../contexts/ToastContext';
 
@@ -258,7 +258,23 @@ export const TaskEditorModal: React.FC<TaskEditorModalProps> = ({
     if (!key) return;
     try {
       const url = await taskAttachmentService.getDecryptedBlobUrl(key, att.filePath, att.iv, att.fileType);
-      window.open(url, '_blank');
+      if (isSafeInlinePreview(att.fileType)) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+        // Revoke after opening window
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      } else {
+        // Trigger secure download for non-previewable / active types
+        const safeDownloadName = (att.name || 'attachment.bin').replace(/[/\\?%*:|"<>]/g, '_');
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = safeDownloadName;
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+        addToast('Downloading attachment...', 'info');
+      }
     } catch (err) {
       console.error('Error opening attachment:', err);
       addToast('Could not decrypt attachment', 'error');
