@@ -26,6 +26,36 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.20] — 2026-11-16 20:50:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Uncompromising Zero-Knowledge Security & Privacy Sanctuary:**
+  - **Zero Cleartext Exposure**: Your journal moods, tags, notebook titles, and profile avatar photos are now fully encrypted client-side with AES-GCM before ever leaving your device, leaving zero unencrypted personal metadata on cloud servers.
+  - **Zero-Knowledge Emergency Recovery Sheet**: Redesigned your backup recovery document into a clean, confidential Emergency Recovery Sheet (`Diary-Emergency-Recovery-Sheet.pdf`) featuring 4-character grouped recovery tokens with zero plaintext master passwords stored or exposed.
+  - **Fortified Master Keys & Biometric Invalidation**: Added strength validation and minimum length floors for new vaults to ensure impenetrable encryption keys. On mobile devices, biometric unlock automatically invalidates and prompts for your master password if new fingerprints or faces are enrolled on your device, ensuring total device theft protection.
+  - **Discreet & Reliable Reminders**: Task notification reminders integrate seamlessly with device Service Workers for dependable mobile alerts while respecting your chosen discretion tier, and local backups prevent spreadsheet formula injection.
+  - **Absolute Location Privacy**: Weather features now only look up forecasts when GPS permissions are granted or a city is explicitly searched, eliminating all automatic third-party network IP lookups.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Comprehensive 16-Issue Security Audit Remediation (#1 to #16)**:
+  - **URL Sanitization & Key Non-Extractability (#1)**: Sanitized `?prompt=` and guarded `?date=` in `routes/Editor.tsx`; enforced `extractable: false` by default in `lib/crypto.ts` and `contexts/CryptoContext.tsx`; added modal password verification for biometric enrollment in `components/ProfileView.tsx`.
+  - **Task Attachment Preview Hardening (#2)**: Added `isSafeInlinePreview` allowlisting safe image/document MIME types, rejecting executable HTML/SVG from inline preview, forcing `application/octet-stream` on untrusted blobs in `lib/taskAttachmentService.ts`, and enforcing `rel="noopener noreferrer"` in `components/tasks/TaskEditorModal.tsx`.
+  - **Weather Proxy Authentication & Input Validation (#3)**: Enforced Supabase JWT authentication (`auth.getUser()`), bounded coordinates/city inputs, restricted CORS, and removed hardcoded fallback API key in `supabase/functions/weather-proxy/index.ts`.
+  - **Storage Metadata Cache & Session Lifecycle (#4)**: Sanitized `localStorage` metadata cache in `DiaryLayout.tsx` to strip decrypted title/content/audio; scoped IndexedDB drafts by `userId`; wiped `CryptoKey` on `SIGNED_OUT` auth events in `contexts/CryptoContext.tsx`; isolated offline mutation sync in `lib/syncQueue.ts`.
+  - **Complete Storage & DB Cascade Purge (#5)**: Implemented recursive paginated storage bucket file purge across `diary-images`, `diary-audio`, and `avatars` in `supabase/functions/delete-account/index.ts`; cleaned up associated media files before diary entry deletion in `DiaryLayout.tsx`; added genuine account deletion request workflow in `routes/DeleteAccountWeb.tsx`.
+  - **Task Cryptographic Integrity & Concurrency (#6)**: Made task Additional Authenticated Data (AAD) immutable (`${taskId}:${ownerId}:v1`) with legacy fallback; added SHA-256 payload checksum verification; enforced optimistic concurrency control (OCC) via `.eq('version', currentVersion)` with conflict toasts.
+  - **Dependency Hygiene & Vulnerability Remediation (#7)**: Moved build-time plugins (`vite-plugin-pwa`, `workbox-build`) to `devDependencies`; removed legacy `@types/react-router-dom@^5.3.3`; upgraded `dompurify` (`^3.4.18`), `jspdf` (`^4.2.1`), `react-router-dom` (`^7.18.5`); achieved 0 production vulnerabilities.
+  - **Centralized HTML Sanitization (#8)**: Authored `lib/sanitizeHtml.ts` with strict tag/attribute allowlists, mode-based `contenteditable` handling (editor-only), style attribute filtering, anti-reverse-tabnabbing, and `try/finally` hook cleanup; updated `components/DiaryEntryView.tsx` and `components/DiaryEditor.tsx`.
+  - **Strict Content Security Policy (#9)**: Injected strict CSP meta tag in `index.html` with pinned SHA-256 inline theme script hash (`sha256-qM9b1mWgACzkGWePqzwEoeKPHWdg1B/H7T+K90AW0HQ=`) without script `'unsafe-inline'`.
+  - **Zero-Knowledge Metadata & Avatar Encryption (#10)**: Zeroed cleartext `mood`, `tags`, and `journal` database columns in `DiaryLayout.tsx`; encrypted profile avatars via `encryptBinary` into private `.bin` objects; added automatic avatar decryption in `components/ProfileView.tsx` and `components/TopBar.tsx`; eliminated automatic IP network fallback in `lib/weather.ts`; updated `components/PrivacyPolicy.tsx`.
+  - **Password Floors & Emergency Recovery Sheet (#11)**: Enforced `minLength={10}` and strength score >= 3 + Confirm Password on Sign Up in `components/Auth.tsx` and `components/InitializeEncryption.tsx` (preserving `minLength={6}` on Login); rebranded `lib/recoveryKit.ts` to Emergency Recovery Sheet (`Diary-Emergency-Recovery-Sheet.pdf`), purged cleartext password, and formatted raw key into 4-character tokens.
+  - **Biometric Current Set Invalidation (#12)**: Configured `AccessControl.BIOMETRY_CURRENT_SET` in `lib/webauthn.ts` to invalidate hardware keystore keys upon device biometric alterations; caught invalidation (`err.code === "0"`) and missing keys (`err.code === "21"`), purging local biometric state and guiding users back to master password re-authentication in `components/PasswordPrompt.tsx`.
+  - **CSV Formula Injection Neutralization (#13)**: Neutralized formula injection triggers (`=`, `+`, `-`, `@`, `\t`, `\r`) in `lib/taskExport.ts` by prefixing single quotes before RFC 4180 escaping; sanitized ZIP export filenames in `DiaryLayout.tsx` against path traversal.
+  - **Dynamic Test Credentials & Secret Hygiene (#14)**: Sourced test credentials dynamically via environment variables in `tests/e2e/auth-crypto-roundtrip.js` and all 11 Python verification scripts; purged plaintext test credentials from tracked documentation (`AGENTS.md`, `docs/ai/memory.md`).
+  - **IndexedDB Drafts vs Read-Cache Partition & Notifications (#15)**: Partitioned IndexedDB `diary_drafts_db` (v2) into `editor_drafts` and `entry_read_cache` in `lib/autoSave.ts`; updated `DiaryLayout.tsx` and `DiaryEditor.tsx` accordingly; added Service Worker `reg.showNotification(...)` fallback in `lib/notificationService.ts` and `components/tasks/TaskNotificationPrivacyModal.tsx`.
+  - **Local Manifest Screenshots & Baseline Migration (#16)**: Replaced external screenshot placeholders in `vite.config.ts` with local vector SVGs (`public/screenshots/timeline.svg`, `public/screenshots/editor.svg`); authored comprehensive baseline reference DDL & RLS script in `docs/migrations/20261116_complete_baseline_ddl_and_rls.sql`.
+* **Verification**: Verified full build (`tsc && vite build`), lint (`eslint .`), dependency audit (`npm audit --omit=dev` -> 0 vulnerabilities), and Python verification suite.
+
 ### [v1.0.19] — 2026-11-14 11:22:15 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)
