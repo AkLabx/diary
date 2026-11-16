@@ -19,7 +19,7 @@ import InitializeEncryption from './components/InitializeEncryption';
 import PasswordPrompt from './components/PasswordPrompt';
 import SmartTagsModal from './components/SmartTagsModal';
 import { enqueueMutation, processOutbox } from './lib/syncQueue';
-import { getDraft, saveDraft, clearAllDrafts } from './lib/autoSave';
+import { clearAllDrafts, getReadCache, saveReadCache, clearAllReadCache } from './lib/autoSave';
 
 import { Capacitor } from '@capacitor/core';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
@@ -341,7 +341,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         let entryIv = '';
 
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          const cachedDraft = await getDraft(id);
+          const cachedDraft = await getReadCache(id, session?.user?.id);
           if (cachedDraft && cachedDraft.encryptedData) {
             encryptedEntry = await cachedDraft.encryptedData.text();
             entryIv = cachedDraft.iv;
@@ -361,7 +361,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
           try {
             const blob = new Blob([data.encrypted_entry], { type: 'text/plain' });
-            await saveDraft(id, blob, data.iv);
+            await saveReadCache(id, blob, data.iv, session?.user?.id);
           } catch (cacheErr) {
             /* ignore IndexedDB draft cache errors */
           }
@@ -604,7 +604,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
        try {
          const cacheId = entryData.id || 'draft';
          const blob = new Blob([encrypted_entry], { type: 'text/plain' });
-         saveDraft(cacheId, blob, iv);
+         saveReadCache(cacheId, blob, iv, session.user.id);
        } catch (cacheErr) {
          /* ignore IndexedDB draft cache errors */
        }
@@ -627,10 +627,10 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
            retryCount: 0
          });
 
-         // Also save in local encrypted draft store under entryId
+         // Also save in local encrypted read cache under entryId
          try {
            const blob = new Blob([encrypted_entry], { type: 'text/plain' });
-           saveDraft(entryId, blob, iv);
+           saveReadCache(entryId, blob, iv, session.user.id);
          } catch (e) {
            /* ignore IndexedDB draft cache errors */
          }
@@ -693,7 +693,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
          try {
            const blob = new Blob([encrypted_entry], { type: 'text/plain' });
-           saveDraft(entryData.id!, blob, iv);
+           saveReadCache(entryData.id!, blob, iv, session.user.id);
          } catch (e) {
            /* ignore IndexedDB draft cache errors */
          }
@@ -725,7 +725,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
          try {
            const blob = new Blob([encrypted_entry], { type: 'text/plain' });
-           saveDraft(data.id, blob, iv);
+           saveReadCache(data.id, blob, iv, session.user.id);
          } catch (e) {
            /* ignore IndexedDB draft cache errors */
          }
@@ -824,7 +824,7 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
            try {
              const blob = new Blob([encrypted_entry], { type: 'text/plain' });
-             saveDraft(entryId, blob, iv);
+             saveReadCache(entryId, blob, iv, session.user.id);
            } catch (e) {
              /* ignore IndexedDB draft cache errors */
            }
@@ -1223,8 +1223,9 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
     try {
       await clearAllDrafts();
+      await clearAllReadCache();
     } catch (e) {
-      /* ignore draft clear error on signout */
+      /* ignore draft/cache clear error on signout */
     }
 
     await supabase.auth.signOut();

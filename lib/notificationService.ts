@@ -115,16 +115,33 @@ export const notificationService = {
   /**
    * Dispatches a discreet browser notification if permission is granted.
    */
-  notify(taskTitle: string, modeOverride?: NotificationPrivacyMode): boolean {
+  async notify(taskTitle: string, modeOverride?: NotificationPrivacyMode): Promise<boolean> {
     if (!('Notification' in window) || Notification.permission !== 'granted') {
       return false;
     }
 
     try {
       const content = this.formatNotification(taskTitle, modeOverride);
+      const iconPath = `${import.meta.env.BASE_URL}pwa-icon.svg`;
+
+      if ('serviceWorker' in navigator) {
+        try {
+          const reg = await navigator.serviceWorker.ready;
+          if (reg && 'showNotification' in reg) {
+            await reg.showNotification(content.title, {
+              body: content.body,
+              icon: iconPath,
+            });
+            return true;
+          }
+        } catch (swErr) {
+          console.warn('Service worker showNotification failed, falling back to Notification constructor:', swErr);
+        }
+      }
+
       new Notification(content.title, {
         body: content.body,
-        icon: '/diary/pwa-icon.svg',
+        icon: iconPath,
       });
       return true;
     } catch (err) {

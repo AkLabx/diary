@@ -91,16 +91,20 @@ export const TaskNotificationPrivacyModal: React.FC<TaskNotificationPrivacyModal
       setPermissionState(Notification.permission);
     }
     if (granted) {
-      notificationService.notify('Prescription refill scheduled', selectedMode);
-      setTestSent(true);
-      setTimeout(() => setTestSent(false), 3000);
+      const sent = await notificationService.notify('Prescription refill scheduled', selectedMode);
+      if (sent) {
+        setTestSent(true);
+        setTimeout(() => setTestSent(false), 3000);
+      }
     }
   };
 
-  const handleSendTest = () => {
-    notificationService.notify('Health checkup appointment', selectedMode);
-    setTestSent(true);
-    setTimeout(() => setTestSent(false), 3000);
+  const handleSendTest = async () => {
+    const sent = await notificationService.notify('Health checkup appointment', selectedMode);
+    if (sent) {
+      setTestSent(true);
+      setTimeout(() => setTestSent(false), 3000);
+    }
   };
 
   return (
