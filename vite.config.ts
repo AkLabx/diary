@@ -42,15 +42,15 @@ export default defineConfig(({ mode }) => {
           ],
           screenshots: [
             {
-              src: "https://via.placeholder.com/720x1280/6366f1/ffffff?text=Mobile+Timeline",
+              src: `${baseFolder === '/' ? '/' : baseFolder}screenshots/timeline.svg`.replace(/\/\//g, '/'),
               sizes: "720x1280",
-              type: "image/png",
+              type: "image/svg+xml",
               label: "Timeline View"
             },
             {
-              src: "https://via.placeholder.com/1280x720/FBF8F3/334155?text=Desktop+Editor",
+              src: `${baseFolder === '/' ? '/' : baseFolder}screenshots/editor.svg`.replace(/\/\//g, '/'),
               sizes: "1280x720",
-              type: "image/png",
+              type: "image/svg+xml",
               form_factor: "wide",
               label: "Editor View"
             }
