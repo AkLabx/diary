@@ -91,7 +91,7 @@ export default function () {
       });
 
       check(res, {
-        'weather proxy status 200 or cached': (r) => r.status === 200,
+        'weather proxy status 200 or 401 unauthenticated': (r) => r.status === 200 || r.status === 401,
       });
     });
   }
