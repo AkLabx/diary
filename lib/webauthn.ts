@@ -46,6 +46,9 @@ const strToBin = (str: string) => Uint8Array.from(str, c => c.charCodeAt(0));
  * Stores the master key securely in native keystore.
  */
 export const registerBiometric = async (masterKey: CryptoKey, userId: string): Promise<BiometricData> => {
+    if (!masterKey.extractable) {
+        throw new Error("Biometric enrollment requires an extractable key derived from master password verification.");
+    }
     // 5. Export Master Key to string
     const masterKeyString = await exportKey(masterKey); // Base64 string
 

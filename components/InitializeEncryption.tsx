@@ -65,7 +65,7 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
         // We prefix the salt so the app knows to use 600k instead of the legacy 100k.
         const salt = `v1:600000:${rawSalt}`;
         
-        const key = await deriveKey(password, salt);
+        const key = await deriveKey(password, salt, false);
         const { iv: key_check_iv, data: key_check_value } = await encrypt(key, KEY_CHECK_STRING);
 
         // Extract full_name and avatar_url from user metadata if available (e.g., from Google sign-in)
@@ -88,7 +88,14 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
         
         if (insertError) throw insertError;
         
-        const rawKey = await exportKey(key);
+        // Derive an ephemeral extractable key solely to generate the Recovery Kit, then clear it.
+        let ephemeralExportKey: CryptoKey | null = await deriveKey(password, salt, true);
+        let rawKey: string;
+        try {
+            rawKey = await exportKey(ephemeralExportKey);
+        } finally {
+            ephemeralExportKey = null;
+        }
         
         setRecoveryData({
             key,
@@ -119,7 +126,10 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
 
   const handleContinue = () => {
       if (recoveryData) {
-          onSuccess(recoveryData.key);
+          const readyKey = recoveryData.key;
+          setRecoveryData(null);
+          setPassword('');
+          onSuccess(readyKey);
       }
   };
   

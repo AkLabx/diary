@@ -139,6 +139,10 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   const [isBioSupported, setIsBioSupported] = useState(false);
   const [isBioEnabled, setIsBioEnabled] = useState(false);
   const [isBioLoading, setIsBioLoading] = useState(false);
+  const [isBioModalOpen, setIsBioModalOpen] = useState(false);
+  const [bioPassword, setBioPassword] = useState('');
+  const [bioError, setBioError] = useState<string | null>(null);
+  const bioPasswordInputId = useId();
   
   // Avatar Display State
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
@@ -162,9 +166,17 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     setDeleteError(null);
   };
 
+  const closeBioModal = () => {
+    if (isBioLoading) return;
+    setIsBioModalOpen(false);
+    setBioPassword('');
+    setBioError(null);
+  };
+
   const cropDialog = useModalDialog(Boolean(cropImage), isUploading, () => handleCropCancel());
   const recoveryDialog = useModalDialog(isRecoveryModalOpen, isGeneratingKit, closeRecoveryModal);
   const deleteDialog = useModalDialog(isDeleteModalOpen, isDeletingAccount, closeDeleteModal);
+  const bioDialog = useModalDialog(isBioModalOpen, isBioLoading, closeBioModal);
 
   const { deriveAndVerifyKey, key } = useCrypto();
   const { addToast } = useToast();
@@ -291,8 +303,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
     setIsGeneratingKit(true);
 
     try {
-        // 1. Verify Password
-        const derivedKey = await deriveAndVerifyKey(recoveryPassword, session.user.id);
+        // 1. Verify Password (derive an ephemeral extractable key solely for Recovery Kit export)
+        let derivedKey = await deriveAndVerifyKey(recoveryPassword, session.user.id, true);
         
         if (!derivedKey) {
             setRecoveryError("Incorrect password.");
@@ -301,13 +313,19 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         }
 
         if (!profile) {
+            derivedKey = null;
             setRecoveryError("Profile data unavailable.");
             setIsGeneratingKit(false);
             return;
         }
 
         // 2. Export Raw Key
-        const rawKey = await exportKey(derivedKey);
+        let rawKey: string;
+        try {
+            rawKey = await exportKey(derivedKey);
+        } finally {
+            derivedKey = null;
+        }
 
         // 3. Generate PDF
         generateRecoveryKit({
@@ -351,35 +369,59 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           addToast("Encryption key not available. Please re-login.", "error");
           return;
       }
-      
-      setIsBioLoading(true);
+
       if (isBioEnabled) {
           // Disable
-          localStorage.removeItem(`diary_bio_${session.user.id}`);
-
-          if (Capacitor.isNativePlatform()) {
-             try {
-               await NativeBiometric.deleteData({ key: `diary_master_key_${session.user.id}` });
-             } catch(err) {
-               console.error("Failed to delete native biometric data", err);
-             }
-          }
-
-          setIsBioEnabled(false);
-          addToast("Biometric unlock disabled.", "info");
-      } else {
-          // Enable
+          setIsBioLoading(true);
           try {
-              const data = await registerBiometric(key, session.user.id);
-              localStorage.setItem(`diary_bio_${session.user.id}`, JSON.stringify(data));
-              setIsBioEnabled(true);
-              addToast("Biometric unlock enabled successfully!", "success");
-          } catch (err: any) {
-              console.error("Bio enable failed", err);
-              addToast(err.message || "Failed to enable biometrics.", "error");
+              localStorage.removeItem(`diary_bio_${session.user.id}`);
+
+              if (Capacitor.isNativePlatform()) {
+                 try {
+                   await NativeBiometric.deleteData({ key: `diary_master_key_${session.user.id}` });
+                 } catch(err) {
+                   console.error("Failed to delete native biometric data", err);
+                 }
+              }
+
+              setIsBioEnabled(false);
+              addToast("Biometric unlock disabled.", "info");
+          } finally {
+              setIsBioLoading(false);
           }
+      } else {
+          // Enable: prompt for master password to derive an ephemeral extractable key
+          setBioPassword('');
+          setBioError(null);
+          setIsBioModalOpen(true);
       }
-      setIsBioLoading(false);
+  };
+
+  const handleEnableBiometric = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setBioError(null);
+      setIsBioLoading(true);
+      let exportableKey: CryptoKey | null = null;
+      try {
+          exportableKey = await deriveAndVerifyKey(bioPassword, session.user.id, true);
+          if (!exportableKey) {
+              setBioError("Incorrect password.");
+              return;
+          }
+
+          const data = await registerBiometric(exportableKey, session.user.id);
+          localStorage.setItem(`diary_bio_${session.user.id}`, JSON.stringify(data));
+          setIsBioEnabled(true);
+          setBioPassword('');
+          setIsBioModalOpen(false);
+          addToast("Biometric unlock enabled successfully!", "success");
+      } catch (err: any) {
+          console.error("Bio enable failed", err);
+          setBioError(err?.message || "Failed to enable biometrics.");
+      } finally {
+          exportableKey = null;
+          setIsBioLoading(false);
+      }
   };
 
   return (
@@ -678,6 +720,58 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                                 className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:bg-indigo-400"
                             >
                                 {isGeneratingKit ? 'Generating...' : 'Download Kit'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+        </dialog>
+
+        {/* Master Password Verification Modal for Biometric Enrollment */}
+        <dialog
+            ref={bioDialog.dialogRef}
+            aria-labelledby={bioDialog.titleId}
+            {...bioDialog.dialogProps}
+            className="m-auto w-[calc(100%-2rem)] max-w-md bg-transparent p-0 border-0 text-inherit backdrop:bg-black/50 backdrop:backdrop-blur-sm"
+        >
+            {isBioModalOpen && (
+                <div className="bg-white dark:bg-slate-800 p-6 rounded-lg shadow-xl w-full border border-slate-200 dark:border-slate-700 animate-fade-in-down">
+                    <h3 id={bioDialog.titleId} className="text-xl font-bold text-slate-800 dark:text-slate-100 mb-2">Enable Biometric Unlock</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+                        Please enter your master password to verify your identity and securely enroll biometric unlock for this device.
+                    </p>
+
+                    <form onSubmit={handleEnableBiometric}>
+                        <label htmlFor={bioPasswordInputId} className="sr-only">Master Password</label>
+                        <input
+                            id={bioPasswordInputId}
+                            type="password"
+                            placeholder="Your Password"
+                            value={bioPassword}
+                            onChange={(e) => setBioPassword(e.target.value)}
+                            className="w-full px-4 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 mb-2"
+                            autoFocus
+                            autoComplete="current-password"
+                            required
+                        />
+
+                        {bioError && <p role="alert" className="text-red-500 text-sm mb-4">{bioError}</p>}
+
+                        <div className="flex justify-end gap-3 mt-4">
+                            <button
+                                type="button"
+                                disabled={isBioLoading}
+                                onClick={closeBioModal}
+                                className="px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-md dark:text-slate-300 dark:hover:bg-slate-700"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isBioLoading || !bioPassword}
+                                className="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-md disabled:bg-indigo-400"
+                            >
+                                {isBioLoading ? 'Verifying...' : 'Enable Biometrics'}
                             </button>
                         </div>
                     </form>

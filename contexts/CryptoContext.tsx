@@ -10,7 +10,7 @@ import {
 interface CryptoContextType {
   key: CryptoKey | null;
   setKey: (key: CryptoKey | null) => void;
-  deriveAndVerifyKey: (password: string, userId: string) => Promise<CryptoKey | null>;
+  deriveAndVerifyKey: (password: string, userId: string, extractable?: boolean) => Promise<CryptoKey | null>;
   encrypt: (key: CryptoKey, plaintext: string) => Promise<{ iv: string; data: string; }>;
   decrypt: (key: CryptoKey, ciphertext: string, iv: string) => Promise<string>;
   encryptBinary: (key: CryptoKey, data: ArrayBuffer) => Promise<{ iv: string; data: ArrayBuffer; }>;

@@ -12,6 +12,16 @@ type SelectedImageFormat = { align?: string; width?: string; float?: string; cap
 // Transparent 1x1 placeholder for secure images
 const SECURE_PLACEHOLDER = "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
+const MAX_PROMPT_LENGTH = 2000;
+
+const escapeHtml = (value: string): string =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
 interface RangeStatic {
   index: number;
   length: number;
@@ -82,13 +92,19 @@ const Editor: React.FC = () => {
           const moodParam = queryParams.get('mood');
           const promptParam = queryParams.get('prompt');
 
-          if (dateParam || moodParam || promptParam) {
+          const parsedDate = dateParam ? new Date(dateParam) : null;
+          const validCreatedAt = parsedDate && !isNaN(parsedDate.getTime())
+              ? parsedDate.toISOString()
+              : null;
+          const boundedPrompt = promptParam ? promptParam.slice(0, MAX_PROMPT_LENGTH) : '';
+
+          if (validCreatedAt || moodParam || boundedPrompt) {
               setEntry({
                   id: '',
                   owner_id: '',
-                  title: promptParam ? promptParam : '',
-                  content: promptParam ? `<p><em>${promptParam}</em></p><p><br></p>` : '',
-                  created_at: dateParam ? new Date(dateParam).toISOString() : new Date().toISOString(),
+                  title: boundedPrompt,
+                  content: boundedPrompt ? `<p><em>${escapeHtml(boundedPrompt)}</em></p><p><br></p>` : '',
+                  created_at: validCreatedAt ?? new Date().toISOString(),
                   tags: [],
                   mood: moodParam || undefined,
                   isDecrypted: true,

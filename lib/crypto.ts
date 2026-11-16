@@ -45,9 +45,14 @@ export const generateSalt = (): string => {
  * Supports legacy salt (pure base64, 100k iterations) and new format "v1:iterations:base64salt".
  * @param {string} password The user's password.
  * @param {string} saltString The salt string (base64 or formatted).
+ * @param {boolean} [extractable=false] Whether the derived key can be exported via Web Crypto.
  * @returns {Promise<CryptoKey>} The derived AES-GCM key.
  */
-export const deriveKey = async (password: string, saltString: string): Promise<CryptoKey> => {
+export const deriveKey = async (
+  password: string,
+  saltString: string,
+  extractable: boolean = false
+): Promise<CryptoKey> => {
   const passwordBuffer = textEncoder.encode(password);
   
   // Default to legacy iteration count
@@ -87,7 +92,7 @@ export const deriveKey = async (password: string, saltString: string): Promise<C
     },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
-    true,
+    extractable,
     ['encrypt', 'decrypt']
   );
 };
@@ -179,9 +184,14 @@ export const decryptBinary = async (key: CryptoKey, data: ArrayBuffer, iv: strin
  * Fetches user profile, derives key, and verifies it.
  * @param password The user's password.
  * @param userId The user's ID.
+ * @param extractable Whether the derived key can be exported (defaults to false).
  * @returns The derived CryptoKey if successful, otherwise null.
  */
-export async function deriveAndVerifyKey(password: string, userId: string): Promise<CryptoKey | null> {
+export async function deriveAndVerifyKey(
+  password: string,
+  userId: string,
+  extractable: boolean = false
+): Promise<CryptoKey | null> {
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -196,7 +206,7 @@ export async function deriveAndVerifyKey(password: string, userId: string): Prom
   const profile = data as Profile;
 
   try {
-    const key = await deriveKey(password, profile.salt);
+    const key = await deriveKey(password, profile.salt, extractable);
     const decryptedCheck = await decrypt(key, profile.key_check_value, profile.key_check_iv);
 
     if (decryptedCheck === KEY_CHECK_STRING) {
@@ -224,15 +234,19 @@ export const exportKey = async (key: CryptoKey): Promise<string> => {
  * Imports a raw key back into a CryptoKey.
  * Used for biometric unlock logic.
  * @param rawKeyBase64 The base64 encoded raw key.
+ * @param extractable Whether the imported key can be exported (defaults to false).
  * @returns Promise resolving to CryptoKey
  */
-export const importKey = async (rawKeyBase64: string): Promise<CryptoKey> => {
+export const importKey = async (
+    rawKeyBase64: string,
+    extractable: boolean = false
+): Promise<CryptoKey> => {
     const rawBuffer = decodeBase64(rawKeyBase64);
     return window.crypto.subtle.importKey(
         "raw",
         rawBuffer,
         { name: "AES-GCM" },
-        true,
+        extractable,
         ["encrypt", "decrypt"]
     );
 };
