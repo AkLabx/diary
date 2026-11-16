@@ -358,7 +358,6 @@ const ProfileView: React.FC<ProfileViewProps> = ({
         // 3. Generate PDF
         generateRecoveryKit({
             email: session.user.email || 'Unknown',
-            password: recoveryPassword,
             salt: profile.salt,
             rawKey: rawKey
         });

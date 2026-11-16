@@ -16,12 +16,12 @@ interface RecoveryData {
     key: CryptoKey;
     rawKey: string;
     salt: string;
-    password: string;
     email: string;
 }
 
 const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, session }) => {
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,14 +33,14 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
   const [hasDownloadedKit, setHasDownloadedKit] = useState(false);
 
   const getPasswordStrength = (pass: string) => {
-    if (!pass) return { score: 0, label: '', color: '', width: 'w-0' };
+    if (!pass) return { score: 0, label: '', color: '', width: 'w-0', barColor: 'bg-slate-200' };
     let score = 0;
-    if (pass.length >= 8) score++;
     if (pass.length >= 10) score++;
+    if (pass.length >= 14) score++;
     if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score++;
     if (/\d/.test(pass)) score++;
     if (/[^A-Za-z0-9]/.test(pass)) score++;
-    if (score <= 2) return { score, label: 'Weak (minimum 8 characters required)', color: 'text-red-500', barColor: 'bg-red-500', width: 'w-1/3' };
+    if (score < 3) return { score, label: 'Weak (minimum 10 characters required)', color: 'text-red-500', barColor: 'bg-red-500', width: 'w-1/3' };
     if (score <= 4) return { score, label: 'Good (recommended for vault security)', color: 'text-amber-500', barColor: 'bg-amber-500', width: 'w-2/3' };
     return { score, label: 'Strong vault encryption', color: 'text-emerald-500', barColor: 'bg-emerald-500', width: 'w-full' };
   };
@@ -49,8 +49,16 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password.length < 8) {
-        setError("Password must be at least 8 characters long for end-to-end vault security.");
+    if (password.length < 10) {
+        setError("Password must be at least 10 characters long for end-to-end vault security.");
+        return;
+    }
+    if (strength.score < 3) {
+        setError("Please choose a stronger password (strength rating: Good or Strong).");
+        return;
+    }
+    if (password !== confirmPassword) {
+        setError("Master passwords do not match.");
         return;
     }
     setLoading(true);
@@ -101,7 +109,6 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
             key,
             rawKey,
             salt,
-            password,
             email: user.email || 'Unknown Email'
         });
 
@@ -117,7 +124,6 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
     if (!recoveryData) return;
     generateRecoveryKit({
         email: recoveryData.email,
-        password: recoveryData.password,
         salt: recoveryData.salt,
         rawKey: recoveryData.rawKey
     });
@@ -129,6 +135,7 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
           const readyKey = recoveryData.key;
           setRecoveryData(null);
           setPassword('');
+          setConfirmPassword('');
           onSuccess(readyKey);
       }
   };
@@ -155,7 +162,7 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                         Important: Backup Required
                     </h3>
                     <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-2">
-                        Because we can't reset your password, you <strong>must</strong> download your Recovery Kit. It contains your password and raw encryption keys.
+                        Because we can't reset your password, you <strong>must</strong> download your Emergency Recovery Sheet. It contains your cryptographic salt and raw emergency recovery key tokens.
                     </p>
                 </div>
 
@@ -166,7 +173,7 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    Download Recovery Kit
+                    Download Recovery Sheet
                 </button>
 
                 <button 
@@ -174,7 +181,7 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                     disabled={!hasDownloadedKit}
                     className="w-full px-4 py-2 font-semibold text-indigo-600 bg-indigo-50 rounded-md hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 transition-colors dark:bg-transparent dark:text-indigo-400 dark:hover:text-indigo-300 dark:disabled:text-slate-600"
                 >
-                    {hasDownloadedKit ? "Continue to App" : "Download Kit to Continue"}
+                    {hasDownloadedKit ? "Continue to App" : "Download Sheet to Continue"}
                 </button>
             </div>
         </div>
@@ -200,10 +207,10 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                 <div className="relative">
                   <input
                       type={isPasswordVisible ? 'text' : 'password'}
-                      placeholder="Your encryption password (min 8 chars)"
+                      placeholder="Your master password (min 10 chars)"
                       value={password}
                       required
-                      minLength={8}
+                      minLength={10}
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full px-4 py-2 pr-10 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
                       autoComplete="new-password"
@@ -226,6 +233,18 @@ const InitializeEncryption: React.FC<InitializeEncryptionProps> = ({ onSuccess, 
                       </svg>
                     )}
                   </button>
+                </div>
+                <div className="relative">
+                  <input
+                      type={isPasswordVisible ? 'text' : 'password'}
+                      placeholder="Confirm your master password"
+                      value={confirmPassword}
+                      required
+                      minLength={10}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full px-4 py-2 pr-10 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200"
+                      autoComplete="new-password"
+                  />
                 </div>
                 {password && (
                   <div className="space-y-1">

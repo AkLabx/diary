@@ -15,6 +15,7 @@ const Auth: React.FC<AuthProps> = () => {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { addToast } = useToast();
@@ -141,6 +142,21 @@ const Auth: React.FC<AuthProps> = () => {
     setError(null);
     try {
       if (isSignUp) {
+        if (password.length < 10) {
+          setError('Password must be at least 10 characters long.');
+          setLoading(false);
+          return;
+        }
+        if (passwordStrength < 3) {
+          setError('Please choose a stronger password (at least "Good").');
+          setLoading(false);
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError('Passwords do not match.');
+          setLoading(false);
+          return;
+        }
         await handleSignUp();
       } else {
         await handleSignIn();
@@ -202,10 +218,10 @@ const Auth: React.FC<AuthProps> = () => {
           <div className="relative">
             <input
               type={isPasswordVisible ? 'text' : 'password'}
-              placeholder="Your password (min 6 characters)"
+              placeholder={isSignUp ? "Your password (min 10 characters)" : "Your password"}
               value={password}
               required
-              minLength={6}
+              minLength={isSignUp ? 10 : 6}
               onChange={(e) => {
                   setPassword(e.target.value)
                   handleKeyDown();
@@ -236,6 +252,27 @@ const Auth: React.FC<AuthProps> = () => {
               )}
             </button>
           </div>
+
+          {isSignUp && (
+            <div className="relative animate-fade-in">
+              <input
+                type={isPasswordVisible ? 'text' : 'password'}
+                placeholder="Confirm your password"
+                value={confirmPassword}
+                required
+                minLength={10}
+                onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    handleKeyDown();
+                }}
+                onFocus={handleFocusPassword}
+                onBlur={handleBlurInputs}
+                onKeyDown={handleKeyDown}
+                className="w-full px-4 py-3 pr-12 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-200 [&:user-invalid]:border-red-500 dark:[&:user-invalid]:border-red-400 transition-all"
+                autoComplete="new-password"
+              />
+            </div>
+          )}
 
           {/* Password Strength Indicator (Only for Sign Up) */}
           {isSignUp && password.length > 0 && (
@@ -289,7 +326,7 @@ const Auth: React.FC<AuthProps> = () => {
         
         <p className="text-center text-sm text-slate-500 dark:text-slate-400">
             {isSignUp ? 'Already have an account? ' : "Don't have an account? "}
-            <button onClick={() => {setIsSignUp(!isSignUp); setError(null)}} className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
+            <button onClick={() => { setIsSignUp(!isSignUp); setError(null); setConfirmPassword(''); }} className="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
                 {isSignUp ? 'Sign In' : 'Sign Up'}
             </button>
         </p>
