@@ -50,8 +50,8 @@ const PrivacyPolicy: React.FC = () => {
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Account Identifier:</strong> Your email address, used solely to authenticate your session via Supabase Auth.</li>
             <li><strong>Cryptographic Verification Material:</strong> A random cryptographic salt, a key check value, and its initialization vector (IV) stored in your user profile. These allow your browser to confirm password correctness without our backend ever knowing the password.</li>
-            <li><strong>Encrypted Diary Content:</strong> Encrypted ciphertexts (titles, text, journal classification, mood, tags) and IVs stored in database table <code>public.diaries</code>.</li>
-            <li><strong>Encrypted Multimedia:</strong> Private encrypted binaries of uploaded photos and voice recordings stored in non-public Supabase storage buckets (<code>diary-images</code>, <code>diary-audio</code>).</li>
+            <li><strong>Encrypted Diary Content:</strong> Encrypted ciphertexts (titles, text, journal classification, mood, tags) and IVs stored in database table <code>public.diaries</code>. Database metadata columns for mood, tags, and journal are zeroed, ensuring zero cleartext metadata leakage in cloud storage.</li>
+            <li><strong>Encrypted Multimedia & Avatars:</strong> Private client-side encrypted binaries of uploaded photos, voice recordings, and profile avatars stored in non-public Supabase storage buckets (<code>diary-images</code>, <code>diary-audio</code>, <code>avatars</code>).</li>
             <li><strong>Ephemeral Diagnostics:</strong> Anonymized application crash logs and service worker lifecycle events, strictly stripped of IP addresses, cookies, or personal identifiers.</li>
           </ul>
 
@@ -60,7 +60,7 @@ const PrivacyPolicy: React.FC = () => {
           </h2>
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Contractual Necessity (GDPR Art. 6(1)(b)):</strong> Processing your account email and encrypted blobs is necessary to provide the service according to our Terms of Use.</li>
-            <li><strong>Explicit Consent (GDPR Art. 6(1)(a) & Art. 9(2)(a)):</strong> If you record reflections touching on personal health, philosophical beliefs, or emotional states, you explicitly consent to the client-side encryption and storage of such data. Because our servers only hold encrypted ciphertext with zero decryption keys, we act strictly as a zero-knowledge data host.</li>
+            <li><strong>Explicit Consent (GDPR Art. 6(1)(a) & Art. 9(2)(a)):</strong> If you record reflections touching on personal health, philosophical beliefs, or emotional states, you explicitly consent to the client-side encryption and storage of such data. All diary entries, titles, journal classifications, mood, tags, and custom profile avatars are client-side AES-GCM encrypted before transmission to cloud storage. Because our servers only hold encrypted ciphertext with zero decryption keys, we act strictly as a zero-knowledge data host.</li>
           </ul>
 
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-8">
@@ -80,7 +80,7 @@ const PrivacyPolicy: React.FC = () => {
             You have the absolute right to permanently delete your account and all associated data at any time:
           </p>
           <ul className="list-disc pl-6 space-y-1">
-            <li><strong>In-App Self-Service:</strong> Navigate to <em>Profile & Settings → Danger Zone → Delete Account & All Data</em>. Confirming deletion immediately executes an atomic cascade that purges your user profile, all database records, and all storage files.</li>
+            <li><strong>In-App Self-Service:</strong> Navigate to <em>Profile & Settings → Danger Zone → Delete Account & All Data</em>. Confirming deletion immediately executes an atomic cascade that purges your user profile, all database records across diary and task tables, and all storage files across all private buckets (<code>diary-images</code>, <code>diary-audio</code>, <code>avatars</code>).</li>
             <li><strong>Public Web Deletion Portal:</strong> Per Google Play policies, you do not need the mobile app installed to request deletion. You can access our public web portal at <Link to="/delete-account" className="text-indigo-600 dark:text-indigo-400 font-semibold underline">#/delete-account</Link> to delete your account or submit a deletion request.</li>
             <li><strong>Zero Data Retention:</strong> Once deleted, zero encrypted files, backups, or account credentials remain on our servers.</li>
           </ul>
@@ -98,7 +98,7 @@ const PrivacyPolicy: React.FC = () => {
           </h2>
           <ul className="list-disc pl-6 space-y-1">
             <li><strong>Supabase Inc.:</strong> Cloud database, storage, and authentication provider. Governed by enterprise Data Processing Agreements (DPA) and SOC2 Type II compliance.</li>
-            <li><strong>Weather Providers (OpenWeatherMap / Open-Meteo):</strong> Used ephemerally to fetch weather conditions if location permissions are granted. IP addresses and GPS coordinates are never retained or linked to your user identity.</li>
+            <li><strong>Weather Providers (OpenWeatherMap / Open-Meteo):</strong> Used ephemerally to fetch weather conditions strictly when device GPS permissions are explicitly granted by the user or when a city is manually searched. User IP addresses are never transmitted to third-party geolocation trackers, and weather queries are never logged, stored, or linked to user identities.</li>
           </ul>
 
           <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100 mt-8">

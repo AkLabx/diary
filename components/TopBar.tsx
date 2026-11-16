@@ -4,6 +4,7 @@ import { Weather, Profile } from '../types';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 import { useCrypto } from '../contexts/CryptoContext';
+import { decryptBinary } from '../lib/crypto';
 import { usePersonalTasks } from '../contexts/TaskContext';
 import { WeatherModal } from './WeatherModal';
 import { getWeatherConditionEmoji } from '../lib/weather';
@@ -69,7 +70,7 @@ const TopBar: React.FC<TopBarProps> = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [avatarSrc, setAvatarSrc] = useState<string | null>(null);
   const [isWeatherModalOpen, setIsWeatherModalOpen] = useState(false);
-  const { lock } = useCrypto();
+  const { lock, key } = useCrypto();
 
   useEffect(() => {
     const timerId = setInterval(() => {
@@ -81,6 +82,8 @@ const TopBar: React.FC<TopBarProps> = ({
 
   useEffect(() => {
       let isMounted = true;
+      let createdBlobUrl: string | null = null;
+
       const resolveAvatar = async () => {
           if (!profile?.avatar_url) {
               if (isMounted) setAvatarSrc(null);
@@ -98,7 +101,28 @@ const TopBar: React.FC<TopBarProps> = ({
                   if (error) throw error;
 
                   if (isMounted && data?.signedUrl) {
-                      setAvatarSrc(data.signedUrl);
+                      if (profile.avatar_url.endsWith('.bin') && key) {
+                          try {
+                              const res = await fetch(data.signedUrl);
+                              const buffer = await res.arrayBuffer();
+                              const fileName = profile.avatar_url.split('/').pop() || '';
+                              const ivPart = fileName.replace('.bin', '').split('_')[1];
+                              const iv = decodeURIComponent(ivPart || '');
+                              if (iv) {
+                                  const decryptedBuffer = await decryptBinary(key, buffer, iv);
+                                  const blob = new Blob([decryptedBuffer], { type: 'image/webp' });
+                                  createdBlobUrl = URL.createObjectURL(blob);
+                                  if (isMounted) setAvatarSrc(createdBlobUrl);
+                              } else {
+                                  if (isMounted) setAvatarSrc(data.signedUrl);
+                              }
+                          } catch (err) {
+                              console.error("Error decrypting avatar in TopBar:", err);
+                              if (isMounted) setAvatarSrc(null);
+                          }
+                      } else {
+                          setAvatarSrc(data.signedUrl);
+                      }
                   }
               } catch (e) {
                   console.error("Error resolving avatar URL in TopBar:", e);
@@ -107,8 +131,13 @@ const TopBar: React.FC<TopBarProps> = ({
           }
       };
       resolveAvatar();
-      return () => { isMounted = false; };
-  }, [profile?.avatar_url]);
+      return () => {
+          isMounted = false;
+          if (createdBlobUrl) {
+              URL.revokeObjectURL(createdBlobUrl);
+          }
+      };
+  }, [profile?.avatar_url, key]);
 
   return (
     <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-[#EAE1D6] dark:border-slate-800 pt-[env(safe-area-inset-top,0px)] flex-shrink-0 relative z-20 transition-all duration-200">

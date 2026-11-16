@@ -2,7 +2,7 @@ import React, { useState, useEffect, ChangeEvent, useRef, useId } from 'react';
 type Session = any;
 import { Profile } from '../types';
 import { useCrypto } from '../contexts/CryptoContext';
-import { exportKey } from '../lib/crypto';
+import { exportKey, decryptBinary } from '../lib/crypto';
 import { generateRecoveryKit } from '../lib/recoveryKit';
 import { isBiometricSupported, registerBiometric } from '../lib/webauthn';
 import { useToast } from '../contexts/ToastContext';
@@ -197,6 +197,8 @@ const ProfileView: React.FC<ProfileViewProps> = ({
   
   useEffect(() => {
       let isMounted = true;
+      let createdBlobUrl: string | null = null;
+
       const resolveAvatar = async () => {
           if (!profile?.avatar_url) {
               if (isMounted) setAvatarSrc(null);
@@ -216,7 +218,28 @@ const ProfileView: React.FC<ProfileViewProps> = ({
                   if (error) throw error;
 
                   if (isMounted && data?.signedUrl) {
-                      setAvatarSrc(data.signedUrl);
+                      if (profile.avatar_url.endsWith('.bin') && key) {
+                          try {
+                              const res = await fetch(data.signedUrl);
+                              const buffer = await res.arrayBuffer();
+                              const fileName = profile.avatar_url.split('/').pop() || '';
+                              const ivPart = fileName.replace('.bin', '').split('_')[1];
+                              const iv = decodeURIComponent(ivPart || '');
+                              if (iv) {
+                                  const decryptedBuffer = await decryptBinary(key, buffer, iv);
+                                  const blob = new Blob([decryptedBuffer], { type: 'image/webp' });
+                                  createdBlobUrl = URL.createObjectURL(blob);
+                                  if (isMounted) setAvatarSrc(createdBlobUrl);
+                              } else {
+                                  if (isMounted) setAvatarSrc(data.signedUrl);
+                              }
+                          } catch (decryptErr) {
+                              console.error("Error decrypting avatar:", decryptErr);
+                              if (isMounted) setAvatarSrc(null);
+                          }
+                      } else {
+                          setAvatarSrc(data.signedUrl);
+                      }
                   }
               } catch (e) {
                   console.error("Error resolving avatar URL. Check RLS policies.", e);
@@ -225,8 +248,13 @@ const ProfileView: React.FC<ProfileViewProps> = ({
           }
       };
       resolveAvatar();
-      return () => { isMounted = false; };
-  }, [profile?.avatar_url]);
+      return () => {
+          isMounted = false;
+          if (createdBlobUrl) {
+              URL.revokeObjectURL(createdBlobUrl);
+          }
+      };
+  }, [profile?.avatar_url, key]);
 
   const handleNameSave = async (e: React.FormEvent) => {
     e.preventDefault();

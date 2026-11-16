@@ -592,9 +592,11 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
 
        const isUpdate = !!entryData.id;
        const record = {
-         encrypted_entry, iv,
-         mood: entryData.mood, tags: entryData.tags,
-         journal: entryData.journal || 'Personal',
+         encrypted_entry,
+         iv,
+         mood: null,
+         tags: null,
+         journal: null,
          created_at: entryData.created_at
        };
 
@@ -1020,20 +1022,38 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   const handleAvatarUpload = useCallback(async (file: File) => {
     try {
       const { blob } = await processImage(file, 256, 0.85);
-      const fileName = `${session.user.id}/${Date.now()}.webp`;
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, blob, {
-        contentType: 'image/webp',
-        upsert: true
-      });
-      if (uploadError) throw uploadError;
-      const { error: updateError } = await supabase.from('profiles').update({ avatar_url: fileName }).eq('id', session.user.id);
-      if (updateError) throw updateError;
-      setProfile(prev => prev ? { ...prev, avatar_url: fileName } : null);
+      if (key) {
+        const buffer = await blob.arrayBuffer();
+        const { iv, data } = await encryptBinary(key, buffer);
+        const fileName = `${session.user.id}/${Date.now()}_${encodeURIComponent(iv)}.bin`;
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(
+          fileName,
+          new Blob([data], { type: 'application/octet-stream' }),
+          {
+            contentType: 'application/octet-stream',
+            upsert: true
+          }
+        );
+        if (uploadError) throw uploadError;
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: fileName }).eq('id', session.user.id);
+        if (updateError) throw updateError;
+        setProfile(prev => prev ? { ...prev, avatar_url: fileName } : null);
+      } else {
+        const fileName = `${session.user.id}/${Date.now()}.webp`;
+        const { error: uploadError } = await supabase.storage.from('avatars').upload(fileName, blob, {
+          contentType: 'image/webp',
+          upsert: true
+        });
+        if (uploadError) throw uploadError;
+        const { error: updateError } = await supabase.from('profiles').update({ avatar_url: fileName }).eq('id', session.user.id);
+        if (updateError) throw updateError;
+        setProfile(prev => prev ? { ...prev, avatar_url: fileName } : null);
+      }
     } catch (error) {
       console.error("Error uploading avatar:", error);
       throw error;
     }
-  }, [session.user.id]);
+  }, [session.user.id, key, encryptBinary]);
 
   const handleExportData = useCallback(async (onProgress: (progress: string) => void) => {
       if (!key) return;

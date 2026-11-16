@@ -359,15 +359,10 @@ export async function loadWeather(options?: { forceRefresh?: boolean }): Promise
     const gpsWeather = await fetchWeather(coords.lat, coords.lon, 'gps');
     if (gpsWeather) return gpsWeather;
   } catch (gpsError) {
-    console.warn("GPS failed or denied, trying network IP fallback...", gpsError);
+    console.warn("GPS location unavailable or permission denied:", gpsError);
   }
 
-  // 4. Try network IP fallback
-  const ipLocation = await fetchLocationByIP();
-  if (ipLocation) {
-    const ipWeather = await fetchWeather(ipLocation.lat, ipLocation.lon, 'ip', ipLocation.city);
-    if (ipWeather) return ipWeather;
-  }
-
+  // Note: Automatic network IP fallback (ipwho.is) is intentionally omitted to protect user privacy.
+  // Users can set a custom city preference via the weather modal.
   return null;
 }
