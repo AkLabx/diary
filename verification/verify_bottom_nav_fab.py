@@ -1,8 +1,12 @@
+import os
 import sys
 import time
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding='utf-8')
+
+TEST_EMAIL = os.environ.get("TEST_EMAIL", "testuser@diary.com")
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "test@4321")
 
 def run():
     with sync_playwright() as p:
@@ -22,8 +26,8 @@ def run():
         email_input = page.locator("input[type='email']")
         if email_input.is_visible():
             print("Entering login credentials...")
-            email_input.fill("testuser@diary.com")
-            page.locator("input[type='password']").fill("test@4321")
+            email_input.fill(TEST_EMAIL)
+            page.locator("input[type='password']").fill(TEST_PASSWORD)
             page.locator("button[type='submit']").click()
             page.wait_for_timeout(3000)
 
@@ -31,7 +35,7 @@ def run():
         key_input = page.locator("input[type='password']")
         if key_input.is_visible():
             print("Unlocking diary encryption...")
-            key_input.fill("test@4321")
+            key_input.fill(TEST_PASSWORD)
             page.locator("button:has-text('Unlock'), button[type='submit']").first.click()
             page.wait_for_timeout(4000)
 

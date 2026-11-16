@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import subprocess
@@ -5,6 +6,9 @@ import urllib.request
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding='utf-8')
+
+TEST_EMAIL = os.environ.get("TEST_EMAIL", "testuser@diary.com")
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "test@4321")
 
 def wait_for_server(url, timeout=20):
     start = time.time()
@@ -50,17 +54,17 @@ def run():
             # Check if login required
             email_input = page.locator("input[type='email']")
             if email_input.is_visible():
-                print("Entering credentials (testuser@diary.com)...")
-                email_input.fill("testuser@diary.com")
-                page.locator("input[type='password']").fill("test@4321")
+                print("Entering credentials (" + TEST_EMAIL + ")...")
+                email_input.fill(TEST_EMAIL)
+                page.locator("input[type='password']").fill(TEST_PASSWORD)
                 page.locator("button[type='submit']").click()
                 page.wait_for_timeout(3500)
 
             # Master key password prompt
             key_input = page.locator("input[type='password']")
             if key_input.is_visible():
-                print("Unlocking master encryption key (test@4321)...")
-                key_input.fill("test@4321")
+                print("Unlocking master encryption key...")
+                key_input.fill(TEST_PASSWORD)
                 page.locator("button:has-text('Unlock'), button[type='submit']").first.click()
                 page.wait_for_timeout(4000)
 

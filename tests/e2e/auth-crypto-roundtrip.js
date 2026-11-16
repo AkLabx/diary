@@ -1,14 +1,14 @@
 // tests/e2e/auth-crypto-roundtrip.js
 // Automated Integration & End-to-End Cryptographic Round-Trip Test
-// Uses dedicated test credentials: testuser@diary.com / test@4321
+// Uses test credentials from environment variables (with fallback defaults)
 
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ccgiozknvlknbrkzfcdx.supabase.co';
 const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZ2lvemtudmxrbmJya3pmY2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTY3NTMsImV4cCI6MjA3ODQzMjc1M30.lmmuGnynbY_n_4UlsrGw5ofRd6p9QLKCcrfHf7itEg8';
 
-const TEST_EMAIL = 'testuser@diary.com';
-const TEST_PASSWORD = 'test@4321';
+const TEST_EMAIL = process.env.TEST_EMAIL || 'testuser@diary.com';
+const TEST_PASSWORD = process.env.TEST_PASSWORD || 'test@4321';
 const KEY_CHECK_STRING = "DAILY_DIARY_KEY_CHECK_v1";
 const PBKDF2_ITERATIONS = 600000;
 

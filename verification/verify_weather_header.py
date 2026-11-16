@@ -1,8 +1,12 @@
+import os
 import sys
 import time
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding='utf-8')
+
+TEST_EMAIL = os.environ.get("TEST_EMAIL", "testuser@diary.com")
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "test@4321")
 
 def run():
     with sync_playwright() as p:
@@ -23,9 +27,9 @@ def run():
         email_input = page.locator("input[type='email']")
         if email_input.is_visible():
             print("Login form visible. Entering credentials...")
-            email_input.fill("testuser@diary.com")
+            email_input.fill(TEST_EMAIL)
             password_input = page.locator("input[type='password']")
-            password_input.fill("test@4321")
+            password_input.fill(TEST_PASSWORD)
             page.locator("button[type='submit']").click()
             print("Submitted login form. Waiting for authentication...")
             page.wait_for_timeout(4000)
@@ -34,7 +38,7 @@ def run():
         key_input = page.locator("input[placeholder*='password' i], input[type='password']")
         if key_input.is_visible():
             print("Master encryption password prompt detected. Entering key...")
-            key_input.fill("test@4321")
+            key_input.fill(TEST_PASSWORD)
             submit_btn = page.locator("button[type='submit'], button:has-text('Unlock'), button:has-text('Submit')").first
             if submit_btn.is_visible():
                 submit_btn.click()
@@ -85,13 +89,13 @@ def run():
         desktop_page.wait_for_timeout(2000)
         desktop_email = desktop_page.locator("input[type='email']")
         if desktop_email.is_visible():
-            desktop_email.fill("testuser@diary.com")
-            desktop_page.locator("input[type='password']").fill("test@4321")
+            desktop_email.fill(TEST_EMAIL)
+            desktop_page.locator("input[type='password']").fill(TEST_PASSWORD)
             desktop_page.locator("button[type='submit']").click()
             desktop_page.wait_for_timeout(3000)
         desktop_key = desktop_page.locator("input[type='password']")
         if desktop_key.is_visible():
-            desktop_key.fill("test@4321")
+            desktop_key.fill(TEST_PASSWORD)
             desktop_page.locator("button:has-text('Unlock')").click()
             desktop_page.wait_for_timeout(3000)
 

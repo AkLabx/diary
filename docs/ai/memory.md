@@ -66,7 +66,6 @@
 ## 4. Automated Testing Credentials & Project Targets
 
 For AI agents executing automated UI/UX verification, end-to-end testing, or Playwright scripts:
-- **Test Email**: `testuser@diary.com`
-- **Account & Master Password**: `test@4321`
+- **Test Credentials**: Refer to the gitignored `.agents/AGENTS.md` or provide via `TEST_EMAIL` and `TEST_PASSWORD` environment variables.
 - **Local Dev Server**: `http://localhost:5173`
 - **Target Supabase Ref**: `ccgiozknvlknbrkzfcdx`

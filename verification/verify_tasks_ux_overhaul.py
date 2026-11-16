@@ -1,3 +1,4 @@
+import os
 import sys
 import time
 import subprocess
@@ -5,6 +6,9 @@ import urllib.request
 from playwright.sync_api import sync_playwright
 
 sys.stdout.reconfigure(encoding='utf-8')
+
+TEST_EMAIL = os.environ.get("TEST_EMAIL", "testuser@diary.com")
+TEST_PASSWORD = os.environ.get("TEST_PASSWORD", "test@4321")
 
 def wait_for_server(url, timeout=20):
     start = time.time()
@@ -47,8 +51,8 @@ def run():
             email_input = page.locator("input[type='email']")
             if email_input.is_visible():
                 print("Entering credentials...")
-                email_input.fill("testuser@diary.com")
-                page.locator("input[type='password']").fill("test@4321")
+                email_input.fill(TEST_EMAIL)
+                page.locator("input[type='password']").fill(TEST_PASSWORD)
                 page.locator("button[type='submit']").click()
                 page.wait_for_timeout(4000)
 
@@ -56,7 +60,7 @@ def run():
             key_input = page.locator("input[type='password']")
             if key_input.is_visible():
                 print("Unlocking master key...")
-                key_input.fill("test@4321")
+                key_input.fill(TEST_PASSWORD)
                 page.locator("button:has-text('Unlock'), button[type='submit']").first.click()
                 page.wait_for_timeout(4000)
 
@@ -67,7 +71,7 @@ def run():
 
             key_input2 = page.locator("input[type='password']")
             if key_input2.is_visible():
-                key_input2.fill("test@4321")
+                key_input2.fill(TEST_PASSWORD)
                 page.locator("button:has-text('Unlock'), button[type='submit']").first.click()
                 page.wait_for_timeout(4000)
 
@@ -114,8 +118,8 @@ def run():
 
             m_email = mobile_page.locator("input[type='email']")
             if m_email.is_visible():
-                m_email.fill("testuser@diary.com")
-                mobile_page.locator("input[type='password']").fill("test@4321")
+                m_email.fill(TEST_EMAIL)
+                mobile_page.locator("input[type='password']").fill(TEST_PASSWORD)
                 mobile_page.locator("button[type='submit']").click()
                 mobile_page.wait_for_timeout(4000)
 
@@ -125,7 +129,7 @@ def run():
 
             m_key = mobile_page.locator("input[type='password']")
             if m_key.is_visible():
-                m_key.fill("test@4321")
+                m_key.fill(TEST_PASSWORD)
                 mobile_page.locator("button:has-text('Unlock'), button[type='submit']").first.click()
                 mobile_page.wait_for_timeout(4000)
 
