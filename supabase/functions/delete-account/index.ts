@@ -9,6 +9,46 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
+/**
+ * Recursively collects all storage object paths under a prefix, handling pagination and nested directories.
+ */
+async function collectAllBucketPaths(adminClient: any, bucket: string, prefix: string): Promise<string[]> {
+  const paths: string[] = [];
+  let offset = 0;
+  const limit = 100;
+
+  let hasMore = true;
+  while (hasMore) {
+    const { data, error } = await adminClient.storage.from(bucket).list(prefix, { limit, offset });
+    if (error) {
+      throw new Error(`Storage list failed for ${bucket}/${prefix}: ${error.message}`);
+    }
+    if (!data || data.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    for (const item of data) {
+      const fullPath = `${prefix}/${item.name}`;
+      if (item.id === null) {
+        // Subdirectory; recurse into it (e.g. task_attachments)
+        const nestedPaths = await collectAllBucketPaths(adminClient, bucket, fullPath);
+        paths.push(...nestedPaths);
+      } else {
+        paths.push(fullPath);
+      }
+    }
+
+    if (data.length < limit) {
+      hasMore = false;
+    } else {
+      offset += limit;
+    }
+  }
+
+  return paths;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -53,28 +93,40 @@ Deno.serve(async (req: Request) => {
     // 2. Admin client with service role key for full cascade deletion
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // 3. Purge all private storage buckets
+    // 3. Purge all private storage buckets recursively
     const buckets = ['diary-images', 'diary-audio', 'avatars'];
     for (const bucket of buckets) {
-      try {
-        const { data: files, error: listError } = await adminClient.storage.from(bucket).list(uid);
-        if (!listError && files && files.length > 0) {
-          const filePaths = files.map(f => `${uid}/${f.name}`);
-          console.log(`[delete-account] Removing ${filePaths.length} objects from bucket '${bucket}'`);
-          await adminClient.storage.from(bucket).remove(filePaths);
+      const filePaths = await collectAllBucketPaths(adminClient, bucket, uid);
+      if (filePaths.length > 0) {
+        console.log(`[delete-account] Removing ${filePaths.length} objects from bucket '${bucket}'`);
+        // Remove objects in chunks of 100 to avoid payload size limits
+        const chunkSize = 100;
+        for (let i = 0; i < filePaths.length; i += chunkSize) {
+          const chunk = filePaths.slice(i, i + chunkSize);
+          const { error: removeError } = await adminClient.storage.from(bucket).remove(chunk);
+          if (removeError) {
+            throw new Error(`Failed to remove objects from bucket '${bucket}': ${removeError.message}`);
+          }
         }
-      } catch (storageErr) {
-        console.error(`[delete-account] Error clearing storage bucket '${bucket}':`, storageErr);
       }
     }
 
-    // 4. Delete user database records (media_files, diaries, profiles)
-    try {
-      await adminClient.from('media_files').delete().eq('user_id', uid);
-      await adminClient.from('diaries').delete().eq('owner_id', uid);
-      await adminClient.from('profiles').delete().eq('id', uid);
-    } catch (dbErr) {
-      console.error('[delete-account] Database cleanup warning:', dbErr);
+    // 4. Delete user database records across all user tables and task tables
+    const tableCleanups: Array<{ name: string; deleteFn: () => Promise<any> }> = [
+      { name: 'task_attachments', deleteFn: () => adminClient.from('task_attachments').delete().eq('owner_id', uid) },
+      { name: 'task_history', deleteFn: () => adminClient.from('task_history').delete().eq('owner_id', uid) },
+      { name: 'personal_tasks', deleteFn: () => adminClient.from('personal_tasks').delete().eq('owner_id', uid) },
+      { name: 'task_templates', deleteFn: () => adminClient.from('task_templates').delete().eq('owner_id', uid) },
+      { name: 'media_files', deleteFn: () => adminClient.from('media_files').delete().eq('user_id', uid) },
+      { name: 'diaries', deleteFn: () => adminClient.from('diaries').delete().eq('owner_id', uid) },
+      { name: 'profiles', deleteFn: () => adminClient.from('profiles').delete().eq('id', uid) },
+    ];
+
+    for (const table of tableCleanups) {
+      const { error: dbError } = await table.deleteFn();
+      if (dbError) {
+        console.warn(`[delete-account] Warning while deleting from ${table.name}:`, dbError);
+      }
     }
 
     // 5. Delete user from Supabase Auth

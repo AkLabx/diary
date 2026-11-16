@@ -904,19 +904,47 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
         return;
       }
 
-      // Cleanup Audio Files first
+      // 1. Cleanup media files registered in public.media_files before deleting entry row
+      try {
+        const { data: mediaRows, error: mediaQueryError } = await supabase
+          .from('media_files')
+          .select('file_path, file_type')
+          .eq('entry_id', id);
+
+        if (!mediaQueryError && mediaRows && mediaRows.length > 0) {
+          const imagePaths: string[] = [];
+          const audioPaths: string[] = [];
+
+          for (const m of mediaRows) {
+            if (m.file_type === 'audio' || m.file_path.includes('/audio/') || m.file_path.endsWith('.bin') && m.file_path.includes('-')) {
+              audioPaths.push(m.file_path);
+            } else {
+              imagePaths.push(m.file_path);
+            }
+          }
+
+          if (imagePaths.length > 0) {
+            const { error: imgErr } = await supabase.storage.from('diary-images').remove(imagePaths);
+            if (imgErr) console.warn('Warning removing images from storage for entry:', id, imgErr);
+          }
+          if (audioPaths.length > 0) {
+            const { error: audErr } = await supabase.storage.from('diary-audio').remove(audioPaths);
+            if (audErr) console.warn('Warning removing audio from storage for entry:', id, audErr);
+          }
+        }
+      } catch (mediaErr) {
+        console.warn('Error querying or cleaning up media_files for entry:', id, mediaErr);
+      }
+
+      // 2. Supplementary fallback: Cleanup images and audio from in-memory entry if present
       const entryToDelete = entries.find(e => e.id === id);
 
-      // We can only cleanup images if the entry is decrypted and loaded locally.
-      // If it's not decrypted, we can't parse the content to find images.
-      // This is a trade-off for zero-knowledge encryption.
-      // However, usually delete is called from Detail View (decrypted).
       if (entryToDelete) {
           if (entryToDelete.isDecrypted && entryToDelete.content) {
               const imagePaths = extractImagePaths(entryToDelete.content);
               if (imagePaths.length > 0) {
-                  await supabase.storage.from('diary-images').remove(imagePaths);
-                  console.log(`Cleaned up ${imagePaths.length} image files.`);
+                  const { error: imgErr } = await supabase.storage.from('diary-images').remove(imagePaths);
+                  if (imgErr) console.warn('Warning removing parsed HTML images for entry:', id, imgErr);
               }
           }
 
@@ -928,8 +956,8 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
               if (audioList.length > 0) {
                   const paths = audioList.map((a: any) => a.path).filter(Boolean);
                   if (paths.length > 0) {
-                       await supabase.storage.from('diary-audio').remove(paths);
-                       console.log(`Cleaned up ${paths.length} audio files.`);
+                       const { error: audErr } = await supabase.storage.from('diary-audio').remove(paths);
+                       if (audErr) console.warn('Warning removing entry audio files for entry:', id, audErr);
                   }
               }
           }

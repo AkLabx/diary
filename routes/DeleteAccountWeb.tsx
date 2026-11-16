@@ -18,7 +18,6 @@ const DeleteAccountWeb: React.FC = () => {
   // Manual Request State (for unauthenticated users)
   const [requestEmail, setRequestEmail] = useState('');
   const [requestReason, setRequestReason] = useState('');
-  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [requestSubmitted, setRequestSubmitted] = useState(false);
 
   useEffect(() => {
@@ -68,16 +67,17 @@ const DeleteAccountWeb: React.FC = () => {
     }
   };
 
-  const handleManualRequest = async (e: React.FormEvent) => {
+  const handleManualRequest = (e: React.FormEvent) => {
     e.preventDefault();
     if (!requestEmail || !requestEmail.includes('@')) {
       return;
     }
 
-    setIsSubmittingRequest(true);
-    // Simulate/log public deletion request per Google Play policy
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    setIsSubmittingRequest(false);
+    const subject = encodeURIComponent(`Account Deletion Request - ${requestEmail}`);
+    const body = encodeURIComponent(
+      `Hello Privacy Team,\n\nI am requesting permanent deletion of my Diary account and all associated personal data in accordance with GDPR / DPDP.\n\nRegistered Email: ${requestEmail}\nReason/Notes: ${requestReason || 'None provided'}\n\nThank you.`
+    );
+    window.location.href = `mailto:privacy@diaryapp.com?subject=${subject}&body=${body}`;
     setRequestSubmitted(true);
   };
 
@@ -228,10 +228,10 @@ const DeleteAccountWeb: React.FC = () => {
 
                   <button
                     type="submit"
-                    disabled={isSubmittingRequest || !requestEmail}
+                    disabled={!requestEmail}
                     className="w-full py-2.5 px-4 bg-slate-800 dark:bg-slate-100 hover:bg-slate-900 dark:hover:bg-white text-white dark:text-slate-900 font-semibold text-sm rounded-lg transition-colors"
                   >
-                    {isSubmittingRequest ? 'Submitting Request...' : 'Submit Deletion Request'}
+                    Open Email Client to Request Deletion
                   </button>
                 </form>
               )}
