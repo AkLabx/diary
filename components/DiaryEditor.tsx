@@ -7,6 +7,7 @@ import { useCrypto } from '../contexts/CryptoContext';
 import { useBlocker } from 'react-router-dom';
 import * as autoSave from '../lib/autoSave';
 import ConfirmationModal from './ConfirmationModal';
+import { sanitizeDiaryHtml } from '../lib/sanitizeHtml';
 
 // --- Quill Customization ---
 const Quill = (ReactQuill as any).Quill; 
@@ -265,20 +266,22 @@ const DiaryEditor = forwardRef<EditorHandle, DiaryEditorProps>(({ entry, onSave,
             console.error("Failed to restore draft", e);
         }
 
+        const sanitizedContent = sanitizeDiaryHtml(loadedContent, true);
+
         setTitle(loadedTitle);
-        setContent(loadedContent);
+        setContent(sanitizedContent);
         setEntryDate(loadedDate);
         setInitialTitle(loadedTitle);
-        setInitialContent(loadedContent);
+        setInitialContent(sanitizedContent);
         setIsDirty(false);
 
-        const hasSecureImages = loadedContent.includes('secure-diary-image');
+        const hasSecureImages = sanitizedContent.includes('secure-diary-image');
         setIsHydrating(hasSecureImages);
 
         setTimeout(async () => {
             if (quillRef.current) {
                 if (hasSecureImages) {
-                    await hydrateSecureImages(loadedContent, quillRef.current.getEditor());
+                    await hydrateSecureImages(sanitizedContent, quillRef.current.getEditor());
                     setIsHydrating(false);
                 }
             }

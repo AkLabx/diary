@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { DiaryEntry } from '../types';
-import DOMPurify from 'dompurify';
+import { sanitizeDiaryHtml } from '../lib/sanitizeHtml';
 import { formatFullTimestamp, formatRelativeTime } from '../lib/dateUtils';
 import SecureAudioPlayer from './SecureAudioPlayer';
 import { supabase } from '../lib/supabaseClient';
@@ -28,6 +28,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   const [isAddingLinkedTask, setIsAddingLinkedTask] = useState(false);
   const [linkedTaskTitle, setLinkedTaskTitle] = useState('');
   const linkedTasks = tasks.filter(t => t.entry_id === entry.id);
+  const sanitizedContent = useMemo(() => sanitizeDiaryHtml(entry.content, false), [entry.content]);
 
   const handleAddLinkedTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -189,39 +190,6 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
          </div>
       );
   }
-
-  // DOMPurify config for secure images and captions
-  const allowedCssProps = ['width', 'float', 'margin', 'margin-left', 'margin-right', 'margin-top', 'margin-bottom', 'text-align', 'opacity', 'transition'];
-
-  DOMPurify.addHook('afterSanitizeAttributes', (node) => {
-    if (node instanceof Element && node.hasAttribute('style')) {
-      const style = node.getAttribute('style') || '';
-      const sanitizedStyle = style.split(';').filter(prop => {
-        if (!prop.includes(':')) return false;
-        const propName = prop.split(':')[0].trim();
-        return propName && allowedCssProps.includes(propName);
-      }).join(';');
-      
-      if (sanitizedStyle) {
-        node.setAttribute('style', sanitizedStyle);
-      } else {
-        node.removeAttribute('style');
-      }
-    }
-
-    // Security enhancement: Prevent reverse tabnabbing on user-generated links
-    if (node.tagName === 'A') {
-      node.setAttribute('target', '_blank');
-      node.setAttribute('rel', 'noopener noreferrer');
-    }
-  });
-
-  const sanitizedContent = DOMPurify.sanitize(entry.content, {
-    ADD_TAGS: ['img', 'figure', 'figcaption', 'a'], // Allow figure elements and links
-    ADD_ATTR: ['style', 'class', 'alt', 'data-secure-metadata', 'contenteditable', 'href', 'target', 'rel'], // Allow necessary attributes
-  });
-  
-  DOMPurify.removeHook('afterSanitizeAttributes');
 
   // Handle Multi-Audio Rendering
   // Note: We handle legacy single object structure by converting it to array
