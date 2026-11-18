@@ -150,7 +150,7 @@ const SearchView: React.FC<SearchViewProps> = ({ entries, onSelectEntry, onBack 
           {/* Mood Filter */}
           <div className="relative" ref={moodRef}>
              <button type="button" aria-expanded={isMoodOpen} onClick={() => setMoodOpen(p => !p)} className="flex items-center gap-2 px-4 py-2 text-sm font-medium bg-slate-100 dark:bg-slate-700 rounded-md hover:bg-slate-200 dark:hover:bg-slate-600">
-              {selectedMood ? <span className="text-lg">{selectedMood}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a.5.5 S0 01.708 0 5 5 0 01-6.488 0 .5.5 0 01.708-.707A4 4 0 0013 12.5a.5.5 0 01.535.464z" clipRule="evenodd" /></svg>}
+              {selectedMood ? <span className="text-lg">{selectedMood}</span> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-slate-500 dark:text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM7 9a1 1 0 100-2 1 1 0 000 2zm7-1a1 1 0 11-2 0 1 1 0 012 0zm-.464 5.535a.5.5 0 01.708 0 5 5 0 01-6.488 0 .5.5 0 01.708-.707A4 4 0 0013 12.5a.5.5 0 01.535.464z" clipRule="evenodd" /></svg>}
               <span>Mood</span>
             </button>
             {isMoodOpen && (

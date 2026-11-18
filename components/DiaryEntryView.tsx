@@ -200,7 +200,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
   return (
     <>
         <div
-        className={`bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 ${animationClass} mb-20`}
+        className={`bg-white dark:bg-slate-800 p-6 sm:p-8 rounded-lg shadow-md border border-slate-200 dark:border-slate-700 ${animationClass} mb-32 md:mb-20`}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
         >
@@ -370,7 +370,7 @@ const DiaryEntryView: React.FC<DiaryEntryViewProps> = ({ entry, onEdit, onDelete
         {/* Lightbox Component */}
 
         {/* Navigation Footer */}
-        <div className="fixed bottom-0 left-0 right-0 md:left-64 bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex justify-between items-center z-10 transition-colors">
+        <div className="fixed bottom-16 md:bottom-0 left-0 right-0 md:left-64 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-700 px-4 py-3 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] flex justify-between items-center z-20 transition-all">
             <button
                 onClick={onPrev}
                 disabled={!hasPrev}
