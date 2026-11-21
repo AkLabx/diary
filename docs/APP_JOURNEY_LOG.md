@@ -26,6 +26,23 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.21] — 2026-11-18 12:30:00 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Effortless & Fluid Mobile Navigation Everywhere:**
+  - **Always-Responsive Navigation**: The bottom navigation bar now remains instantly responsive and accessible no matter where you browse in your journal—whether exploring the full-year Calendar, managing your Personal Tasks, diving into deep Search, browsing My Stuff, or reading entry memories.
+  - **Seamless Entry Reading**: When viewing individual diary entries, the Previous and Next entry navigation buttons are smoothly layered above the bottom navigation bar without overlapping, giving you clear reading and quick one-tap returns to your timeline.
+  - **Intuitive Drawer Dismissal**: Opening and closing your notebook navigation drawer flows naturally without ghost backdrops or blocked taps, ensuring quick switching between journals and views.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **Mobile Bottom Navigation Architecture & Overlay Robustness**:
+  - **Universal Navigation Hook (`lib/useActiveNavigation.ts`)**: Built a centralized, memoized route categorization hook tracking active tabs, sub-routes (`timeline`, `calendar`, `tasks`, `profile`, `search`, `mystuff`, `entry`, `editor`), and providing deterministic tab activation and transitions across hash routes.
+  - **Synchronized Tab State & Touch Targets (`components/BottomNavigation.tsx`)**: Refactored `BottomNavigation` to consume `useActiveNavigation`, ensuring active indicators and `aria-current="page"` stay synchronized across deep links, query filters, search, and detail views. Implemented explicit `e.preventDefault()` handlers that reset query parameters on Home tap and smoothly scroll to top on active timeline. Applied MWG-compliant `min-w-[48px] min-h-[48px]` tap targets and `touch-manipulation`.
+  - **Stacking Context & Footer Collision Resolution (`components/DiaryEntryView.tsx`)**: Re-anchored the fixed entry pagination footer from `bottom-0` to `bottom-16 md:bottom-0` (`z-20`), eliminating overlap with `BottomNavigation` (`h-16 z-30`). Increased article margin to `mb-32 md:mb-20` for comfortable scroll clearance.
+  - **Orphan Backdrop Dismissal & Screen Resize Sync (`DiaryLayout.tsx`)**: Bound route changes (`location.pathname`, `location.search`) to unconditionally dismiss the mobile sidebar drawer (`setLeftSidebarVisible(false)`), preventing lingering `z-40` backdrops from intercepting bottom taps. Added resize listeners to keep sidebar visibility synchronized across device rotations.
+  - **SVG Path Parsing Fix (`components/SearchView.tsx`)**: Fixed invalid SVG path syntax typo (`a.5.5 S0 01.708` -> `a.5.5 0 01 .708`) in the mood filter dropdown.
+  - **End-to-End Playwright Mobile Verification (`verification/test_bottom_nav_robustness.py`)**: Authored comprehensive 10-suite mobile test suite validating login/unlock, all tab transitions (Home, Calendar, Tasks, Profile), Search, My Stuff, Entry Detail pagination layering, drawer dismissal, and FAB creation with 0 critical errors.
+
 ### [v1.0.20] — 2026-11-16 20:50:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

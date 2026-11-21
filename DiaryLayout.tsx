@@ -1,6 +1,7 @@
 import BottomNavigation from './components/BottomNavigation';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Outlet, useNavigate, useLocation, useOutletContext } from 'react-router-dom';
+import { useActiveNavigation } from './lib/useActiveNavigation';
 import { supabase } from './lib/supabaseClient';
 import { DiaryEntry, Profile, Weather, AudioMetadata } from './types';
 import { useCrypto } from './contexts/CryptoContext';
@@ -113,6 +114,26 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
   const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Auto-dismiss mobile drawer on route change to prevent orphan z-40 backdrops
+  useEffect(() => {
+    if (window.innerWidth < 768) {
+      setLeftSidebarVisible(false);
+    }
+  }, [location.pathname, location.search]);
+
+  // Synchronize drawer visibility across window resize & orientation changes
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 768) {
+        setLeftSidebarVisible(true);
+      } else {
+        setLeftSidebarVisible(false);
+      }
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   const registerSaveHandler = useCallback((handler: () => void) => {
       currentSaveHandler.current = handler;
@@ -1287,21 +1308,17 @@ const DiaryLayout: React.FC<DiaryLayoutProps> = ({ session, theme, onToggleTheme
     }
   }, [session, lock, addToast, navigate]);
 
-  // Derived state for UI components
-  // We need to map the current route to "activeView" string for LeftSidebar highlight
-    const isEditing = location.pathname.includes('/edit') || location.pathname.includes('/new');
+  // Derived state for UI components from universal navigation hook
+  const { section, isEditing, activeJournal: navJournal } = useActiveNavigation();
   let activeView = 'timeline';
-  if (location.pathname.includes('/calendar')) activeView = 'calendar';
-  else if (location.pathname.includes('/search')) activeView = 'search';
-  else if (location.pathname.includes('/profile')) activeView = 'profile';
+  if (section === 'calendar') activeView = 'calendar';
+  else if (section === 'search') activeView = 'search';
+  else if (section === 'profile') activeView = 'profile';
+  else if (section === 'tasks') activeView = 'tasks';
+  else if (section === 'mystuff') activeView = 'mystuff';
 
-  // Note: 'journal' filter logic in sidebar needs to map to URL params if we want deep linking there.
-  // For now, I'll keep 'activeJournal' state in Context? No, let's keep it simple.
-  // The Sidebar expects 'activeJournal' prop. If we want journal filtering to be deep linked, we should have a route /app/journal/:name
-  // But for this refactor, I might skip deep linking journal filters unless necessary,
-  // OR I can use query params ?journal=Work
   const queryParams = new URLSearchParams(location.search);
-  const activeJournal = queryParams.get('journal');
+  const activeJournal = navJournal || queryParams.get('journal');
 
   const handleJournalSelect = (journal: string | null) => {
       if (journal) navigate(`/app?journal=${encodeURIComponent(journal)}`);
