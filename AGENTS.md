@@ -1,240 +1,107 @@
 # Autonomous Agent Directives (AGENTS.md)
+*Operational Governance & Architectural Invariants for the Diary App*
 
-Welcome, Autonomous AI Agent. You are pair programming on this Diary App repository. Follow this document to guide your decision-making, code generation, and safety checks.
+Welcome, Autonomous Lead Architect and Systems Engineer. You are governing this repository under the **"1 Chat = 1 Version"** autonomous system. Every interaction must operate under strict engineering discipline.
 
 ---
 
-## 0. Decision Precedence Hierarchy
+## 0. Decision Precedence & Cognitive Pre-Flight
 
-When conflicting instructions or ambiguous choices arise, strictly follow this order of priority:
-1. **Explicit User Prompt** (The user's direct instruction in chat).
+### 0.1 Decision Precedence Hierarchy
+When conflicting instructions or ambiguous choices arise, strictly adhere to this priority order:
+1. **Explicit User Prompt** (Direct user instruction in chat).
 2. **Repository Guardrails & Safety** (This file and [`docs/ai/security.md`](./docs/ai/security.md)).
-3. **Existing Codebase Conventions** (Dominant patterns and libraries already in the code).
-4. **Project Documentation** ([`docs/ai/*`](./docs/ai/) and [`README.md`](./README.md)).
-5. **General Best Practices** (Industry standards).
+3. **Existing Codebase Conventions** (Dominant patterns, libraries, and types already in code).
+4. **Master Decision Ledger & Blueprint** ([`docs/DECISIONS_MASTER.md`](./docs/DECISIONS_MASTER.md) and [`docs/blueprint/`](./docs/blueprint/)).
+5. **Project Documentation** ([`docs/ai/*`](./docs/ai/) and [`README.md`](./README.md)).
+6. **General Best Practices** (Industry standards).
 
 > [!NOTE]
-> *Special Historical Precedence*: Code restoration of specific historical commits (specifically those containing 'date and comment code' in `index.html`) takes precedence over newer fixes (like blank page fixes) if they conflict.
+> *Special Historical Precedence*: Code restoration of specific historical commits (specifically those containing `'date and comment code'` in `index.html`) takes precedence over newer fixes (like blank page fixes) if they conflict.
+
+### 0.2 System-2 Cognitive Pre-Flight & Engineering Discipline
+Before authoring or modifying code in any session, execute this mandatory pre-flight:
+1. **Read Hot Context (<20 KB)**: Inspect ONLY [`docs/handovers/CURRENT_HANDOVER.md`](./docs/handovers/CURRENT_HANDOVER.md), [`docs/DECISIONS_MASTER.md`](./docs/DECISIONS_MASTER.md), and the active blueprint in [`docs/blueprint/`](./docs/blueprint/). Consult historical dossiers and `docs/ai/*` on-demand only.
+2. **Lifecycle Simulation**: Trace data flow end-to-end: `User Action -> State Transition -> Encryption Layer -> Network -> Persistence`.
+3. **Identify 3 Failure Modes**: Explicitly account for at least 3 runtime edge-case failure modes (e.g. offline disconnect, concurrent version conflict, malformed payload or keystore invalidation) before editing.
+4. **Zero-Shortcut Enforcement**: Strictly ban cosmetic fake UI stubs, empty handlers, mock data bypasses, or decorative non-functional buttons. Every UI control must wire to real logic or an explicit disabled state.
+5. **Read-Before-Write & Surgical Edits**: Inspect target files and verify call sites before editing. Keep diffs minimal—avoid drive-by formatting or unrelated refactors.
+6. **Failure Diagnostics & Confidence Calibration**:
+   - Distinguish backend connectivity (verified via isolated Node scripts) from frontend execution (verified via Playwright), as client exceptions (e.g. `ReferenceError`) can mimic network timeouts.
+   - Calibrate claims as **High** (verified via build/script/Playwright), **Medium** (conceptually sound, edge cases unverified), or **Low** (uncertain—explicitly disclose gaps rather than guessing).
 
 ---
 
-## 1. Session Start: Repository Discovery Phase
+## 1. Circuit Breakers: "Stop & Ask"
 
-Before making architectural assumptions or writing code at the start of a session, inspect the workspace:
-- `package.json` (Scripts, dependencies, `"browserslist"` browser targets, and configured tooling).
-- Lockfile (`package-lock.json` indicates `npm` is active; or `pnpm-lock.yaml`, `bun.lockb`, `yarn.lock`).
-- `tsconfig.json` and bundler config (`vite.config.ts`).
-- Root source layout: Core source files (`App.tsx`, `DiaryLayout.tsx`, `index.tsx`) and `routes/` reside directly in root (outside `src/`).
-- `README.md` and `docs/ai/memory.md` (Project overview, stack reference, and quirks).
-- `.gitignore` (Ignored directories and secret patterns like `.env.local`).
-- Supabase configuration & client in `lib/supabaseClient.ts` (Target Project: `ccgiozknvlknbrkzfcdx`).
-
----
-
-## 2. Antigravity Windows Process Runner & Shell Execution Runbook (`powershell.bat`)
-
-> [!IMPORTANT]
-> **Windows Antigravity Execution Breakthrough & Self-Healing Protocol**
-> If any terminal command fails immediately with `Command failed to run: The system cannot find the file specified..` or the terminal tab displays `failed to start PTY command via exebox: The system cannot find the file specified`, this section details the root cause, discoveries, and immediate resolution.
-
-### A. The Symptoms
-1. **Agent Tool Commands**: Running `git`, `npm`, `dir`, or any terminal command fails instantly:
-   ```text
-   Command failed to run: The system cannot find the file specified..
-   ```
-2. **Antigravity Terminal Panel**: Clicking `+` fails with:
-   ```text
-   Failed to create terminal
-   [internal] internal: failed to start PTY command via exebox: The system cannot find the file specified.
-   ```
-
-### B. The Root Cause (`exebox` Path Resolution)
-On Windows, Antigravity's internal process runner (`exebox`) resolves the shell command `powershell` relative to the **root of the active project workspace** rather than the Windows System `PATH`:
-```text
-filepath.Join(project_root, "powershell") ➔ "D:\diary-main\powershell"
-```
-Because no `powershell.exe` or forwarder lives in the workspace root, the OS immediately throws `ERROR_FILE_NOT_FOUND` (Win32 error 2: "The system cannot find the file specified").
-
-### C. Breakthrough Discoveries on this Machine
-1. **The Root Forwarder (`powershell.bat`)**: Placing a `powershell.bat` forwarder script directly in the project root intercepts the `exebox` resolution and redirects execution cleanly to Windows PowerShell.
-2. **Gitignore Protection**: Both `powershell.bat` and `powershell.cmd` must remain in `.gitignore` to prevent committing local runner shims to GitHub.
-3. **Restoring Stripped Windows System PATH**: Some Windows installers strip `C:\Windows\System32` from the environment PATH. The forwarder explicitly re-injects `C:\Windows\System32`, `C:\Windows`, and `C:\Windows\System32\WindowsPowerShell\v1.0`.
-4. **Custom Node.js / NVM Location**: On this PC, Node.js is **not** installed in `C:\Program Files\nodejs`. It is managed under NVM at:
-   - Primary: `D:\DevTools\nvm\v22.16.0` (Node v22.16.0, npm 10.9.2)
-   - Secondary: `D:\DevTools\nvm\v20.19.2`
-   Without `D:\DevTools\nvm\v22.16.0` in the injected PATH, `node` and `npm` commands fail with `ObjectNotFound: The term 'npm' is not recognized`.
-5. **Execution Policy Bypass (`PSSecurityException`)**: In Windows PowerShell, running `npm` or `npx` invokes `npm.ps1`, which by default is blocked with `PSSecurityException: running scripts is disabled on this system`. Adding `-ExecutionPolicy Bypass` to the `powershell.exe` invocation in `powershell.bat` completely fixes this without requiring administrator privileges or registry modifications.
-6. **Git & GitHub CLI Bridge**: Git is installed at `C:\Program Files\Git\cmd\git.exe` and GitHub CLI is at `C:\Program Files\GitHub CLI\gh.exe`. Prepending these ensures Git operations and `gh auth setup-git` always succeed.
-
-### D. The Canonical `powershell.bat` Recipe
-The file must exist at `d:\diary-main\powershell.bat` with the following exact content:
-```cmd
-@echo off
-set "PATH=C:\Windows\System32;C:\Windows;C:\Windows\System32\WindowsPowerShell\v1.0;C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI;D:\DevTools\nvm\v22.16.0;D:\DevTools\nvm;C:\Program Files\nodejs;%APPDATA%\npm;%LOCALAPPDATA%\Programs\Python\Python312\Scripts;%LOCALAPPDATA%\Programs\Python\Python312;%PATH%"
-C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass %*
-```
-
-### E. Direct `run_command` PowerShell Rules (When `powershell.bat` Is Bypassed)
-When an agent's `run_command` runner spawns `C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe` directly instead of `powershell.bat`, **always follow both rules** in every Node/npm/npx command:
-1. Prepend NVM's Node folder at the start of the command (env vars do not persist across calls): `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH";`
-2. Call **`npm.cmd`** and **`npx.cmd`** (explicit `.cmd` extension) instead of bare `npm` / `npx` so PowerShell (`Restricted` execution policy) never invokes blocked `.ps1` wrappers.
-   - Example: `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH"; npx.cmd -y modern-web-guidance@latest search "accessible modal dialog"`
-   - Example: `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH"; npx.cmd tsc --noEmit; npm.cmd run build`
+Before executing planned changes, **STOP and ask the user for confirmation** if any of these boundaries are touched:
+- **Blast Radius**: More than **10 files** would be created or modified in a single task.
+- **Dependencies**: Any new third-party dependency (`npm` package) must be added.
+- **Database Mutation**: A migration alters, drops, truncates, or transforms existing table data on Supabase project `ccgiozknvlknbrkzfcdx`.
+- **Public API / Contracts**: Public APIs, shared component contracts, or exported types will break or require major refactoring.
+- **Security & Auth**: Authentication flows, encryption algorithms, role permissions, or session security models change.
+- **Ambiguity**: Architectural requirements are conflicting, unclear, or contradictory.
 
 ---
 
-## 3. Circuit Breakers: "Stop and Ask"
+## 2. Stack Invariants & Architectural Boundaries
 
-Before executing planned changes, **STOP and ask the user for confirmation** if:
-- More than **10 files** would be created or modified in a single task.
-- A database migration alters, drops, or transforms existing table data on Supabase project `ccgiozknvlknbrkzfcdx`.
-- A new third-party dependency (`npm` package) must be added.
-- Authentication flows, security models, or route permission logic change.
-- Public APIs, shared component contracts, or exported types will break.
-- Architectural requirements are ambiguous or contradictory.
+### 2.1 Technology Stack & Root Source Layout
+- **Frontend Core**: React 18.2.0, Vite 5.3.1, TypeScript 5.2.2, Tailwind CSS 3.4.4 (build-time PostCSS; CDN Tailwind or inline `tailwind.config` in `index.html` is strictly forbidden).
+- **Mobile Runtime**: Capacitor 8.5 (`@capacitor/android`, `@capacitor/core`, `@capgo/capacitor-native-biometric`, `@capgo/capacitor-social-login`; Android `minSdkVersion = 24`, `targetSdkVersion = 36`).
+- **Root Source Layout**: Application source files (`App.tsx`, `DiaryLayout.tsx`, `index.tsx`) and `routes/` reside directly in the root directory, outside `src/`. Do NOT move them into `src/`.
+- **Hosting & Vite Bundling**: Hosted on GitHub Pages with base path `/diary/` in production web builds (`/` for dev and `VITE_IS_CAPACITOR=true` builds), with `public/404.html` handling SPA reloads. React, ReactDOM, React Router, and `@zip.js/zip.js` are bundled by Vite (no `importmap` in `index.html`, no `external` overrides, and **no circular Rollup `manualChunks` splits**).
 
----
+### 2.2 End-to-End Encryption (E2EE) & Database Security
+- **Backend Target**: Supabase project `ccgiozknvlknbrkzfcdx` (`https://ccgiozknvlknbrkzfcdx.supabase.co`). Client bundles may only contain public client vars (e.g. `VITE_SUPABASE_ANON_KEY`).
+- **Zero Plaintext User Content**: Diary entry contents and titles are client-side AES-GCM 256-bit encrypted (`encrypted_entry`, `iv`) before leaving the device. Master `CryptoKey` must remain `extractable: false` and wipe on `SIGNED_OUT`.
+- **Zero Cleartext Metadata**: Moods, tags, and notebook classifications are encrypted inside the ciphertext payload; database columns (`mood`, `tags`, `journal`) in `public.diaries` remain zeroed or null.
+- **Master Encryption Verification (`public.profiles`)**: Stores `salt` (supports legacy `100k` and versioned `v1:iterations:salt` `600k` PBKDF2), `key_check_value`, and `key_check_iv`. Master passwords and raw keys never leave the device.
+- **Encrypted Local Drafts**: IndexedDB (`diary_drafts_db` via `lib/autoSave.ts`) must partition encrypted drafts from read cache and remain user-scoped. Unencrypted drafts must never hit storage.
+- **Private Storage Buckets**: `diary-images`, `diary-audio`, and `avatars` must remain **STRICTLY PRIVATE** (`public = false`). Access exclusively via short-lived signed URLs for authenticated owners.
+- **Postgres Function & RLS Safety**: RPCs must use `SECURITY INVOKER` by default; `SECURITY DEFINER` is allowed only when strictly necessary with `SET search_path = public`. Strict Row Level Security (RLS) with `(SELECT auth.uid())` InitPlan subqueries is required on `profiles`, `diaries`, `media_files`, and `personal_tasks`.
 
-## 4. Automated GitHub PR & Git Workflow (GitHub CLI) & Antigravity Working Method
+### 2.3 Service Worker & PWA Isolation
+- The Workbox Service Worker and manifest are generated at build time by `VitePWA` (`registerType: 'prompt'`) in `vite.config.ts` (do not reintroduce manual `public/sw.js` or `manifest.json`).
+- **Strict Data Isolation**: Service Worker caches static app shell assets and pinned CDN fonts/CSS only—**it must strictly avoid caching user data, decrypted entries, or Supabase API/storage responses**.
+- Manifest SVG icons (`public/pwa-icon.svg`) must specify `sizes: 'any'` and `purpose: 'any maskable'` (PNG app icons are forbidden). The `"Install App"` button must remain visible on mobile devices.
 
-- **Local Execution Truth**: Antigravity operates directly on the user's local disk (`D:\diary-main`). All file edits take effect locally in real time and are hot-reloaded by the Vite development server (port 5173).
-- **Installed CLI**: The official GitHub CLI is installed at `C:\Program Files\GitHub CLI\gh.exe` and authenticated as `AkLabx`.
-- **Git Credential Bridge**: Run `& "C:\Program Files\GitHub CLI\gh.exe" auth setup-git` before pushing to avoid interactive GCM GUI deadlocks in background shells.
+### 2.4 Routing, UI Standards & Sanitization
+- **Routing**: Use React Router v7 Data Router APIs (`createHashRouter` + `RouterProvider`) with `useBlocker`. Legacy `<HashRouter>` is forbidden. Internal navigation must use `Link`; unsaved editor changes block via `useBlocker` + `ConfirmationModal` + `window.onbeforeunload`.
+- **Modals & Cards**: All dialogs/alerts use native top-layer `<dialog>` / `ConfirmationModal` (native `alert()`, `confirm()` are forbidden). Timeline cards (`DiaryList.tsx`) use mood pastels (`getMoodColorClass`) and intentionally exclude image thumbnails to avoid mass signed-URL decryption bottlenecks.
+- **DOMPurify & Anti-Tabnabbing**: Route HTML sanitization through `lib/sanitizeHtml.ts` with the `afterSanitizeAttributes` hook enforcing `target="_blank"` and `rel="noopener noreferrer"`.
+- **Browser Target & MWG**: Target `"browserslist": ["baseline widely available"]`. Consult Modern Web Guidance first (`npx.cmd -y modern-web-guidance@latest search "<query>"`). Baseline Newly/Limited availability features require explicit `@supports` / JS feature detection with a `<= 20`-line fallback.
 
-### Standard 4-Step Working Method:
-
-1. **Step 1: Session Start & Pre-Task Branch Sync Ritual**:
-   - Check current working branch:
-     ```powershell
-     git branch --show-current
-     ```
-   - Ensure local workspace is on `main` and fully synchronized:
-     ```powershell
-     git checkout main
-     git pull origin main
-     ```
-   - Never build a new feature or fix on top of a stale or unmerged feature branch.
-
-2. **Step 2: Isolated Feature Development**:
-   - Create a descriptive feature branch matching the targeted bump version:
-     ```powershell
-     git checkout -b feat/<feature-name>-v<version>
-     # or: git checkout -b fix/<bug-name>-v<version>
-     ```
-   - Make all changes directly in the workspace. Test with local dev server (`http://localhost:5173`).
-
-3. **Step 3: Verification, Version Bump & PR Creation Ritual**:
-   - **Verification**: Run `npm run build` (`tsc && vite build`) and `npm run lint` (plus automated Playwright verification in `verification/` where applicable) to guarantee 0 errors.
-   - **Version Bump**: Increase version by `0.0.1` (`npm version patch --no-git-tag-version`), ensure `VITE_APP_VERSION` in `vite.config.ts` dynamically evaluates `process.env.npm_package_version`, and append an entry in `docs/APP_JOURNEY_LOG.md` with the current IST timestamp (UTC+5:30), user-facing release notes, and technical summary.
-   - **Zero Secrets**: Ensure no sensitive credentials, API keys, service role tokens, or unencrypted data are committed.
-   - **Commit and Push via GitHub CLI Bridge**:
-     ```powershell
-     git add .
-     git commit -m "<structured commit message>"
-     & "C:\Program Files\GitHub CLI\gh.exe" auth setup-git
-     git push -u origin <branch-name>
-     ```
-   - **Open PR via CLI**:
-     ```powershell
-     & "C:\Program Files\GitHub CLI\gh.exe" pr create --title "<PR Title>" --body "<PR Summary Markdown>" --base main --head <branch-name>
-     ```
-
-4. **Step 4: Post-Merge Local Sync & Housekeeping Ritual**:
-   - Once the PR is merged on GitHub:
-     ```powershell
-     git checkout main
-     git pull origin main
-     git branch -d <branch-name>
-     git fetch --prune
-     ```
-   - Confirm with `git status` that the working tree is clean and up to date on `main`.
+### 2.5 Windows Antigravity Execution Protocol (`powershell.bat`)
+- Antigravity's Windows `exebox` resolves `powershell` relative to workspace root (`d:\diary-main\powershell.bat`). This forwarder must exist (and remain gitignored) re-injecting `C:\Windows\System32`, Git, GitHub CLI, and NVM Node `D:\DevTools\nvm\v22.16.0` with `-ExecutionPolicy Bypass`. See [`docs/ai/workflow.md`](./docs/ai/workflow.md#L3-L28) for the canonical recovery recipe.
+- Direct `run_command` PowerShell calls must prepend `$env:PATH = "D:\DevTools\nvm\v22.16.0;$env:PATH";` and invoke **`npm.cmd`** / **`npx.cmd`** (explicit `.cmd` extension) so PowerShell never trips on blocked `.ps1` wrappers.
 
 ---
 
-## 5. Core Priority Matrix
+## 3. Zero-Leak Privacy & Git Rules
 
-### [CRITICAL] Hard Invariants (Zero-Tolerance)
-- **Zero Secrets & Zero Unencrypted User Data**:
-  - NEVER commit, log, or expose private API keys, service role tokens, database connection strings, or user passwords. Client bundles must only contain public client keys (e.g., `VITE_SUPABASE_ANON_KEY`).
-  - Diary entry contents and titles are client-side AES-GCM encrypted before transmission. NEVER alter the database or client code to store plaintext content.
-  - Encrypted drafts are cached locally in IndexedDB (`diary_drafts_db` via `lib/autoSave.ts`). Unencrypted user data must never touch storage.
-- **Strictly Private Media Storage**:
-  - Storage buckets `diary-images`, `diary-audio`, and `avatars` must remain **STRICTLY PRIVATE** (`public = false`). Direct public access URLs are forbidden; access is granted solely via short-lived signed URLs for authenticated owners.
-- **Service Worker Isolation**:
-  - The generated Workbox Service Worker (configured via `VitePWA` in `vite.config.ts`) caches the app shell and CDN font/stylesheet dependencies for offline capability. **It must strictly avoid caching any user data or Supabase API/storage responses** to maintain E2EE security.
-- **Data Preservation**:
-  - NEVER execute destructive database operations (`DROP TABLE`, `TRUNCATE`, bulk `DELETE`) on Supabase project `ccgiozknvlknbrkzfcdx` without explicit user permission.
-- **Read-Before-Write**:
-  - Inspect target files and verify call sites before editing. NEVER assume a file, function, component, or export exists without checking first.
-- **Postgres Function & RLS Safety**:
-  - RPCs must use `SECURITY INVOKER` by default. Only use `SECURITY DEFINER` when elevated privileges are strictly necessary and `SET search_path = public` is explicitly set.
-  - Strict Row Level Security (RLS) is required on `profiles`, `diaries`, and `media_files`.
-- **DOMPurify & Anti-Tabnabbing**:
-  - DOMPurify configuration in `DiaryEntryView.tsx` explicitly allows `<figure>`, `<figcaption>`, and `<a>` tags.
-  - Must utilize the `afterSanitizeAttributes` hook to automatically set `target="_blank"` and `rel="noopener noreferrer"` on links.
+### 3.1 Zero-Leak Privacy Rules
+- **No Hardcoded Secrets**: Never commit, log, or expose private API keys, `service_role` tokens, database connection strings, personal emails, master passwords, or local OS user paths (`C:\Users\<username>`).
+- **Test Credentials Quarantine**: For automated UI/UX or Playwright verification against `http://localhost:5173`, refer exclusively to the gitignored `.agents/AGENTS.md` file or pass `TEST_EMAIL` and `TEST_PASSWORD` environment variables. Never write test credentials into tracked files or docs.
 
-### [HIGH] Process & Verification Rules
-- **Modern Web Guidance (MWG) & Browser Support Policy**:
-  - **Consult MWG First**: Before authoring or updating frontend HTML, CSS, or client-side JS/DOM code (modals, popovers, forms, layout, animations, responsiveness, accessibility, CWV/INP, sanitization, WebAuthn/dates), consult the `modern-web-guidance` skill (`npx.cmd -y modern-web-guidance@latest search "<query>"` and `retrieve "<id>"`; on Windows shells without `powershell.bat`, ensure `D:\DevTools\nvm\v22.16.0` is on `PATH`).
-  - **Browser Support Target**: **Baseline Widely available** (declared via `"browserslist": ["baseline widely available"]` in `package.json`), aligned with GitHub Pages web users and Capacitor Android (`minSdkVersion = 24`, Android System WebView).
-  - **Fallback & Polyfill Rule**: Baseline Widely available features are safe to use without polyfills. **Baseline Newly available** or **Limited availability** features may be used only behind explicit `@supports` / JS feature detection with graceful degradation or a lightweight, zero-dependency fallback (`<= 20` lines); never add heavy polyfills or new npm UI packages without user confirmation (Section 3).
-  - **Alignment with Existing UI Invariants**: Keep build-time Tailwind CSS v3 + PostCSS (`tailwindcss`, `autoprefixer`; no CDN Tailwind), keep `ConfirmationModal` for alerts/confirmations (no native `alert()`/`confirm()`), and keep `DOMPurify` + `afterSanitizeAttributes` link hardening in `components/DiaryEntryView.tsx`.
-- **Dynamic Tooling & Scripts**:
-  - Detect and use the repository's native package manager (`npm` via `package-lock.json`) and defined scripts in `package.json` (`npm run dev`, `npm run build`, `npm run build:android`, `npm run lint`).
-- **Mandatory Verification**:
-  - Before declaring any task complete, verify via `npm run build` and run ad-hoc Playwright verification scripts in `verification/` along with visual inspection of captured screenshots.
-- **App Versioning Ritual**:
-  - Update the app version on every PR / release by increasing it by `0.0.1` using: `npm version patch --no-git-tag-version`.
-  - Ensure `VITE_APP_VERSION` in `vite.config.ts` dynamically evaluates `process.env.npm_package_version`.
-  - Append release details to [`docs/APP_JOURNEY_LOG.md`](./docs/APP_JOURNEY_LOG.md) (App Version, IST timestamp UTC+5:30, user-facing release notes, technical summary, zero sensitive data).
-- **Surgical Edits**:
-  - Keep diffs minimal. Avoid drive-by formatting, unsolicited styling changes, or modifying unrelated code while fixing a bug or adding a feature.
-- **Distinguish Facts from Recommendations & Failure Diagnosis**:
-  - Distinguish between backend connectivity (verified via isolated Node.js scripts) and frontend execution (verified via Playwright), as client crashes (e.g., `ReferenceError`) can mimic network timeouts.
-- **Confidence Calibration**:
-  - **High**: Verified against codebase patterns and validated via project scripts/Playwright.
-  - **Medium**: Works conceptually, but edge cases or platform quirks remain unverified.
-  - **Low**: Uncertain about behavior or dependencies. **Explain what remains uncertain to the user instead of guessing or fabricating a solution.**
-
-### [NORMAL] Standard Conventions
-- **Respect Dominant Structure**:
-  - Source files (`App.tsx`, `DiaryLayout.tsx`, `index.tsx`, `routes/`) reside directly in the root directory, outside `src/`.
-- **Routing Architecture**:
-  - Must use `createHashRouter` and `RouterProvider` (React Router v7 `react-router-dom` `^7.9.6` Data Router APIs) to enable features like `useBlocker`. Do not use the legacy `<HashRouter>` component.
-  - Internal navigation must use `Link` from `react-router-dom` to preserve router state. Navigation blocking uses `useBlocker` + `ConfirmationModal` + `window.onbeforeunload`.
-- **Styling Standards**:
-  - Use build-time PostCSS/Vite Tailwind CSS. The use of CDN Tailwind (`https://cdn.tailwindcss.com`) or inline `tailwind.config` in `index.html` is strictly forbidden.
-  - Diary cards use dynamic mood-based pastel classes (`getMoodColorClass` in `lib/colorUtils.ts`).
-- **UI Alerts & Confirmation**:
-  - User alerts and confirmations must use the reusable `ConfirmationModal` component (Tailwind-styled). Do not use native browser alerts (`alert()`, `confirm()`).
-- **PWA & Web App Manifest**:
-  - PWA manifest and Workbox Service Worker are generated by `VitePWA` (`registerType: 'prompt'`) in `vite.config.ts`—do not reintroduce manual `public/sw.js` or `manifest.json` files unless intentionally migrating off `vite-plugin-pwa`.
-  - External CDN dependencies (Google Fonts, `react-quill` CSS) are runtime-cached via `workbox.runtimeCaching` in `vite.config.ts`.
-  - SVG icons in the `VitePWA` `manifest.icons` config (`public/pwa-icon.svg`) must specify `sizes: 'any'` and `purpose: 'any maskable'`. PNG app icons are strictly forbidden.
-  - The "Install App" button must remain visible on mobile devices.
-- **Hosting & Bundling**:
-  - Hosted on GitHub Pages with base path `/diary/` (set dynamically in `vite.config.ts` for production web builds, and `/` for dev and Capacitor `VITE_IS_CAPACITOR=true` builds). Reload 404s are handled by `public/404.html`.
-  - React, ReactDOM, React Router, and `@zip.js/zip.js` are bundled by Vite from `package.json` dependencies (no `importmap` in `index.html` or `external` overrides in `vite.config.ts`). Avoid custom Rollup `manualChunks` splits that introduce circular ESM dependencies across vendor chunks.
-
-### [OPTIONAL] Performance & Ergonomics
-- **Timeline Performance**: Image thumbnails are intentionally excluded from timeline cards (`DiaryList.tsx`) to avoid performance bottlenecks caused by decrypting multiple signed URLs client-side.
-- Clean component composition and reusable primitives in `components/` over deep prop drilling.
+### 3.2 Automated GitHub Branch & PR Discipline
+- **Never Commit Directly to `main`**: Work on an isolated branch matching the targeted version (`feat/vX.Y.Z-<name>` or `fix/vX.Y.Z-<name>`).
+- **Pre-Push Credential Bridge**: Run `& "C:\Program Files\GitHub CLI\gh.exe" auth setup-git` prior to `git push` to avoid Windows Credential Manager GUI deadlocks.
+- **PR & Post-Merge Sync**: Open PRs via `& "C:\Program Files\GitHub CLI\gh.exe" pr create ...`, confirm PR CI (`pr-check.yml`) is green before merging, then sync locally (`git checkout main && git pull origin main && git branch -d <branch> && git fetch --prune`).
 
 ---
 
-## 6. Specialized AI Reference Guides
+## 4. The Mandatory Closeout Rule ("1 Chat = 1 Version")
 
-Consult these modular guides for deeper context when performing specialized tasks:
-- **Security & Database**: [`docs/ai/security.md`](./docs/ai/security.md)
-- **Workflow & Coding Standards**: [`docs/ai/workflow.md`](./docs/ai/workflow.md)
-- **Architecture & System Memory**: [`docs/ai/memory.md`](./docs/ai/memory.md)
-- **App Release Log**: [`docs/APP_JOURNEY_LOG.md`](./docs/APP_JOURNEY_LOG.md)
+> [!CRITICAL]
+> **Ironclad Closeout Invariant:**
+> **A chat session is NOT complete until all Phase 4 closeout steps pass cleanly, `npm run check:ritual` exits 0, the decision ledger is updated, and `docs/handovers/CURRENT_HANDOVER.md` is overwritten with the next pre-planned baton and fresh starter prompt.**
 
----
-
-## 7. Automated Testing Credentials & Local Target
-
-For AI agents executing automated UI/UX verification, end-to-end testing, or Playwright scripts:
-- **Test Credentials**: Refer to the gitignored `.agents/AGENTS.md` or provide via `TEST_EMAIL` and `TEST_PASSWORD` environment variables.
-- **Local Dev Server**: `http://localhost:5173`
-- **Supabase Target Ref**: `ccgiozknvlknbrkzfcdx`
+Every turn completing a development slice MUST execute the **7-Step Closeout Ritual** in [`.agents/skills/version-ritual/SKILL.md`](./.agents/skills/version-ritual/SKILL.md):
+1. Create per-version dossier `docs/versions/vX.Y.Z.md` (from `docs/versions/00-template.md`).
+2. Update `docs/DECISIONS_MASTER.md` (append active choices; move retired ones to Superseded).
+3. Prepend user-facing + technical release notes to `docs/APP_JOURNEY_LOG.md`.
+4. Mark completed steps `[x] DONE` in `docs/blueprint/` and refine the next milestone.
+5. Overwrite `docs/handovers/CURRENT_HANDOVER.md` with the verified baseline, next version brief, and fresh copy-paste starter prompt.
+6. Run mechanical closeout & secret scan: `npm run check:ritual` (must exit `0` and keep Hot Context `<= 20 KB`).
+7. Commit, push, create PR via `gh pr create`, wait for CI green, merge to `main`, and verify clean working tree on `main`.
