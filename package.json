@@ -6,11 +6,16 @@
   "homepage": "https://aklabx.github.io/diary/",
   "scripts": {
     "dev": "vite",
+    "typecheck": "tsc --noEmit",
     "build": "tsc && vite build",
     "build:android": "tsc --noEmit && cross-env VITE_IS_CAPACITOR=true vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "deploy": "gh-pages -d dist"
+    "deploy": "gh-pages -d dist",
+    "test:security": "node tests/security/penetration-audit.js",
+    "test:e2e": "node tests/e2e/auth-crypto-roundtrip.js",
+    "check:ci": "node scripts/verify-ritual.mjs --ci",
+    "check:ritual": "node scripts/verify-ritual.mjs --closeout"
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
