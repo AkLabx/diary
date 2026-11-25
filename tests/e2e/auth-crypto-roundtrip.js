@@ -1,16 +1,22 @@
 // tests/e2e/auth-crypto-roundtrip.js
 // Automated Integration & End-to-End Cryptographic Round-Trip Test
-// Uses test credentials from environment variables (with fallback defaults)
+// Requires TEST_EMAIL and TEST_PASSWORD environment variables (sourced from .agents/AGENTS.md)
 
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://ccgiozknvlknbrkzfcdx.supabase.co';
 const ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNjZ2lvemtudmxrbmJya3pmY2R4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTY3NTMsImV4cCI6MjA3ODQzMjc1M30.lmmuGnynbY_n_4UlsrGw5ofRd6p9QLKCcrfHf7itEg8';
 
-const TEST_EMAIL = process.env.TEST_EMAIL || 'testuser@diary.com';
-const TEST_PASSWORD = process.env.TEST_PASSWORD || 'test@4321';
+const TEST_EMAIL = process.env.TEST_EMAIL;
+const TEST_PASSWORD = process.env.TEST_PASSWORD;
+
+if (!TEST_EMAIL || !TEST_PASSWORD) {
+  console.error('FAIL: TEST_EMAIL and TEST_PASSWORD environment variables are required.');
+  console.error('Source them from gitignored .agents/AGENTS.md or pass them in your shell environment before running this test.');
+  process.exit(1);
+}
+
 const KEY_CHECK_STRING = "DAILY_DIARY_KEY_CHECK_v1";
-const PBKDF2_ITERATIONS = 600000;
 
 function encodeBase64(buffer) {
   const bytes = new Uint8Array(buffer);
@@ -57,7 +63,7 @@ async function deriveKey(password, saltString) {
 
   const saltBuffer = decodeBase64(actualSalt);
 
-  return await crypto.subtle.deriveKey(
+  const key = await crypto.subtle.deriveKey(
     {
       name: 'PBKDF2',
       salt: saltBuffer,
@@ -66,9 +72,11 @@ async function deriveKey(password, saltString) {
     },
     passwordKey,
     { name: 'AES-GCM', length: 256 },
-    true,
+    false,
     ['encrypt', 'decrypt']
   );
+
+  return { key, iterations };
 }
 
 async function encryptData(key, text) {
@@ -136,12 +144,16 @@ async function runE2ETest() {
 
   console.log(`  [OK] Profile retrieved. Salt length: ${profile.salt?.length} chars`);
 
-  // 3. Derive Master Key with PBKDF2 (600,000 iterations)
-  console.log(`\nStep 3: Deriving AES-GCM (256-bit) key (${PBKDF2_ITERATIONS} iterations)...`);
+  // 3. Derive Master Key with PBKDF2 (dynamic iterations from salt)
+  console.log('\nStep 3: Deriving AES-GCM (256-bit) key (extractable: false)...');
   const t0 = performance.now();
-  const derivedKey = await deriveKey(TEST_PASSWORD, profile.salt);
+  const { key: derivedKey, iterations: actualIterations } = await deriveKey(TEST_PASSWORD, profile.salt);
   const t1 = performance.now();
-  console.log(`  [OK] Master key derived in ${(t1 - t0).toFixed(1)}ms`);
+  if (derivedKey.extractable !== false) {
+    console.error('FAIL: Derived CryptoKey must be non-extractable (DEC-014).');
+    process.exit(1);
+  }
+  console.log(`  [OK] Master key derived (${actualIterations} PBKDF2 iterations, extractable=${derivedKey.extractable}) in ${(t1 - t0).toFixed(1)}ms`);
 
   // 4. Verify Key Check Value
   console.log('\nStep 4: Verifying key_check_value against derived key...');
@@ -172,17 +184,17 @@ async function runE2ETest() {
   const { iv, data: encrypted_entry } = await encryptData(derivedKey, JSON.stringify(originalEntry));
   console.log(`  [OK] Payload encrypted. Ciphertext size: ${encrypted_entry.length} chars, IV: ${iv}`);
 
-  // 6. Insert Record into Supabase
-  console.log('\nStep 6: Saving encrypted record to public.diaries...');
+  // 6. Insert Record into Supabase (zeroed plaintext metadata columns per DEC-012)
+  console.log('\nStep 6: Saving encrypted record to public.diaries with null metadata columns...');
   const { data: savedRow, error: saveError } = await client
     .from('diaries')
     .insert({
       owner_id: authData.user.id,
       encrypted_entry,
       iv,
-      mood: originalEntry.mood,
-      tags: originalEntry.tags,
-      journal: originalEntry.journal,
+      mood: null,
+      tags: null,
+      journal: null,
       created_at: originalEntry.created_at
     })
     .select('id, created_at, mood, tags, journal')
@@ -193,7 +205,16 @@ async function runE2ETest() {
     process.exit(1);
   }
   const entryId = savedRow.id;
-  console.log(`  [OK] Row successfully inserted into Supabase. Entry ID: ${entryId}`);
+  if (savedRow.mood !== null || savedRow.tags !== null || savedRow.journal !== null) {
+    console.error('FAIL: Zero-knowledge metadata invariant violated (expected null mood/tags/journal):', {
+      mood: savedRow.mood,
+      tags: savedRow.tags,
+      journal: savedRow.journal
+    });
+    await client.from('diaries').delete().eq('id', entryId);
+    process.exit(1);
+  }
+  console.log(`  [OK] Row inserted into Supabase with null mood/tags/journal. Entry ID: ${entryId}`);
 
   // 7. Retrieve and Decrypt from Supabase
   console.log('\nStep 7: Retrieving encrypted row and decrypting...');
@@ -205,16 +226,32 @@ async function runE2ETest() {
 
   if (fetchError || !fetchedRow) {
     console.error('FAIL: Could not fetch entry back:', fetchError);
+    await client.from('diaries').delete().eq('id', entryId);
     process.exit(1);
   }
 
   const decryptedJson = await decryptData(derivedKey, fetchedRow.encrypted_entry, fetchedRow.iv);
   const parsedDecrypted = JSON.parse(decryptedJson);
 
-  if (parsedDecrypted.title === originalEntry.title && parsedDecrypted.content === originalEntry.content) {
-    console.log(`  [OK] Decryption MATCHES original plaintext with 100% byte fidelity!`);
+  const tagsMatch =
+    Array.isArray(parsedDecrypted.tags) &&
+    parsedDecrypted.tags.length === originalEntry.tags.length &&
+    parsedDecrypted.tags.every((tag, idx) => tag === originalEntry.tags[idx]);
+
+  if (
+    parsedDecrypted.title === originalEntry.title &&
+    parsedDecrypted.content === originalEntry.content &&
+    parsedDecrypted.mood === originalEntry.mood &&
+    parsedDecrypted.journal === originalEntry.journal &&
+    tagsMatch
+  ) {
+    console.log('  [OK] Decryption MATCHES original title, content, mood, tags, and journal with 100% fidelity!');
   } else {
-    console.error('FAIL: Plaintext mismatch!');
+    console.error('FAIL: Plaintext or metadata mismatch!', {
+      expected: originalEntry,
+      actual: parsedDecrypted
+    });
+    await client.from('diaries').delete().eq('id', entryId);
     process.exit(1);
   }
 
@@ -226,10 +263,10 @@ async function runE2ETest() {
     .eq('id', entryId);
 
   if (deleteError) {
-    console.warn('Warning: Could not delete test entry:', deleteError);
-  } else {
-    console.log(`  [OK] Test entry ${entryId} deleted cleanly.`);
+    console.error('FAIL: Could not delete test entry:', deleteError);
+    process.exit(1);
   }
+  console.log(`  [OK] Test entry ${entryId} deleted cleanly.`);
 
   // 9. Sign Out
   await client.auth.signOut();

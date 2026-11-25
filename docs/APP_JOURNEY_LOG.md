@@ -26,6 +26,21 @@ This document records the evolution of our application across versions, logging 
 
 ## 🚀 Releases & Milestones
 
+### [v1.0.22] — 2026-11-25 10:36:16 IST
+
+#### 🌟 What's New & Release Notes (User Perspective)
+* **Verified Zero-Knowledge & Deployment Reliability:**
+  - **End-to-End Privacy Verified Live**: Confirmed across our live cloud sanctuary that diary moods, tags, and notebook labels remain strictly encrypted client-side with zero plaintext metadata stored on servers, and that personal tasks and attachments remain locked behind strict per-account access controls.
+  - **Hardened Release Pipeline**: Strengthened automated deployment checks so every production update passes full type safety, code quality, security, and privacy hygiene verification before reaching your browser.
+
+#### 🛠️ Technical Highlights & Bug Fixes (Team Log)
+* **CI Deploy Gate Parity & Post-`v1.0.20` Test Alignment**:
+  - **GitHub Pages Workflow Parity (`.github/workflows/main.yml`)**: Added `fetch-depth: 0`, upgraded Node to `22`, and enforced `npm run typecheck`, `npm run lint`, and `npm run check:ci` before `npm run build`.
+  - **E2E Crypto Suite Modernization (`tests/e2e/auth-crypto-roundtrip.js`)**: Removed literal test credential fallbacks (requiring `TEST_EMAIL`/`TEST_PASSWORD` env vars), enforced `extractable: false` (`DEC-014`) with dynamic PBKDF2 iteration reporting, asserted `null` DB `mood`/`tags`/`journal` columns (`DEC-012`), verified full decrypted metadata fidelity, and enforced exit-1 failure on cleanup errors.
+  - **Expanded Penetration Suite (`tests/security/penetration-audit.js`)**: Added anonymous RLS `SELECT` and `INSERT` denial checks across `personal_tasks`, `task_attachments`, `task_history`, and `task_templates`; aligned `weather-proxy` `OPTIONS` CORS checks with `ALLOWED_ORIGINS` + `Vary: Origin`; and added unauthenticated `POST` `401` verification (`22/22` passing).
+  - **Credential Scan Coverage (`scripts/verify-ritual.mjs`)**: Removed the `tests/` exemption from secret/credential scanning so test suites are verified clean on every PR and deploy.
+  - **Live Edge Function Parity**: Deployed `weather-proxy` (v2) and `delete-account` (v2) on `ccgiozknvlknbrkzfcdx` (`ACTIVE`, `verify_jwt: false`) with live E2E and security suites passing 100%.
+
 ### [v1.0.21] — 2026-11-18 12:30:00 IST
 
 #### 🌟 What's New & Release Notes (User Perspective)

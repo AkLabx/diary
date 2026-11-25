@@ -279,8 +279,8 @@ for (const rel of candidateSet) {
     }
   }
 
-  // Check strict credential quarantine outside tests/ and verification/
-  const isExemptTestHarness = rel.startsWith('tests/') || rel.startsWith('verification/');
+  // Check strict credential quarantine outside verification/
+  const isExemptTestHarness = rel.startsWith('verification/');
   if (!isExemptTestHarness) {
     if (content.toLowerCase().includes(forbiddenTestEmail) || content.includes(forbiddenTestPass)) {
       secretFindings.push(`${rel}: Literal test credential quarantined to .agents/AGENTS.md leaked into tracked file`);
