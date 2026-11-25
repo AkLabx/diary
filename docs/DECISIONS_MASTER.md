@@ -27,6 +27,7 @@ Authoritative ledger of architectural choices and invariants. Consult at cold st
 | **DEC-017** | `v1.0.15` | Postgres | Covering indexes + `(SELECT auth.uid())` RLS; RPCs default `SECURITY INVOKER` | Eliminates sequential scans and per-row RLS re-evaluation at 10k DAU. | `SECURITY DEFINER` RPCs need `SET search_path = public`; keep `(SELECT auth.uid())`. | [`docs/migrations/`](./migrations/20261116_complete_baseline_ddl_and_rls.sql) |
 | **DEC-018** | `v1.0.19` | Modals | Native `<dialog>.showModal()` (`ConfirmationModal`, `useModalDialog`) | Prevents scroll bleed, fixes mobile sheets, enforces focus/Escape. | Never use `alert()`/`confirm()`; route via `ConfirmationModal` / `<dialog>`. | [`components/ConfirmationModal.tsx`](../components/ConfirmationModal.tsx) |
 | **DEC-019** | `v1.0.20+`| Ritual | Automated `npm run check:ritual` + GitHub `pr-check.yml` CI gate | Enforces version sync, secret scan, and `<20 KB` Hot Context cap mechanically. | Every PR must pass `pr-check.yml` and `npm run check:ritual` before merge. | [`scripts/verify-ritual.mjs`](../scripts/verify-ritual.mjs) |
+| **DEC-020** | `v1.0.22` | CI/Tests | Deploy CI matches PR gates (Node 22, `fetch-depth: 0`, `check:ci`); `tests/` scanned, env-only creds | Deploy CI skipped typecheck/lint/ritual and tests lagged `v1.0.20` privacy/auth rules. | Keep `main.yml` parity with `pr-check.yml`; never exempt `tests/` or hardcode creds. | [`.github/workflows/main.yml`](../.github/workflows/main.yml) |
 
 ---
 

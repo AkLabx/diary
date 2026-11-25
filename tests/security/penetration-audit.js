@@ -99,6 +99,83 @@ async function runPenetrationSuite() {
     assert(false, 'Anonymous select on media_files threw exception', e.message);
   }
 
+  // --- TEST 4b: Anonymous Unauthorized Access & Insert to Personal Tasks Suite ---
+  console.log('\n3b. Testing Row Level Security (RLS) on Personal Tasks Suite tables...');
+  const fakeUuid = '00000000-0000-0000-0000-000000000000';
+  const taskTableSpecs = [
+    {
+      table: 'personal_tasks',
+      dummyInsert: {
+        owner_id: fakeUuid,
+        encrypted_task: 'injected_task',
+        iv: 'injected_iv_1234',
+        checksum: '0'.repeat(64)
+      }
+    },
+    {
+      table: 'task_attachments',
+      dummyInsert: {
+        task_id: fakeUuid,
+        owner_id: fakeUuid,
+        file_path: `${fakeUuid}/fake.bin`,
+        file_type: 'image',
+        encrypted_metadata: 'injected_metadata',
+        iv: 'injected_iv_1234'
+      }
+    },
+    {
+      table: 'task_history',
+      dummyInsert: {
+        task_id: fakeUuid,
+        owner_id: fakeUuid,
+        action: 'created',
+        encrypted_diff: 'injected_diff',
+        iv: 'injected_iv_1234'
+      }
+    },
+    {
+      table: 'task_templates',
+      dummyInsert: {
+        owner_id: fakeUuid,
+        encrypted_template: 'injected_template',
+        iv: 'injected_iv_1234',
+        checksum: '0'.repeat(64),
+        rrule: 'FREQ=DAILY;INTERVAL=1'
+      }
+    }
+  ];
+
+  for (const { table, dummyInsert } of taskTableSpecs) {
+    try {
+      const { data, error } = await anonClient
+        .from(table)
+        .select('*')
+        .limit(10);
+
+      assert(
+        !error && (!data || data.length === 0),
+        `Anonymous client cannot select rows from public.${table}`,
+        error ? error.message : `Rows returned: ${data?.length || 0}`
+      );
+    } catch (e) {
+      assert(false, `Anonymous select on ${table} threw unexpected exception`, e.message);
+    }
+
+    try {
+      const { data, error } = await anonClient
+        .from(table)
+        .insert(dummyInsert);
+
+      assert(
+        error !== null,
+        `Anonymous client cannot insert rows into public.${table}`,
+        `Expected error, but got: ${JSON.stringify(data)}`
+      );
+    } catch (e) {
+      assert(false, `Anonymous insert on ${table} threw unexpected network exception`, e.message);
+    }
+  }
+
   // --- TEST 5: Storage Bucket Private Access Controls ---
   console.log('\n4. Testing Private Storage Buckets Access Controls...');
   const buckets = ['diary-images', 'diary-audio', 'avatars'];
@@ -127,20 +204,60 @@ async function runPenetrationSuite() {
   // --- TEST 6: Edge Function CORS & Options Preflight ---
   console.log('\n5. Testing Edge Functions Preflight & Access Controls...');
   try {
+    const allowedOrigin = 'http://localhost:5173';
     const res = await fetch(`${SUPABASE_URL}/functions/v1/weather-proxy`, {
       method: 'OPTIONS',
       headers: {
-        'Origin': 'https://localhost:5173',
+        'Origin': allowedOrigin,
         'Access-Control-Request-Method': 'POST'
       }
     });
 
+    const acao = res.headers.get('access-control-allow-origin');
+    const vary = (res.headers.get('vary') || '').toLowerCase();
     assert(
-      res.ok && res.headers.get('access-control-allow-origin') === '*',
-      'Edge Function weather-proxy responds cleanly to CORS preflight'
+      res.ok && acao === allowedOrigin && vary.includes('origin'),
+      'Edge Function weather-proxy echoes allowlisted Origin with Vary: Origin on CORS preflight',
+      `status=${res.status}, acao=${acao}, vary=${res.headers.get('vary')}`
     );
   } catch (e) {
-    assert(false, 'CORS preflight failed for weather-proxy', e.message);
+    assert(false, 'CORS preflight failed for weather-proxy (allowlisted origin)', e.message);
+  }
+
+  try {
+    const evilOrigin = 'https://evil.example';
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/weather-proxy`, {
+      method: 'OPTIONS',
+      headers: {
+        'Origin': evilOrigin,
+        'Access-Control-Request-Method': 'POST'
+      }
+    });
+
+    const acao = res.headers.get('access-control-allow-origin');
+    assert(
+      acao !== evilOrigin && acao !== '*',
+      'Edge Function weather-proxy rejects untrusted Origin and never returns wildcard *',
+      `acao=${acao}`
+    );
+  } catch (e) {
+    assert(false, 'CORS preflight failed for weather-proxy (untrusted origin)', e.message);
+  }
+
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/weather-proxy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ city: 'London' })
+    });
+
+    assert(
+      res.status === 401,
+      'Edge Function weather-proxy strictly rejects unauthenticated POST requests (HTTP 401)',
+      `Actual status: ${res.status}`
+    );
+  } catch (e) {
+    assert(false, 'weather-proxy unauthenticated POST test error', e.message);
   }
 
   try {
